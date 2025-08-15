@@ -1,0 +1,6 @@
+
+.venv/*
+_pycache_/*
+build/*
+*.spec
+testscript*
