@@ -35,7 +35,7 @@ class AugmentationDialog(QtWidgets.QDialog):
         screen = QtWidgets.QApplication.primaryScreen()
         dpi = screen.logicalDotsPerInch()
         font = QtGui.QFont()
-        font.setPointSizeF(dpi / 16)  # adjust divisor for bigger/smaller
+        font.setPointSizeF(dpi / 8)  # adjust divisor for bigger/smaller
         aug_label = QtWidgets.QLabel("Augmentations per image:")
         aug_label.setFont(font)
         aug_spin = QtWidgets.QSpinBox()

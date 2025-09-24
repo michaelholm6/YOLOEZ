@@ -7,9 +7,8 @@ import torch
 from torch.utils.tensorboard import SummaryWriter
 import os
 from datetime import datetime
-import webbrowser, time
-import numpy as np
-
+import webbrowser
+import shutil
 
 def run_training(model_path, dataset_yaml, tb_logdir="runs/train"):
 
@@ -17,115 +16,113 @@ def run_training(model_path, dataset_yaml, tb_logdir="runs/train"):
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
     print(f"⚡ Using device: {device}")
 
-    # Ensure log directory exists
-    os.makedirs(tb_logdir, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    run_dir = os.path.join(tb_logdir, f"run_{timestamp}")
+    os.makedirs(run_dir, exist_ok=True)  # make sure it exists
+    writer = SummaryWriter(log_dir=run_dir)
 
-    # Launch TensorBoard
+    # Launch TensorBoard pointing ONLY at this run
     tb_process = subprocess.Popen(
-        ["uv", "run", "tensorboard", f"--logdir={tb_logdir}", "--port=6006", "--host=127.0.0.1", "--reload_interval=1"],
-        stdout=None,  # show logs in console
-        stderr=None
-    )
+    ["tensorboard", f"--logdir={run_dir}", "--port=6006", "--host=127.0.0.1", "--reload_interval=1"],
+    stdout=subprocess.DEVNULL,
+    stderr=subprocess.DEVNULL
+)
+
+
     print("TensorBoard launched at http://127.0.0.1:6006")
+    webbrowser.open('http://127.0.0.1:6006')
 
-    # GUI for stop button
+    # Container to store training results
+    training_results = {}
 
+    # PyQt GUI
     class TrainingGUI(QtWidgets.QWidget):
         def __init__(self):
             super().__init__()
             self.setWindowTitle("YOLO Training Monitor")
 
-            # Get screen size
+            # Screen geometry for scaling
             screen = QtWidgets.QApplication.primaryScreen()
             dpi = screen.logicalDotsPerInch()
-
-            # Scale window size relative to screen
             geom = screen.availableGeometry()
             win_width = int(geom.width() * 0.25)
             win_height = int(geom.height() * 0.15)
             self.resize(win_width, win_height)
-
-            # Center the window
-            x = (geom.width() - win_width) // 2
-            y = (geom.height() - win_height) // 2
-            self.move(x, y)
+            self.move((geom.width() - win_width) // 2, (geom.height() - win_height) // 2)
 
             self.stop_requested = False
 
             layout = QtWidgets.QVBoxLayout(self)
             self.setLayout(layout)
 
-            # Create button
+            # Stop button
             self.stop_button = QtWidgets.QPushButton("Stop Training")
-
-            # Scale font with DPI
             font = QtGui.QFont()
-            font.setPointSizeF(dpi / 16)  # adjust divisor for bigger/smaller
+            font.setPointSizeF(dpi / 8)
             self.stop_button.setFont(font)
-
-            # Make button expand
             self.stop_button.setMinimumHeight(int(win_height * 0.4))
-
             self.stop_button.clicked.connect(self.request_stop)
             layout.addWidget(self.stop_button)
 
         def request_stop(self):
             self.stop_requested = True
-            print("⚠ Stop requested!")
+            print("⚠ Stop requested by user!")
             self.close()
 
+    # PyQt application
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
     gui = TrainingGUI()
     gui.show()
 
-    # TensorBoard writer
-    
-
-# Make a unique run folder
-    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    run_dir = os.path.join(tb_logdir, f"run_{timestamp}")
-    run_name = f"run_{timestamp}"
-    writer = SummaryWriter(log_dir=os.path.join(run_dir))
-
+    # Training thread
     def train_thread():
         model = YOLO(model_path)
 
-        # Custom callback for per-epoch logging
+        # Callback to log metrics per epoch and check for stop
         def on_epoch_end(trainer):
             epoch = trainer.epoch
-            # Log training loss
             if "train/loss" in trainer.metrics:
                 writer.add_scalar("Train/Loss", trainer.metrics["train/loss"], epoch)
-            # Log validation mAP50
             if "metrics/mAP50(B)" in trainer.metrics:
                 writer.add_scalar("Val/mAP50", trainer.metrics["metrics/mAP50(B)"], epoch)
             writer.flush()
 
             if gui.stop_requested:
-                print("⚠ Training stopped by user.")
-                trainer.stop = True  # stop training gracefully
+                print("⚠ Stopping training gracefully...")
+                trainer.stop = True
 
-        # Register callback
         model.add_callback("on_fit_epoch_end", on_epoch_end)
 
         # Run training
-        model.train(
+        results = model.train(
             data=dataset_yaml,
             epochs=int(10e10),
             device=device,
         )
 
         writer.close()
-        print("Training finished.")
+        print("✅ Training finished.")
+        training_results["results"] = results
 
-    thread = threading.Thread(target=train_thread, daemon=True)
-    webbrowser.open('http://127.0.0.1:6006')
+        # Close GUI automatically if training finishes
+        QtWidgets.QApplication.instance().quit()
+
+    # Start training
+    thread = threading.Thread(target=train_thread)
     thread.start()
 
-    # Run Qt event loop
-    exit_code = app.exec_()
+    # Run GUI event loop (blocking)
+    app.exec_()
 
-    # Stop TensorBoard when GUI closes
+    # Wait for training to finish
+    thread.join()
+
+    # Stop TensorBoard
     tb_process.terminate()
     tb_process.wait()
-    sys.exit(exit_code)
+    
+    if os.path.exists(run_dir):
+        shutil.rmtree(run_dir)
+
+    # Return YOLO Results object
+    return training_results.get("results", None)

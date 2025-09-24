@@ -8,6 +8,7 @@ from DefectDetect.utils import show_instructions
 from DefectDetect.training_workflow.apply_augmentations import apply_augmentations
 from DefectDetect.training_workflow.create_yaml import create_yaml
 from DefectDetect.training_workflow.train_model import run_training
+import shutil
 
 def run_training_workflow(suppress_instructions=False):
     if not suppress_instructions:
@@ -43,14 +44,26 @@ def run_training_workflow(suppress_instructions=False):
 
     augs, number_of_augs = get_augmentations()
     
-    apply_augmentations(augs, dataset_path, os.path.join(os.path.split(dataset_path)[0], "augmented_dataset"))
+    apply_augmentations(augs, dataset_path, os.path.join(os.path.split(dataset_path)[0], "augmented_dataset"), number_of_augs)
     
     yaml_file = create_yaml(os.path.split(dataset_path)[0])
     
-    run_training("yolov8n-seg.pt", yaml_file)
+    results = run_training("yolov8n-seg.pt", yaml_file)
+    
+    os.remove(os.path.join(os.path.split(dataset_path)[0], "dataset.yaml"))
+    shutil.rmtree(os.path.join(os.path.split(dataset_path)[0], "augmented_dataset"))
+    shutil.rmtree(os.path.join(os.path.split(dataset_path)[0], "yolo_dataset"))
+
+    if not suppress_instructions:
+        show_instructions(
+            "Training complete!\n\n"
+            "You can now choose where to save the trained model.\n\n"
+            "It's recommended to save it in a dedicated folder for easy access later."
+        )
 
     # --- Save model ---
     save_path = get_save_path()
+    
     if save_path:
         best_model = results.save_dir / "weights" / "best.pt"
         save_trained_model(best_model, save_path)

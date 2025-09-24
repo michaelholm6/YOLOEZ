@@ -5,7 +5,7 @@ from DefectDetect.labelling_workflow.clip_cracks_to_area_of_interest import *
 from DefectDetect.labelling_workflow.save_and_display_results import *
 from DefectDetect.labelling_workflow.edit_contour_points import *
 from DefectDetect.labelling_workflow.input_dialogue import *
-from DefectDetect.labelling_workflow.main import run_labeling_workflow
+from DefectDetect.labelling_workflow.main_labelling import run_labeling_workflow
 from DefectDetect.training_workflow.main_training import run_training_workflow
 from DefectDetect.inference_workflow.main import run_inference_workflow
 from PyQt5 import QtWidgets

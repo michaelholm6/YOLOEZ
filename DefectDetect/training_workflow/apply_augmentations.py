@@ -106,6 +106,6 @@ def augment_yolo_dataset(dataset_dir, aug_dict, output_dir, num_augments=1):
                     f.write("\n".join(txt_lines))
                     
 
-def apply_augmentations(aug_dict, datasest_path, output_path):
+def apply_augmentations(aug_dict, datasest_path, output_path, num_augments=1):
     build_transform(aug_dict)
-    augment_yolo_dataset(datasest_path, aug_dict, output_path, num_augments=1)
+    augment_yolo_dataset(datasest_path, aug_dict, output_path, num_augments)
