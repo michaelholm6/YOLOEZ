@@ -3,18 +3,22 @@ import tkinter as tk
 from PyQt5.QtWidgets import QApplication, QWidget
 from PyQt5.QtGui import QPixmap, QPainter, QPen, QColor, QKeyEvent
 from PyQt5.QtCore import Qt, QPoint, QTimer
+from PyQt5 import QtCore
 
 def get_polygon_from_user(image):
     # === PyQt Polygon Drawer ===
     class PolygonDrawer(QWidget):
         def __init__(self, image):
             super().__init__()
+            self.setWindowFlags(QtCore.Qt.Window | QtCore.Qt.WindowStaysOnTopHint)
             self.orig_image = image
             self.orig_height, self.orig_width = image.shape[:2]
             self.polygon_points = []
             self.polygon_closed = False
             self.showMaximized()
             self.setMouseTracking(True)
+            self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowStaysOnTopHint)
+            self.show()
 
         def resizeEvent(self, event):
             self.update_scaled_pixmap()
@@ -46,7 +50,7 @@ def get_polygon_from_user(image):
             painter.drawPixmap(self.offset_x, self.offset_y, self.scaled_pixmap)
 
             if len(self.polygon_points) > 0:
-                pen = QPen(QColor(0, 255, 0), 2)
+                pen = QPen(QColor(0, 255, 0), 5)
                 painter.setPen(pen)
                 for i in range(len(self.polygon_points) - 1):
                     painter.drawLine(self.polygon_points[i], self.polygon_points[i + 1])

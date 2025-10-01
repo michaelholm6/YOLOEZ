@@ -7,13 +7,16 @@ from DefectDetect.labelling_workflow.edit_contour_points import *
 from DefectDetect.labelling_workflow.input_dialogue import *
 from DefectDetect.labelling_workflow.main_labelling import run_labeling_workflow
 from DefectDetect.training_workflow.main_training import run_training_workflow
-from DefectDetect.inference_workflow.main import run_inference_workflow
+from DefectDetect.inference_workflow.main_inference import run_inference_workflow
 from PyQt5 import QtWidgets
 import sys
 
 class ChoiceDialog(QtWidgets.QDialog):
     def __init__(self):
         super().__init__()
+        font = QtGui.QFont()
+        font.setPointSize(14)
+        self.setFont(font)
         self.setWindowTitle("Choose Mode")
 
         layout = QtWidgets.QVBoxLayout(self)

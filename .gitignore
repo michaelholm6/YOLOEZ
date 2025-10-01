@@ -4,3 +4,4 @@ _pycache_/*
 build/*
 *.spec
 testscript*
+runs/*

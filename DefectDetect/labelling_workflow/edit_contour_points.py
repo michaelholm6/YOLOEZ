@@ -11,6 +11,7 @@ from PyQt5.QtGui import QPixmap, QIcon
 class ContourEditor(QtWidgets.QWidget):
     def __init__(self, image, contours, line_thickness, parent=None):
         super().__init__(parent)
+        self.setWindowFlags(QtCore.Qt.Window | QtCore.Qt.WindowStaysOnTopHint)
 
         self.image = image
         self.original_contours = contours
@@ -32,6 +33,9 @@ class ContourEditor(QtWidgets.QWidget):
         layout.addWidget(self.view)
         layout.addLayout(label_layout)  # add label + icon layout
         self.setLayout(layout)
+        self.showMaximized()
+        self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowStaysOnTopHint)
+        self.show()
 
     def get_results(self):
         return self.view.get_edited_contours()

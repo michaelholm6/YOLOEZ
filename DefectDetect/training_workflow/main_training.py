@@ -9,6 +9,7 @@ from DefectDetect.training_workflow.apply_augmentations import apply_augmentatio
 from DefectDetect.training_workflow.create_yaml import create_yaml
 from DefectDetect.training_workflow.train_model import run_training
 import shutil
+import tempfile
 
 def run_training_workflow(suppress_instructions=False):
     if not suppress_instructions:
@@ -44,9 +45,9 @@ def run_training_workflow(suppress_instructions=False):
 
     augs, number_of_augs = get_augmentations()
     
-    apply_augmentations(augs, dataset_path, os.path.join(os.path.split(dataset_path)[0], "augmented_dataset"), number_of_augs)
+    apply_augmentations(augs, dataset_path, os.path.join(tempfile.gettempdir(), "augmented_dataset"), number_of_augs)
     
-    yaml_file = create_yaml(os.path.split(dataset_path)[0])
+    yaml_file = create_yaml(tempfile.gettempdir())
     
     results = run_training("yolov8n-seg.pt", yaml_file)
     

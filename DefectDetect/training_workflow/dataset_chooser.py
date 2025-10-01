@@ -5,6 +5,7 @@ import os
 import shutil
 import random
 from sklearn.model_selection import train_test_split
+import tempfile
 
 def choose_dataset(train_split=0.8):
     """
@@ -15,7 +16,7 @@ def choose_dataset(train_split=0.8):
     folder = QtWidgets.QFileDialog.getExistingDirectory(None, "Select Raw Dataset Folder")
     if folder and os.path.isdir(folder):
         # Output folder inside the selected folder
-        output_dir = os.path.join(folder, "yolo_dataset")
+        output_dir = os.path.join(tempfile.gettempdir(), "yolo_dataset")
         os.makedirs(output_dir, exist_ok=True)
 
         # Always use single class

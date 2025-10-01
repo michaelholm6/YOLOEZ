@@ -30,7 +30,6 @@ def run_training(model_path, dataset_yaml, tb_logdir="runs/train"):
 
 
     print("TensorBoard launched at http://127.0.0.1:6006")
-    webbrowser.open('http://127.0.0.1:6006')
 
     # Container to store training results
     training_results = {}
@@ -77,15 +76,22 @@ def run_training(model_path, dataset_yaml, tb_logdir="runs/train"):
     # Training thread
     def train_thread():
         model = YOLO(model_path)
+        
+        browser_opened = False
 
         # Callback to log metrics per epoch and check for stop
         def on_epoch_end(trainer):
+            nonlocal browser_opened
             epoch = trainer.epoch
             if "train/loss" in trainer.metrics:
                 writer.add_scalar("Train/Loss", trainer.metrics["train/loss"], epoch)
             if "metrics/mAP50(B)" in trainer.metrics:
                 writer.add_scalar("Val/mAP50", trainer.metrics["metrics/mAP50(B)"], epoch)
             writer.flush()
+            
+            if not browser_opened:
+                webbrowser.open("http://127.0.0.1:6006")
+                browser_opened = True
 
             if gui.stop_requested:
                 print("⚠ Stopping training gracefully...")
@@ -105,7 +111,7 @@ def run_training(model_path, dataset_yaml, tb_logdir="runs/train"):
         training_results["results"] = results
 
         # Close GUI automatically if training finishes
-        QtWidgets.QApplication.instance().quit()
+        gui.close()
 
     # Start training
     thread = threading.Thread(target=train_thread)
@@ -120,9 +126,6 @@ def run_training(model_path, dataset_yaml, tb_logdir="runs/train"):
     # Stop TensorBoard
     tb_process.terminate()
     tb_process.wait()
-    
-    if os.path.exists(run_dir):
-        shutil.rmtree(run_dir)
 
     # Return YOLO Results object
     return training_results.get("results", None)

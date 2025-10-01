@@ -53,7 +53,7 @@ class ClickableSlider(QtWidgets.QSlider):
 class CrackDetectionGUI(QtWidgets.QWidget):
     def __init__(self, original_image, blurred_image, area_of_interest_pts, model_path='model.yml.gz'):
         super().__init__()
-
+        self.setWindowFlags(QtCore.Qt.Window | QtCore.Qt.WindowStaysOnTopHint)
         self.original_image = original_image.copy()
         self.blurred_image = blurred_image
         self.model_path = model_path
@@ -132,6 +132,9 @@ class CrackDetectionGUI(QtWidgets.QWidget):
         self.final_contours = []
 
         self.showMaximized()
+        
+        self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowStaysOnTopHint)
+        self.show()
 
     def keyPressEvent(self, event: QtGui.QKeyEvent):
         if event.key() == QtCore.Qt.Key_Escape:

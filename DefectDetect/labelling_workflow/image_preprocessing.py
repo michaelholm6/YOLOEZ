@@ -8,6 +8,7 @@ from tkinter import messagebox
 class PreprocessGUI(QtWidgets.QWidget):
     def __init__(self, image_path):
         super().__init__()
+        self.setWindowFlags(QtCore.Qt.Window | QtCore.Qt.WindowStaysOnTopHint)
         self.setWindowTitle("Image Preprocessing GUI")  # This is enough for full screen without warnings
 
         self.image = cv2.imread(image_path)
@@ -22,6 +23,9 @@ class PreprocessGUI(QtWidgets.QWidget):
         self.update_image()
         
         self.showMaximized()
+        
+        self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowStaysOnTopHint)
+        self.show()
         
     def resizeEvent(self, event):
         self.update_image()

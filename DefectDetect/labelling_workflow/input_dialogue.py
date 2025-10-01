@@ -8,7 +8,9 @@ import numpy as np
 class InputDialog(QtWidgets.QDialog):
     def __init__(self):
         super().__init__()
-        
+        font = QtGui.QFont()
+        font.setPointSize(14)
+        self.setFont(font)
         self.setWindowFlags(QtCore.Qt.Window | QtCore.Qt.WindowStaysOnTopHint)
         self.setWindowTitle("Input Parameters")
 
@@ -31,7 +33,7 @@ class InputDialog(QtWidgets.QDialog):
         color: white;
         border-radius: 6px;
         padding: 8px 16px;
-        font-weight: bold;
+        font-size: 14pt;
     }
     QPushButton:hover {
         background-color: #005a9e;
@@ -46,7 +48,9 @@ class InputDialog(QtWidgets.QDialog):
 """)
         
         self.status_label = QtWidgets.QLabel()
-        self.status_label.setStyleSheet("color: red;")
+        palette = self.status_label.palette()
+        palette.setColor(QtGui.QPalette.WindowText, QtGui.QColor("red"))
+        self.status_label.setPalette(palette)
         self.status_label.setWordWrap(True)
         self.status_label.show()
 
@@ -161,6 +165,9 @@ class InputDialog(QtWidgets.QDialog):
 
         # Important: call showMaximized() AFTER setting layout
         self.showMaximized()
+        
+        self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowStaysOnTopHint)
+        self.show()
         
     def update_run_button_state(self):
         image_path = self.image_path_edit.text().strip()
