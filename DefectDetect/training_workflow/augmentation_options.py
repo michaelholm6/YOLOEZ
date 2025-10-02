@@ -1,9 +1,13 @@
-from PyQt5 import QtWidgets, QtGui
+from PyQt5 import QtWidgets, QtGui, QtCore
 import sys
 
 class AugmentationDialog(QtWidgets.QDialog):
     def __init__(self):
         super().__init__()
+        self.setWindowFlags(QtCore.Qt.Window | QtCore.Qt.WindowStaysOnTopHint)
+        font = QtGui.QFont()
+        font.setPointSize(14)  # increase this value as needed
+        self.setFont(font)
         self.setWindowTitle("Augmentation Options")
         self.setMinimumWidth(300)
 
@@ -34,10 +38,7 @@ class AugmentationDialog(QtWidgets.QDialog):
         aug_count_layout = QtWidgets.QHBoxLayout()
         screen = QtWidgets.QApplication.primaryScreen()
         dpi = screen.logicalDotsPerInch()
-        font = QtGui.QFont()
-        font.setPointSizeF(dpi / 8)  # adjust divisor for bigger/smaller
         aug_label = QtWidgets.QLabel("Augmentations per image:")
-        aug_label.setFont(font)
         aug_spin = QtWidgets.QSpinBox()
         aug_spin.setMinimum(1)
         aug_spin.setMaximum(100)
@@ -58,6 +59,9 @@ class AugmentationDialog(QtWidgets.QDialog):
         layout.addWidget(button_box)
 
         self.setLayout(layout)
+        self.show()
+        self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowStaysOnTopHint)
+        self.show()
 
     def make_label_with_tooltip(self, text, tooltip_text):
         container = QtWidgets.QWidget()
@@ -65,11 +69,7 @@ class AugmentationDialog(QtWidgets.QDialog):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(4)
 
-        font = QtGui.QFont()
-        font.setPointSize(12)
-
         label = QtWidgets.QLabel(text)
-        label.setFont(font)
         label.setToolTip(tooltip_text)
 
         icon_label = QtWidgets.QLabel()

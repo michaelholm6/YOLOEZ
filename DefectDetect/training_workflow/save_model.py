@@ -1,10 +1,10 @@
 from PyQt5 import QtWidgets
 import sys, shutil
 
-def get_save_path(default="model.pth"):
+def get_save_path(default="model.pt"):
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
     path, _ = QtWidgets.QFileDialog.getSaveFileName(
-        None, "Save Trained Model", default, "PyTorch Model (*.pth)"
+        None, "Save Trained Model", default, "PyTorch Model (*.pt)"
     )
     return path
 

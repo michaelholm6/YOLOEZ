@@ -10,7 +10,12 @@ from datetime import datetime
 import webbrowser
 import shutil
 
-def run_training(model_path, dataset_yaml, tb_logdir="runs/train"):
+def run_training(dataset_yaml, tb_logdir="runs/train", task="detection"):
+
+    if task == "segmentation":
+        model_path = "yolo11m-seg.pt"
+    else:
+        model_path = "yolo12m.pt"
 
     # Determine device
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
@@ -57,7 +62,7 @@ def run_training(model_path, dataset_yaml, tb_logdir="runs/train"):
             # Stop button
             self.stop_button = QtWidgets.QPushButton("Stop Training")
             font = QtGui.QFont()
-            font.setPointSizeF(dpi / 8)
+            font.setPointSizeF(14)
             self.stop_button.setFont(font)
             self.stop_button.setMinimumHeight(int(win_height * 0.4))
             self.stop_button.clicked.connect(self.request_stop)

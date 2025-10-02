@@ -5,9 +5,10 @@ from DefectDetect.training_workflow.save_model import get_save_path, save_traine
 from ultralytics import YOLO
 import os
 from DefectDetect.utils import show_instructions
-from DefectDetect.training_workflow.apply_augmentations import apply_augmentations
+from DefectDetect.training_workflow.apply_augmentations import augment_yolo_dataset
 from DefectDetect.training_workflow.create_yaml import create_yaml
 from DefectDetect.training_workflow.train_model import run_training
+from DefectDetect.training_workflow.get_task import get_task
 import shutil
 import tempfile
 
@@ -22,6 +23,11 @@ def run_training_workflow(suppress_instructions=False):
         )
 
     split = get_train_test_split()
+    
+    if not suppress_instructions:
+        show_instructions("Next, you need to indicate whether your dataset is for segmentation or bounding box detection.\n")
+        
+    task = get_task()
 
     if not suppress_instructions:
         show_instructions(
@@ -45,11 +51,11 @@ def run_training_workflow(suppress_instructions=False):
 
     augs, number_of_augs = get_augmentations()
     
-    apply_augmentations(augs, dataset_path, os.path.join(tempfile.gettempdir(), "augmented_dataset"), number_of_augs)
+    augment_yolo_dataset(dataset_path, augs, os.path.join(tempfile.gettempdir(), "augmented_dataset"), number_of_augs, task=task)
     
     yaml_file = create_yaml(tempfile.gettempdir())
     
-    results = run_training("yolov8n-seg.pt", yaml_file)
+    results = run_training(yaml_file, task=task)
     
     os.remove(os.path.join(os.path.split(dataset_path)[0], "dataset.yaml"))
     shutil.rmtree(os.path.join(os.path.split(dataset_path)[0], "augmented_dataset"))

@@ -5,18 +5,13 @@ from defect_detect import main as DefectDetect
 import traceback
 import keyboard  # pip install keyboard
 
-def escape_listener():
-    # Blocks until Escape is pressed
-    keyboard.wait('esc')
-    input("Escape pressed. Exiting program. Press Enter to confirm...")
-    os._exit(0)  # immediately terminate Python process
+def on_escape():
+    print("Escape pressed. Exiting program...")
+    os._exit(0)
+    
+keyboard.add_hotkey('esc', on_escape)
 
 def main():
-    # Start listener thread
-    thread = threading.Thread(target=escape_listener, daemon=True)
-    thread.start()
-
-    # Run your main program
     DefectDetect()
 
 if __name__ == "__main__":

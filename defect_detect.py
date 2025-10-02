@@ -14,6 +14,7 @@ import sys
 class ChoiceDialog(QtWidgets.QDialog):
     def __init__(self):
         super().__init__()
+        self.setWindowFlags(QtCore.Qt.Window | QtCore.Qt.WindowStaysOnTopHint)
         font = QtGui.QFont()
         font.setPointSize(14)
         self.setFont(font)
@@ -46,6 +47,10 @@ class ChoiceDialog(QtWidgets.QDialog):
         self.label_button.clicked.connect(lambda: self.set_choice("label"))
         self.train_button.clicked.connect(lambda: self.set_choice("train"))
         self.use_button.clicked.connect(lambda: self.set_choice("use"))
+        
+        self.show()
+        self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowStaysOnTopHint)
+        self.show()
 
     def set_choice(self, choice):
         self.chosen = choice
