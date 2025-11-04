@@ -2,62 +2,94 @@ import os
 import cv2
 import numpy as np
 
-def save_and_display_results(image, contours, line_thickness, output_path, area_of_interest):
-    result = image.copy()
+def save_and_display_results(image_paths, contours_dict, line_thickness, output_dir, areas_of_interest):
+    """
+    Save result images with contours drawn, and prepare YOLO segmentation dataset.
 
-    # === Step 1: Crop image to bounding box of AOI ===
-    aoi_np = np.array(area_of_interest, dtype=np.int32)  # shape (N,2)
-    x, y, w, h = cv2.boundingRect(aoi_np)
-    cropped = image[y:y+h, x:x+w].copy()
+    Args:
+        image_paths (list of str): List of image file paths.
+        contours_dict (dict): {image_path: list of contours (np.ndarray)}.
+        line_thickness (int): Thickness for drawing contours.
+        output_dir (str): Directory to save results.
+        areas_of_interest (dict): {image_path: list of points defining AOI}.
+    
+    Returns:
+        list of np.ndarray: Result images with contours drawn.
+    """
+    os.makedirs(output_dir, exist_ok=True)
+    results = []
 
-    # === Step 2: Create mask for AOI inside cropped region ===
-    mask = np.zeros(cropped.shape[:2], dtype=np.uint8)
-    shifted_aoi = aoi_np - [x, y]   # shift AOI coords into cropped image space
-    cv2.fillPoly(mask, [shifted_aoi], 255)
+    for img_path in image_paths:
+        img = cv2.imread(img_path)
+        if img is None:
+            print(f"Skipping {img_path}: failed to load.")
+            continue
 
-    # Apply mask: keep AOI, set rest to black
-    cropped_masked = cv2.bitwise_and(cropped, cropped, mask=mask)
+        # Get contours for this image (empty list if missing)
+        cnts = contours_dict.get(img_path, [])
+        cnts = [np.array(c, dtype=np.int32) for c in cnts]  # ensure all contours are numpy arrays
 
-    # === Step 3: Draw contours on result (shifted into cropped space) ===
-    result = cropped_masked.copy()
-    for cnt in contours:
-        shifted_cnt = cnt - [x, y]  # shift contour coords into cropped image space
-        color = (0, 255, 0)
-        cv2.drawContours(result, [shifted_cnt], -1, color, line_thickness)
+        # Handle missing or empty AOI
+        area_of_interest = areas_of_interest.get(img_path, [])
+        has_aoi = len(area_of_interest) > 0
 
-    # Save drawn result
-    cv2.imwrite(output_path, result)
+        if has_aoi:
+            aoi_np = np.array(area_of_interest, dtype=np.int32)
+            x, y, w, h = cv2.boundingRect(aoi_np)
+            cropped = img[y:y+h, x:x+w].copy()
 
-    # === Step 4: Prepare YOLO dataset folder ===
-    base_dir = os.path.dirname(output_path)
-    last_dir = os.path.splitext(os.path.basename(output_path))[0]
-    yolo_dir = os.path.join(base_dir, f"yolo_data_{last_dir}")
-    os.makedirs(yolo_dir, exist_ok=True)
+            mask = np.zeros(cropped.shape[:2], dtype=np.uint8)
+            shifted_aoi = aoi_np - [x, y]
+            cv2.fillPoly(mask, [shifted_aoi], 255)
+            cropped_masked = cv2.bitwise_and(cropped, cropped, mask=mask)
 
-    # Save cropped & masked image
-    img_name = os.path.basename(output_path)
-    original_img_path = os.path.join(yolo_dir, img_name)
-    cv2.imwrite(original_img_path, cropped_masked)
+            result = cropped_masked.copy()
+        else:
+            # No AOI → just use the original full image
+            print(f"{img_path}: no AOI found, using full image.")
+            x, y, w, h = 0, 0, img.shape[1], img.shape[0]
+            cropped = img.copy()
+            result = img.copy()
 
-    # === Step 5: Save YOLO segmentation annotation file ===
-    txt_path = os.path.join(yolo_dir, os.path.splitext(img_name)[0] + ".txt")
+        # === Draw contours ===
+        for cnt in cnts:
+            shifted_cnt = cnt - [x, y]
+            cv2.drawContours(result, [shifted_cnt], -1, (0, 255, 0), line_thickness)
 
-    ch, cw = cropped.shape[:2]
-    with open(txt_path, "w") as f:
-        for cnt in contours:
-            shifted_cnt = cnt - [x, y]  # shift contour into cropped space
-            polygon = []
-            for point in shifted_cnt:
-                px, py = point[0]
-                nx = px / cw
-                ny = py / ch
-                polygon.extend([nx, ny])
+        # === Save result image ===
+        img_name = os.path.splitext(os.path.basename(img_path))[0]
+        output_path = os.path.join(output_dir, f"{img_name}_result.png")
+        cv2.imwrite(output_path, result)
 
-            if len(polygon) < 6:  # skip invalid polygons
-                continue
+        # === Prepare YOLO dataset folder ===
+        yolo_dir = os.path.join(output_dir, f"yolo_data_{img_name}")
+        os.makedirs(yolo_dir, exist_ok=True)
 
-            class_id = 0
-            polygon_str = " ".join([f"{p:.6f}" for p in polygon])
-            f.write(f"{class_id} {polygon_str}\n")
+        # Save image (masked if AOI exists, otherwise original)
+        original_img_path = os.path.join(yolo_dir, f"{img_name}.png")
+        cv2.imwrite(original_img_path, cropped if not has_aoi else cropped_masked)
 
-    return result
+        # === Save YOLO segmentation annotation ===
+        txt_path = os.path.join(yolo_dir, f"{img_name}.txt")
+        ch, cw = cropped.shape[:2]
+
+        with open(txt_path, "w") as f:
+            for cnt in cnts:
+                shifted_cnt = cnt - [x, y]
+                polygon = []
+                for point in shifted_cnt:
+                    px, py = point[0]
+                    nx = px / cw
+                    ny = py / ch
+                    polygon.extend([nx, ny])
+
+                if len(polygon) < 6:
+                    continue  # skip invalid polygons
+
+                class_id = 0
+                polygon_str = " ".join([f"{p:.6f}" for p in polygon])
+                f.write(f"{class_id} {polygon_str}\n")
+
+        results.append(result)
+
+    return results

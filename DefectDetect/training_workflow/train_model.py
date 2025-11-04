@@ -28,7 +28,7 @@ def run_training(dataset_yaml, tb_logdir="runs/train", task="detection"):
 
     # Launch TensorBoard pointing ONLY at this run
     tb_process = subprocess.Popen(
-    ["tensorboard", f"--logdir={run_dir}", "--port=6006", "--host=127.0.0.1", "--reload_interval=1"],
+    ["tensorboard", f"--logdir={tb_logdir}", "--port=6006", "--host=127.0.0.1", "--reload_interval=1"],
     stdout=subprocess.DEVNULL,
     stderr=subprocess.DEVNULL
 )

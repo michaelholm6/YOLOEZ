@@ -1,7 +1,7 @@
 from ultralytics import YOLO
 import os
 from DefectDetect.utils import show_instructions
-from DefectDetect.inference_workflow.image_chooser import choose_images
+from DefectDetect.inference_workflow.image_chooser import choose_image_folder
 from DefectDetect.inference_workflow.preprocess_images import preprocess_images
 from DefectDetect.inference_workflow.get_model_path import get_model_path
 from DefectDetect.inference_workflow.save_results import get_save_path, postprocess_and_save_results
@@ -18,11 +18,11 @@ def run_inference_workflow(trained_model_path=None, suppress_instructions=False)
     if not suppress_instructions:
         show_instructions(
             "Welcome to the Inference Workflow!\n\n"
-            "You will select images on which to run the trained YOLO model.\n\n"
-            "Press escape to close the program at any time."
+            "First, you will select a folder containing images for inference.\n\n"
+            "Supported formats include PNG, JPG, BMP, and TIFF."
         )
     
-    image_paths = choose_images()
+    image_paths = choose_image_folder()
     if not image_paths:
         print("No images selected. Exiting.")
         return

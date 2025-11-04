@@ -1,6 +1,5 @@
-from DefectDetect.labelling_workflow.image_preprocessing import *
+from DefectDetect.labelling_workflow.image_gatherer import *
 from DefectDetect.labelling_workflow.area_of_interest_marking import *
-from DefectDetect.labelling_workflow.detect_cracks import *
 from DefectDetect.labelling_workflow.clip_cracks_to_area_of_interest import *
 from DefectDetect.labelling_workflow.save_and_display_results import *
 from DefectDetect.labelling_workflow.edit_contour_points import *

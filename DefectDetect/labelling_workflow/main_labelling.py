@@ -1,32 +1,18 @@
 # Import your existing steps
-from DefectDetect.labelling_workflow.image_preprocessing import *
+from DefectDetect.labelling_workflow.image_gatherer import *
 from DefectDetect.labelling_workflow.area_of_interest_marking import *
-from DefectDetect.labelling_workflow.detect_cracks import *
-from DefectDetect.labelling_workflow.clip_cracks_to_area_of_interest import *
 from DefectDetect.labelling_workflow.save_and_display_results import *
 from DefectDetect.labelling_workflow.edit_contour_points import *
 from DefectDetect.labelling_workflow.input_dialogue import *
+from DefectDetect.labelling_workflow.edit_box_points import *
 from utils import show_instructions
 
 def run_labeling_workflow(suppress_instructions=False):
     args = get_user_inputs()
-    
-    if not suppress_instructions:
-        instructions = (
-            "Instructions for using the Image Preprocessing GUI:\n\n"
-            "- Use the sliders and spin boxes to adjust blur kernel size, CLAHE clip limit, and tile grid size.\n"
-            "- The original and post-processed images are shown side by side.\n"
-            "- Press ESC to quit the application.\n"
-            "- Adjust parameters to achieve the desired image enhancement.\n"
-            "- When finished, close the window.\n"
-        )
-
-        show_instructions(message=instructions)
         
-    image, blurred = run_preprocess_gui(args["image_path"])
+    images = args["image_paths"]
     
     if not suppress_instructions:
-        # Your instructions text
         instructions = (
         "Instructions for Marking the Area of Interest:\n\n"
         "- You will now select your area of interest by drawing a polygon on the image.\n"
@@ -40,20 +26,7 @@ def run_labeling_workflow(suppress_instructions=False):
     )
         show_instructions(message=instructions)
         
-    area_of_interest = get_polygon_from_user(image)
-    
-    if not suppress_instructions:
-        instructions = (
-            "Use the sliders or spin boxes to adjust:\n"
-            "- Confidence threshold: higher filters out weak edges.\n"
-            "- Line thickness: changes contour line width.\n"
-            "The image updates in real-time.\n"
-            "Press ESC to exit and close the application.\n"
-            "Close the window when done.\n"
-        )
-        show_instructions(message=instructions)
-    
-    contours, line_thickness = detect_cracks(image, blurred, area_of_interest)
+    areas_of_interest, line_thickness = annotate_images(args["image_paths"])
     
     if not suppress_instructions:
         instructions = (
@@ -74,8 +47,13 @@ def run_labeling_workflow(suppress_instructions=False):
         )
         show_instructions(message=instructions)
     
-    contours = run_contour_editor(image, contours, line_thickness)
+    if args['annotation_mode'] == 'segmentation':
     
-    print('yay')
-    save_and_display_results(image, contours, line_thickness, args["output_path"], area_of_interest)
-    print(f"Results saved to {args['output_path']}")
+        contours = run_contour_editor(images, line_thickness)
+        
+    else:
+        contours = run_box_editor(images, line_thickness)
+    
+    save_and_display_results(images, contours, line_thickness, args["output_folder"], areas_of_interest)
+    
+    print(f"Results saved to {args['output_folder']}")

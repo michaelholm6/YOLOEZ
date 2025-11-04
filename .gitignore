@@ -1,8 +1,6 @@
-
-.venv/*
-_pycache_/*
-build/*
-*.spec
-testscript*
-runs/*
+*.png
+*.jpg
 *.pt
+runs/*
+build/*
+*.pyc
