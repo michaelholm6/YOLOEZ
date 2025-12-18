@@ -16,6 +16,21 @@ class InputDialog(QtWidgets.QDialog):
         self._resize_timer = QtCore.QTimer(self)
         self._resize_timer.setSingleShot(True)
         self._resize_timer.timeout.connect(self.show_current_image)
+        
+        def make_label_with_tooltip(text, tooltip):
+            container = QtWidgets.QWidget()
+            layout = QtWidgets.QHBoxLayout(container)
+            layout.setContentsMargins(0, 0, 0, 0)
+            layout.setSpacing(4)
+            label = QtWidgets.QLabel(text)
+            icon_label = QtWidgets.QLabel()
+            icon_pix = self.style().standardIcon(QtWidgets.QStyle.SP_MessageBoxQuestion)
+            icon_label.setPixmap(icon_pix.pixmap(14, 14))
+            icon_label.setToolTip(tooltip)
+            layout.addWidget(label)
+            layout.addWidget(icon_label)
+            layout.addStretch()
+            return container
 
         # === Controls ===
         self.image_path_edit = QtWidgets.QLineEdit()
@@ -25,9 +40,25 @@ class InputDialog(QtWidgets.QDialog):
 
         self.output_path_edit = QtWidgets.QLineEdit()
         self.browse_output_button = QtWidgets.QPushButton("Browse Output Folder...")
+        
+        
+        # === Bootstrapping Model Selection ===
+        self.model_path_edit = QtWidgets.QLineEdit()
+        self.browse_model_button = QtWidgets.QPushButton("Select Bootstrapping Model...")
+
+        model_label = make_label_with_tooltip(
+            "Bootstrapping Model:",
+            "Optional: Select a pre-trained bootstrapping model to use. This will automatically generate initial annotations for your images. \
+            You will have a chance to edit these annotations later."
+        )
+
 
         # === Mode Selection (Bounding Box vs Segmentation) ===
-        mode_label = QtWidgets.QLabel("Annotation Mode:")
+        
+        mode_label = make_label_with_tooltip(
+            "Annotation Mode:",
+            "Choose how you want to annotate images: Bounding Boxes or Segmentation Masks."
+        )
         mode_label.setToolTip("Choose how you want to annotate images: Bounding Boxes or Segmentation Masks.")
 
         self.bbox_radio = QtWidgets.QRadioButton("Bounding Boxes")
@@ -64,6 +95,9 @@ class InputDialog(QtWidgets.QDialog):
         palette.setColor(QtGui.QPalette.WindowText, QtGui.QColor("red"))
         self.status_label.setPalette(palette)
         self.status_label.setWordWrap(True)
+        font = self.status_label.font()
+        font.setPointSize(16)   # choose whatever size you want
+        self.status_label.setFont(font)
         self.status_label.show()
 
         # === Image Preview and Navigation ===
@@ -96,26 +130,12 @@ class InputDialog(QtWidgets.QDialog):
         preview_widget.setLayout(preview_layout)
 
         # === Helper to create label + tooltip ===
-        def make_label_with_tooltip(text, tooltip):
-            container = QtWidgets.QWidget()
-            layout = QtWidgets.QHBoxLayout(container)
-            layout.setContentsMargins(0, 0, 0, 0)
-            layout.setSpacing(4)
-            label = QtWidgets.QLabel(text)
-            icon_label = QtWidgets.QLabel()
-            icon_pix = self.style().standardIcon(QtWidgets.QStyle.SP_MessageBoxQuestion)
-            icon_label.setPixmap(icon_pix.pixmap(14, 14))
-            icon_label.setToolTip(tooltip)
-            layout.addWidget(label)
-            layout.addWidget(icon_label)
-            layout.addStretch()
-            return container
 
         image_path_label = make_label_with_tooltip(
             "Image Folder:", "Select a folder containing input images."
         )
         output_path_label = make_label_with_tooltip(
-            "Output Folder:", "Select a folder where processed images will be saved."
+            "Output Folder:", "Select a folder where any generated outputs will be saved."
         )
 
         # === YOLO Save Checkbox ===
@@ -149,6 +169,10 @@ class InputDialog(QtWidgets.QDialog):
         controls_layout.addWidget(self.output_path_edit)
         controls_layout.addWidget(self.browse_output_button)
         controls_layout.addSpacing(10)
+        controls_layout.addWidget(model_label)
+        controls_layout.addWidget(self.model_path_edit)
+        controls_layout.addWidget(self.browse_model_button)
+        controls_layout.addSpacing(10)
         controls_layout.addWidget(self.run_button)
         controls_layout.addSpacing(10)
         controls_layout.addWidget(self.status_label)
@@ -166,6 +190,7 @@ class InputDialog(QtWidgets.QDialog):
 
         # === Connections ===
         self.browse_image_button.clicked.connect(self.browse_image)
+        self.browse_model_button.clicked.connect(self.browse_model)
         self.browse_output_button.clicked.connect(self.browse_output)
         self.run_button.clicked.connect(self.accept)
         self.prev_button.clicked.connect(self.show_previous_image)
@@ -182,6 +207,17 @@ class InputDialog(QtWidgets.QDialog):
         self.showMaximized()
         self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowStaysOnTopHint)
         self.show()
+        
+    def browse_model(self):
+        file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
+            self,
+            "Select Bootstrapping Model",
+            "",
+            "Model Files (*.pt *.pth *.onnx);;All Files (*)"
+        )
+        if file_path:
+            self.model_path_edit.setText(file_path)
+    
 
     # === Folder Browse ===
     def browse_image(self):
@@ -270,6 +306,7 @@ class InputDialog(QtWidgets.QDialog):
         image_path = self.image_path_edit.text().strip()
         output_path = self.output_path_edit.text().strip()
         mode_selected = self.bbox_radio.isChecked() or self.segmentation_radio.isChecked()
+        bootstrapping_model = self.model_path_edit.text().strip()
 
         errors = []
         if not image_path:
@@ -282,6 +319,10 @@ class InputDialog(QtWidgets.QDialog):
 
         if not mode_selected:
             errors.append("Please select either Bounding Boxes or Segmentation.")
+            
+        if bootstrapping_model:
+            if not os.path.isfile(bootstrapping_model) or not bootstrapping_model.lower().endswith(('.pt', '.pth', '.onnx')):
+                errors.append("Bootstrapping model path is invalid.")
 
         if errors:
             self.run_button.setEnabled(False)
@@ -309,11 +350,12 @@ class InputDialog(QtWidgets.QDialog):
             "suppress_instructions": self.suppress_checkbox.isChecked(),
             "output_folder": self.output_path_edit.text().strip(),
             "YOLO_true": self.save_yolo_checkbox.isChecked(),
-            "annotation_mode": mode
+            "annotation_mode": mode,
+            "bootstrapping_model": self.model_path_edit.text().strip() or None
         }
 
 
-def get_user_inputs():
+def get_user_labelling_inputs():
     app = QtWidgets.QApplication.instance()
     owns_app = False
     if not app:

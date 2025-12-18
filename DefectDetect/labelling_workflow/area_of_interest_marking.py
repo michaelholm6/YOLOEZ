@@ -302,12 +302,13 @@ class PolygonAnnotatorWindow(QWidget):
         
         self.thickness_slider = QSlider(Qt.Horizontal)
         self.thickness_slider.setMinimum(1)
-        self.thickness_slider.setMaximum(20)
+        self.thickness_slider.setMaximum(50)
         self.thickness_slider.setValue(self.canvas.line_thickness)
         self.thickness_slider.setTickPosition(QSlider.TicksBelow)
         self.thickness_slider.setTickInterval(1)
         self.thickness_slider.valueChanged.connect(self.update_line_thickness)
 
+        self.thickness_value_label = QLabel(str(self.canvas.line_thickness))
         slider_layout = QHBoxLayout()
         slider_layout.addWidget(QLabel("Line Thickness:"))
         slider_layout.addWidget(self.thickness_slider)
@@ -322,6 +323,9 @@ class PolygonAnnotatorWindow(QWidget):
         self.setLayout(main_layout)
         self.setWindowTitle("AOI Annotator (C=close polygon, R=reset)")
         self.showMaximized()
+        self.showMaximized()  # show first
+        self.raise_()
+        self.activateWindow()
 
         # Load first image
         self.load_current_image()
@@ -341,7 +345,7 @@ class PolygonAnnotatorWindow(QWidget):
         self.update_button_states()
 
     def update_status_label(self):
-        self.status_label.setText(f"{self.index + 1} / {len(self.image_paths)}")
+        self.status_label.setText(f"Image {self.index + 1} / {len(self.image_paths)}")
 
     def update_button_states(self):
         self.prev_btn.setEnabled(self.index > 0)

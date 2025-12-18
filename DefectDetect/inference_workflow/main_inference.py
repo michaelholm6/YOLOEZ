@@ -2,9 +2,11 @@ from ultralytics import YOLO
 import os
 from DefectDetect.utils import show_instructions
 from DefectDetect.inference_workflow.image_chooser import choose_image_folder
-from DefectDetect.inference_workflow.preprocess_images import preprocess_images
+from DefectDetect.labelling_workflow.area_of_interest_marking import annotate_images
 from DefectDetect.inference_workflow.get_model_path import get_model_path
 from DefectDetect.inference_workflow.save_results import get_save_path, postprocess_and_save_results
+from DefectDetect.labelling_workflow.crop_and_mask import crop_and_mask_images
+import numpy
 
 def run_inference_workflow(trained_model_path=None, suppress_instructions=False):
     """
@@ -34,12 +36,13 @@ def run_inference_workflow(trained_model_path=None, suppress_instructions=False)
             "If you do not wish to crop, simply close the window."
         )
     
-    # --- Step 2: Optional preprocessing ---
-    original_cropped, preprocessed_images = preprocess_images(image_paths)
+    areas_of_interest, _ = annotate_images(image_paths)
+    
+    cropped_images = crop_and_mask_images(image_paths, areas_of_interest)
     
     if not suppress_instructions:
         show_instructions(
-            f"Preprocessing complete! {len(preprocessed_images)} image(s) ready for inference.\n\n"
+            f"Preprocessing complete! {len(cropped_images)} image(s) ready for inference.\n\n"
             "Next, you will select the trained YOLO model to use for inference."
         )
     
@@ -51,11 +54,11 @@ def run_inference_workflow(trained_model_path=None, suppress_instructions=False)
     
     if not suppress_instructions:
         show_instructions(
-            f"Running inference on {len(preprocessed_images)} image(s) using model:\n{trained_model_path}\n\n"
+            f"Running inference on {len(cropped_images)} image(s) using model:\n{trained_model_path}\n\n"
             "This may take a few moments depending on image size and model complexity."
         )
         
-    results = model(preprocessed_images)
+    results = model([numpy.array(image) for image in list(cropped_images.values())], conf=.015)
     
     if not suppress_instructions:
         show_instructions(
@@ -66,4 +69,4 @@ def run_inference_workflow(trained_model_path=None, suppress_instructions=False)
     # --- Step 5: Save results ---
     save_path = get_save_path()
     if save_path:
-        postprocess_and_save_results(results, original_cropped, save_path)
+        postprocess_and_save_results(results, list(cropped_images.values()), save_path)

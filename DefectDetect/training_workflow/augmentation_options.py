@@ -2,18 +2,20 @@ from PyQt5 import QtWidgets, QtGui, QtCore
 import sys
 
 class AugmentationDialog(QtWidgets.QDialog):
-    def __init__(self):
+    def __init__(self, task="segmentation"):
         super().__init__()
+        self.task = task  # save the task
         self.setWindowFlags(QtCore.Qt.Window | QtCore.Qt.WindowStaysOnTopHint)
         font = QtGui.QFont()
-        font.setPointSize(14)  # increase this value as needed
+        font.setPointSize(14)
         self.setFont(font)
         self.setWindowTitle("Augmentation Options")
         self.setMinimumWidth(300)
 
         layout = QtWidgets.QVBoxLayout()
 
-        self.options = [
+        # Define options normally
+        all_options = [
             ("Flip", "Add horizontally flipped images to the training set"),
             ("Rotate", "Add rotated images to the training set"),
             ("Color Jitter", "Add color jittering to the dataset. Randomly changes brightness, contrast, saturation, and hue"),
@@ -21,6 +23,12 @@ class AugmentationDialog(QtWidgets.QDialog):
             ("Noise", "Add images with random noise to the training set"),
             ("Scale", "Add scaled images to the training set"),
         ]
+
+        # Filter out "Rotate" if task is detection
+        if task == "detection":
+            self.options = [opt for opt in all_options if opt[0] != "Rotate"]
+        else:
+            self.options = all_options
 
         self.checkboxes = []
         for text, tooltip in self.options:
@@ -34,23 +42,22 @@ class AugmentationDialog(QtWidgets.QDialog):
             row.addStretch()
             layout.addLayout(row)
 
-        # --- New field for number of augmentations ---
+        # Number of augmentations
         aug_count_layout = QtWidgets.QHBoxLayout()
         screen = QtWidgets.QApplication.primaryScreen()
-        dpi = screen.logicalDotsPerInch()
         aug_label = QtWidgets.QLabel("Augmentations per image:")
         aug_spin = QtWidgets.QSpinBox()
         aug_spin.setMinimum(1)
         aug_spin.setMaximum(100)
-        aug_spin.setValue(1)  # default
-        self.aug_count_spin = aug_spin  # save for get_aug_dict()
+        aug_spin.setValue(1)
+        self.aug_count_spin = aug_spin
 
         aug_count_layout.addWidget(aug_label)
         aug_count_layout.addWidget(aug_spin)
         aug_count_layout.addStretch()
         layout.addLayout(aug_count_layout)
-        # --- End new field ---
 
+        # Dialog buttons
         button_box = QtWidgets.QDialogButtonBox(
             QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel
         )
@@ -86,25 +93,26 @@ class AugmentationDialog(QtWidgets.QDialog):
         selected = [self.options[i][0] for i, cb in enumerate(self.checkboxes) if cb.isChecked()]
         return {
             "flip": "Flip" in selected,
-            "rotate": "Rotate" in selected,
+            "rotate": "Rotate" in selected,  # safe: won't exist for detection
             "scale": "Scale" in selected,
             "color": "Color Jitter" in selected,
             "blur": "Blur" in selected,
             "noise": "Noise" in selected,
-            "num_aug_per_image": self.aug_count_spin.value()  # new field
+            "num_aug_per_image": self.aug_count_spin.value()
         }
 
-        
-def get_augmentations():
+def get_augmentations(task="segmentation"):
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
-    dialog = AugmentationDialog()
+    dialog = AugmentationDialog(task=task)
     if dialog.exec_() == QtWidgets.QDialog.Accepted:
         return dialog.get_aug_dict(), dialog.aug_count_spin.value()
+    # default if canceled
     return {
         "flip": False,
         "rotate": False,
         "scale": False,
         "color": False,
         "blur": False,
-        "noise": False
+        "noise": False,
+        "num_aug_per_image": 0
     }, 0

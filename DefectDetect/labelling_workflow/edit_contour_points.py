@@ -5,14 +5,13 @@ import cv2
 import utils
 import tkinter as tk
 from PyQt5.QtWidgets import QHBoxLayout, QLabel
-from PyQt5.QtGui import QPixmap, QIcon 
+from PyQt5.QtGui import QPixmap, QIcon, QPolygonF
+from PyQt5.QtCore import QPointF
 
 class ContourEditorView(QtWidgets.QGraphicsView):
-    def __init__(self, image, contours, line_thickness, parent=None):
+    def __init__(self, image, contours, line_thickness, current_image_path=None, aois_dict=None, detected_contours=None, parent=None):
         super().__init__(parent)
         self.image = image
-        self.original_contours = contours
-        self.contours = [c.copy() for c in contours]
         self.selected_points = set()
         self.scaling_active = False
         self.mouse_pos = None
@@ -32,6 +31,14 @@ class ContourEditorView(QtWidgets.QGraphicsView):
         self.currently_creating_contour = False
         self.current_mode = "Selection"
         self.line_thickness = line_thickness
+        self.current_image_path = current_image_path
+        self.aois_dict = aois_dict if aois_dict is not None else {}
+        
+        if detected_contours is not None and len(contours) == 0:
+            contours = [c.copy() for c in detected_contours]
+            
+        self.original_contours = contours
+        self.contours = [c.copy() for c in contours]
 
         # Scene setup
         self.scene = QtWidgets.QGraphicsScene(self)
@@ -70,6 +77,13 @@ class ContourEditorView(QtWidgets.QGraphicsView):
         # Center exactly on the pixmap
         self.centerOn(self.pixmap_item)
         self.initial_fit_done = True
+        
+    def clamp_to_image(self, x, y):
+        """Clamp coordinates to stay within the image."""
+        h, w = self.image.shape[:2]
+        x_c = int(min(max(0, round(x)), w - 1))
+        y_c = int(min(max(0, round(y)), h - 1))
+        return x_c, y_c
 
     def showEvent(self, event):
         """Center and fit the image after the view is fully laid out."""
@@ -149,7 +163,8 @@ class ContourEditorView(QtWidgets.QGraphicsView):
             sys.exit(0)  # quit python script entirely
 
         elif event.key() == QtCore.Qt.Key_S:
-            if not self.creating_contour and not self.moving_active and not self.rotating_active:
+            if not self.creating_contour and not self.moving_active and not self.rotating_active and len(self.selected_points) > 0:
+                
                 self.scaling_active = not self.scaling_active
                 if self.scaling_active:
                         self.current_mode = "Scaling" if self.scaling_active else ""
@@ -191,7 +206,7 @@ class ContourEditorView(QtWidgets.QGraphicsView):
                 self.update_display()
             
         elif event.key() == QtCore.Qt.Key_M:
-            if not self.creating_contour and not self.scaling_active and not self.rotating_active:
+            if not self.creating_contour and not self.scaling_active and not self.rotating_active and len(self.selected_points) > 0:
                 self.moving_active = not self.moving_active
                 if self.moving_active:
                     self.current_mode = "Moving" if self.moving_active else ""
@@ -209,7 +224,7 @@ class ContourEditorView(QtWidgets.QGraphicsView):
                 self.update_display()
             
         elif event.key() == QtCore.Qt.Key_R:
-            if not self.creating_contour and not self.scaling_active and not self.moving_active:
+            if not self.creating_contour and not self.scaling_active and not self.moving_active and len(self.selected_points) > 0:
                 self.rotating_active = not self.rotating_active
                 if self.rotating_active:
                     self.current_mode = "Rotating" if self.rotating_active else ""
@@ -270,7 +285,7 @@ class ContourEditorView(QtWidgets.QGraphicsView):
         
     def mousePressEvent(self, event):
         if event.button() == QtCore.Qt.LeftButton:
-            # Deactivate all modes
+            # Deactivate all modes if not creating a contour
             if not self.creating_contour:
                 self.scaling_active = False
                 self.moving_active = False
@@ -296,13 +311,29 @@ class ContourEditorView(QtWidgets.QGraphicsView):
             if hasattr(self, 'lasso_item') and self.lasso_item:
                 self.scene.removeItem(self.lasso_item)
                 self.lasso_item = None
+
+            # --- Handle contour creation ---
             if self.creating_contour:
                 if not self.currently_creating_contour:
                     self.currently_creating_contour = True
+
                 scene_pos = self.mapToScene(event.pos())
                 x, y = int(scene_pos.x()), int(scene_pos.y())
-                self.new_contour_points.append((x, y))
-                self.contours[-1] = np.array(self.new_contour_points, dtype=np.int32).reshape((-1, 1, 2))
+
+                # --- AOI check ---
+                current_aoi = self.aois_dict.get(self.current_image_path, [])
+                if current_aoi and len(current_aoi) >= 3:
+                    aoi_polygon = QPolygonF([QPointF(px, py) for px, py in current_aoi])
+                else:
+                    aoi_polygon = None
+
+                # Only add point if inside AOI or no AOI defined
+                if aoi_polygon is None or aoi_polygon.containsPoint(QPointF(x, y), QtCore.Qt.OddEvenFill):
+                    x, y = self.clamp_to_image(x, y)
+                    self.new_contour_points.append((x, y))
+                    self.contours[-1] = np.array(self.new_contour_points, dtype=np.int32).reshape((-1, 1, 2))
+                else:
+                    print("Contour point outside AOI; ignoring")
 
             self.update_display()
 
@@ -328,8 +359,7 @@ class ContourEditorView(QtWidgets.QGraphicsView):
             for pt_idx, pt in enumerate(cnt):
                 if (c_idx, pt_idx) in self.selected_points:
                     x, y = pt[0]
-                    new_x = int(x + dx)
-                    new_y = int(y + dy)
+                    new_x, new_y = self.clamp_to_image(x + dx, y + dy)
                     cnt[pt_idx][0] = [new_x, new_y]
 
     def mouseMoveEvent(self, event):
@@ -445,6 +475,7 @@ class ContourEditorView(QtWidgets.QGraphicsView):
 
             new_x = cx + radius * np.cos(new_angle)
             new_y = cy + radius * np.sin(new_angle)
+            new_x, new_y = self.clamp_to_image(new_x, new_y)
 
             self.contours[c_idx][pt_idx][0] = [int(new_x), int(new_y)]
         
@@ -460,7 +491,7 @@ class ContourEditorView(QtWidgets.QGraphicsView):
         current_distance = np.linalg.norm(mouse_vec)
 
         # Relative scaling factor from initial mouse distance
-        new_scale = max(0.1, min(5.0, current_distance / self.scaling_initial_distance))
+        new_scale = current_distance / self.scaling_initial_distance
 
         updated_contours = set()
 
@@ -479,6 +510,7 @@ class ContourEditorView(QtWidgets.QGraphicsView):
             dx, dy = ox - cx, oy - cy
             new_x = int(cx + dx * new_scale)
             new_y = int(cy + dy * new_scale)
+            new_x, new_y = self.clamp_to_image(new_x, new_y)
             cnt[pt_idx][0] = [new_x, new_y]
 
             updated_contours.add(c_idx)
@@ -487,12 +519,19 @@ class ContourEditorView(QtWidgets.QGraphicsView):
             self.contour_scale_factors[c_idx] = new_scale
             
 class MultiImageContourEditor(QtWidgets.QWidget):
-    def __init__(self, image_files, line_thickness=2):
+    def __init__(self, image_dict, line_thickness=2, detected_contours=None):
+        """
+        image_dict: dict[str, np.ndarray]
+            Keys are image identifiers (usually original paths),
+            values are numpy images already loaded in memory.
+        """
         super().__init__()
-        self.image_files = image_files
+        self.image_dict = image_dict
+        self.image_keys = list(image_dict.keys())
         self.line_thickness = line_thickness
         self.index = 0
-        self.results = {path: [] for path in image_files}  # stores contours per image
+        self.results = {k: [] for k in self.image_keys}  # stores contours per image
+        self.detected_contours = detected_contours or {}
 
         # Layouts
         self.layout = QtWidgets.QVBoxLayout(self)
@@ -520,30 +559,56 @@ class MultiImageContourEditor(QtWidgets.QWidget):
         # Load first image
         self.load_image(self.index)
 
-        self.setWindowTitle("Multi-Image Contour Editor")
         self.showMaximized()
 
+        def focus_window():
+            self.raise_()                 # bring window to top
+            self.activateWindow()         # make it the active window
+            self.setFocus(QtCore.Qt.ActiveWindowFocusReason)
         # Force reload after window has fully shown
-        QtCore.QTimer.singleShot(0, lambda: self.load_image(0))
+        QtCore.QTimer.singleShot(0, focus_window)
+        
+        QtCore.QTimer.singleShot(0, lambda: self.change_image(0, force=True))
+
 
     def load_image(self, idx):
         """Load image at index `idx` into ContourEditorView."""
-        path = self.image_files[idx]
-        img = cv2.imread(path)
-        if img is None:
-            raise FileNotFoundError(f"Failed to load image: {path}")
+        key = self.image_keys[idx]
+        img = self.image_dict[key]
+        if img is None or not isinstance(img, np.ndarray):
+            raise ValueError(f"Invalid image for key: {key}")
 
         # Save current contours before switching
         if self.editor_view is not None:
-            self.results[self.image_files[self.index]] = self.editor_view.get_edited_contours()
+            self.results[self.image_keys[self.index]] = self.editor_view.get_edited_contours()
             self.layout.removeWidget(self.editor_view)
             self.editor_view.deleteLater()
 
-        saved_contours = self.results.get(path, [])
+        saved_contours = self.results.get(key, [])
+        
+        raw = self.detected_contours.get(key, None)
+
+        if raw is None:
+            detected_contours = None
+        else:
+            _, det = raw      # det = {"boxes": ..., "masks": ...}
+            masks = det["masks"]
+
+            # Segmentation model → masks exist
+            if masks is not None and len(masks) > 0:
+                # YOLO masks.xy is a list of polygon arrays
+                detected_contours = [
+                    np.array(poly, dtype=np.int32)
+                    for poly in masks.xy
+                ]
+            else:
+                detected_contours = None
+        
         self.editor_view = ContourEditorView(
-            img,
+            img.copy(),
             contours=[c.copy() for c in saved_contours] if saved_contours else [],
-            line_thickness=self.line_thickness
+            line_thickness=self.line_thickness,
+            detected_contours=self.detected_contours
         )
 
         # Add editor view to layout
@@ -551,10 +616,10 @@ class MultiImageContourEditor(QtWidgets.QWidget):
         self.index = idx
         self.update_status()
 
-        # --- Force focus so key events work immediately ---
-        self.editor_view.setFocus(QtCore.Qt.OtherFocusReason)
+        # Force focus so key events work immediately
+        QtCore.QTimer.singleShot(0, lambda: self.editor_view.viewport().setFocus(QtCore.Qt.ActiveWindowFocusReason))
 
-        # --- Fix centering: defer until layout done ---
+        # Fix centering: defer until layout done
         def center_when_ready():
             if self.editor_view.viewport().width() > 0 and self.editor_view.viewport().height() > 0:
                 self.editor_view._initial_center_and_fit()
@@ -563,28 +628,28 @@ class MultiImageContourEditor(QtWidgets.QWidget):
 
         QtCore.QTimer.singleShot(0, center_when_ready)
         
-    def change_image(self, delta):
-        new_index = max(0, min(len(self.image_files) - 1, self.index + delta))
-        if new_index != self.index:
+    def change_image(self, delta, force=False):
+        new_index = max(0, min(len(self.image_keys) - 1, self.index + delta))
+        if force or new_index != self.index:
             self.load_image(new_index)
 
     def update_status(self):
-        self.status_label.setText(f"Image {self.index + 1} / {len(self.image_files)}")
+        self.status_label.setText(f"Image {self.index + 1} / {len(self.image_keys)}")
 
     def get_results(self):
         # Save the currently edited image
         if self.editor_view is not None:
-            self.results[self.image_files[self.index]] = self.editor_view.get_edited_contours()
+            self.results[self.image_keys[self.index]] = self.editor_view.get_edited_contours()
         return self.results
         
 
-def run_contour_editor(image_files, line_thickness=2):
+def run_contour_editor(image_dict, line_thickness=2, detected_contours=None):
     """
-    Launch a contour editor for one or more images.
+    Launch a contour editor for one or more in-memory images.
 
     Args:
-        image_files (list of str): Paths to images to annotate.
-        line_thickness (int): Thickness of the drawn lines/points.
+        image_dict (dict): {image_path: np.ndarray}.
+        line_thickness (int): Thickness of drawn lines/points.
 
     Returns:
         dict: {image_path: contours}, where contours are lists of numpy arrays.
@@ -595,12 +660,11 @@ def run_contour_editor(image_files, line_thickness=2):
         app = QtWidgets.QApplication(sys.argv)
         created_app = True
 
-    editor_widget = MultiImageContourEditor(image_files, line_thickness=line_thickness)
-    editor_widget.setWindowTitle("Contour Editor (PyQt)")
+    editor_widget = MultiImageContourEditor(image_dict, line_thickness=line_thickness, detected_contours=detected_contours)
+    editor_widget.setWindowTitle("Multi-Image Contour Editor (C=Create Contour, D=Delete, U=Undo, S=Scale, M=Move, R=Rotate)")
     editor_widget.setWindowFlags(editor_widget.windowFlags() | QtCore.Qt.WindowStaysOnTopHint)
     editor_widget.showMaximized()
 
-    # Run event loop
     if created_app:
         app.exec_()
     else:

@@ -1,12 +1,13 @@
 from DefectDetect.labelling_workflow.image_gatherer import *
 from DefectDetect.labelling_workflow.area_of_interest_marking import *
 from DefectDetect.labelling_workflow.clip_cracks_to_area_of_interest import *
-from DefectDetect.labelling_workflow.save_and_display_results import *
+from DefectDetect.labelling_workflow.save_segmentation_results import *
 from DefectDetect.labelling_workflow.edit_contour_points import *
-from DefectDetect.labelling_workflow.input_dialogue import *
+from DefectDetect.labelling_workflow.get_user_inputs_labelling import *
 from DefectDetect.labelling_workflow.main_labelling import run_labeling_workflow
 from DefectDetect.training_workflow.main_training import run_training_workflow
 from DefectDetect.inference_workflow.main_inference import run_inference_workflow
+from DefectDetect.utils import make_label_with_tooltip
 from PyQt5 import QtWidgets
 import sys
 
@@ -37,9 +38,27 @@ class ChoiceDialog(QtWidgets.QDialog):
         layout.addLayout(button_layout)
 
         # Checkbox below buttons
-        self.checkbox = QtWidgets.QCheckBox("Suppress instructions")
+        h_layout = QtWidgets.QHBoxLayout()
+        h_layout.setContentsMargins(0, 0, 0, 0)
+        h_layout.setSpacing(4)
+
+        # Create checkbox
+        self.checkbox = QtWidgets.QCheckBox()
         self.checkbox.setChecked(False)  # default: instructions are shown
-        layout.addWidget(self.checkbox)
+
+        # Create label with tooltip
+        self.checkbox_label = make_label_with_tooltip(
+            "Suppress Instructions",
+            "Check this box to skip instructional pop-ups in the workflows."
+        )
+
+        # Add both to horizontal layout
+        h_layout.addWidget(self.checkbox)
+        h_layout.addWidget(self.checkbox_label)
+        h_layout.addStretch()  # optional, pushes everything to the left
+
+        # Add the horizontal layout to the main layout
+        layout.addLayout(h_layout)
 
         # Track chosen button
         self.chosen = None
