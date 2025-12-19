@@ -3,6 +3,7 @@ import ctypes
 import tkinter as tk
 from tkinter import messagebox
 from PyQt5 import QtWidgets, QtGui
+import sys
 
 def resize_for_display(img, max_width, max_height):
     h, w = img.shape[:2]
@@ -23,25 +24,43 @@ def show_instructions(message, title="Instructions"):
     root.withdraw()  # Hide main window
     messagebox.showinfo(title, message)
     root.destroy()
-    
-def make_label_with_tooltip(parent, text, tooltip_text):
+
+def show_instructions(message: str, title: str = "Instructions"):
+    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+
+    msg_box = QtWidgets.QMessageBox()
+    msg_box.setWindowTitle(title)
+    msg_box.setIcon(QtWidgets.QMessageBox.Information)
+    msg_box.setText(message)  # use setText; QLabel inside handles wrapping automatically
+    msg_box.setStandardButtons(QtWidgets.QMessageBox.Ok)
+
+    # Optional: set a reasonable width
+    msg_box.setMinimumWidth(400)  # avoid giant window
+    msg_box.exec_()
+
+def make_label_with_tooltip(text, tooltip):
     container = QtWidgets.QWidget()
     layout = QtWidgets.QHBoxLayout(container)
     layout.setContentsMargins(0, 0, 0, 0)
     layout.setSpacing(4)
-
-    font = QtGui.QFont()
-    font.setPointSize(16)
-
     label = QtWidgets.QLabel(text)
-    label.setFont(font)
-    label.setToolTip(tooltip_text)
-
     icon_label = QtWidgets.QLabel()
-    icon_pix = parent.style().standardIcon(QtWidgets.QStyle.SP_MessageBoxQuestion)
-    icon_label.setPixmap(icon_pix.pixmap(16, 16))
-    icon_label.setToolTip(tooltip_text)
-
+    icon_pix = QtWidgets.QApplication.style().standardIcon(QtWidgets.QStyle.SP_MessageBoxQuestion)
+    icon_label.setPixmap(icon_pix.pixmap(14, 14))
+    icon_label.setToolTip(tooltip)
     layout.addWidget(label)
     layout.addWidget(icon_label)
+    layout.addStretch()
     return container
+
+def show_error_window(message: str, title: str = "Error"):
+    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+
+    msg_box = QtWidgets.QMessageBox()
+    msg_box.setWindowTitle(title)
+    msg_box.setIcon(QtWidgets.QMessageBox.Critical)
+    msg_box.setText(message)
+    msg_box.setStandardButtons(QtWidgets.QMessageBox.Ok)
+
+    msg_box.setMinimumWidth(400) 
+    msg_box.exec_()

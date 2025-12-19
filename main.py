@@ -1,9 +1,10 @@
 import threading
 import sys
 import os
-from defect_detect import main as DefectDetect
+from YOLO_EZ import main as YOLO_EZ_main
 import traceback
-import keyboard  # pip install keyboard
+import keyboard
+from utils import show_error_window
 
 def on_escape():
     print("Escape pressed. Exiting program...")
@@ -12,12 +13,13 @@ def on_escape():
 keyboard.add_hotkey('esc', on_escape)
 
 def main():
-    DefectDetect()
+    YOLO_EZ_main()
 
 if __name__ == "__main__":
     try:
         main()
     except Exception:
-        print("An error occurred:\n")
-        traceback.print_exc()
-        input("Press Enter to exit...")
+        error_msg = traceback.format_exc()
+        print("An unhandled exception occurred:\n", error_msg)
+        show_error_window(f"An unhandled exception occurred:\n\n{error_msg}", title="Unhandled Exception")
+        sys.exit(1)
