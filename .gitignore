@@ -2,5 +2,6 @@
 *.jpg
 *.pt
 runs/*
-build/*
+build/
 *.pyc
+dist/

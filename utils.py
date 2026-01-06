@@ -2,7 +2,7 @@ import cv2
 import ctypes
 import tkinter as tk
 from tkinter import messagebox
-from PyQt5 import QtWidgets, QtGui
+from PyQt5 import QtWidgets, QtGui, QtCore
 import sys
 
 def resize_for_display(img, max_width, max_height):
@@ -19,24 +19,49 @@ def get_screen_size(scale=0.9):
     screen_width, screen_height = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
     return int(screen_width * scale), int(screen_height * scale)
 
-def show_instructions(message, title="Instructions"):
-    root = tk.Tk()
-    root.withdraw()  # Hide main window
-    messagebox.showinfo(title, message)
-    root.destroy()
-
 def show_instructions(message: str, title: str = "Instructions"):
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
 
-    msg_box = QtWidgets.QMessageBox()
-    msg_box.setWindowTitle(title)
-    msg_box.setIcon(QtWidgets.QMessageBox.Information)
-    msg_box.setText(message)  # use setText; QLabel inside handles wrapping automatically
-    msg_box.setStandardButtons(QtWidgets.QMessageBox.Ok)
+    dialog = QtWidgets.QDialog()
+    dialog.setWindowTitle(title)
+    dialog.setModal(True)
 
-    # Optional: set a reasonable width
-    msg_box.setMinimumWidth(400)  # avoid giant window
-    msg_box.exec_()
+    layout = QtWidgets.QVBoxLayout(dialog)
+    layout.setContentsMargins(12, 12, 12, 12)
+
+    # Scrollable text area
+    label = QtWidgets.QLabel(message)
+    label.setWordWrap(True)
+    label.setTextInteractionFlags(QtCore.Qt.TextSelectableByMouse)
+
+    scroll = QtWidgets.QScrollArea()
+    scroll.setWidgetResizable(True)
+    scroll.setFrameShape(QtWidgets.QFrame.NoFrame)
+    scroll.setWidget(label)
+
+    layout.addWidget(scroll)
+
+    # OK button
+    btn = QtWidgets.QPushButton("OK")
+    btn.clicked.connect(dialog.accept)
+    btn.setDefault(True)
+
+    btn_layout = QtWidgets.QHBoxLayout()
+    btn_layout.addStretch()
+    btn_layout.addWidget(btn)
+    layout.addLayout(btn_layout)
+
+    # -------- Sizing logic (key part) --------
+    screen = QtWidgets.QApplication.primaryScreen()
+    geom = screen.availableGeometry()
+
+    dialog.setMinimumSize(450, 300)
+    dialog.resize(
+        min(700, int(geom.width() * 0.7)),
+        min(500, int(geom.height() * 0.7))
+    )
+
+    dialog.exec_()
 
 def make_label_with_tooltip(text, tooltip):
     container = QtWidgets.QWidget()

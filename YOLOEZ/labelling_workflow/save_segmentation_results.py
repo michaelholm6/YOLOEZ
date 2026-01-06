@@ -53,10 +53,9 @@ def save_segmentation_results(
         # ---------- Draw contours ----------
         contour_vis = base_img.copy()
         for cnt in cnts:
-            shifted_cnt = cnt - [x, y]
             cv2.drawContours(
                 contour_vis,
-                [shifted_cnt],
+                [cnt],
                 -1,
                 (0, 255, 0),
                 line_thickness
@@ -86,9 +85,8 @@ def save_segmentation_results(
 
             with open(txt_path, "w") as f:
                 for cnt in cnts:
-                    shifted_cnt = cnt - [x, y]
                     polygon = []
-                    for pt in shifted_cnt:
+                    for pt in cnt:
                         px, py = pt[0]
                         polygon.extend([px / w_img, py / h_img])
 

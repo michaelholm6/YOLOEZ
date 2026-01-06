@@ -56,10 +56,10 @@ def save_box_results(
         for box in boxes:
             pts = box.reshape(-1, 2)
 
-            bx1 = np.min(pts[:, 0]) - x
-            by1 = np.min(pts[:, 1]) - y
-            bx2 = np.max(pts[:, 0]) - x
-            by2 = np.max(pts[:, 1]) - y
+            bx1 = np.min(pts[:, 0])
+            by1 = np.min(pts[:, 1])
+            bx2 = np.max(pts[:, 0])
+            by2 = np.max(pts[:, 1])
 
             bx1 = int(np.clip(bx1, 0, w-1))
             bx2 = int(np.clip(bx2, 0, w-1))
@@ -100,10 +100,10 @@ def save_box_results(
                 for box in boxes:
                     pts = box.reshape(-1, 2)
 
-                    bx1 = np.min(pts[:, 0]) - x
-                    by1 = np.min(pts[:, 1]) - y
-                    bx2 = np.max(pts[:, 0]) - x
-                    by2 = np.max(pts[:, 1]) - y
+                    bx1 = np.min(pts[:, 0])
+                    by1 = np.min(pts[:, 1])
+                    bx2 = np.max(pts[:, 0])
+                    by2 = np.max(pts[:, 1])
 
                     bx1 = int(np.clip(bx1, 0, w_img-1))
                     bx2 = int(np.clip(bx2, 0, w_img-1))

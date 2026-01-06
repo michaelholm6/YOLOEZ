@@ -305,12 +305,22 @@ than what your hardware can handle can lead to unexplained crashes during traini
             return
         self.dataset_path_edit.setText(folder)
         valid_exts = ('.jpg', '.jpeg', '.png', '.bmp', '.tif', '.tiff')
+        label_exts = ('.txt',)
+
         self.image_files = []
 
         for root, dirs, files in os.walk(folder):
+            label_basenames = {
+                os.path.splitext(f)[0]
+                for f in files
+                if f.lower().endswith(label_exts)
+            }
+
             for f in sorted(files):
                 if f.lower().endswith(valid_exts):
-                    self.image_files.append(os.path.join(root, f))
+                    if os.path.splitext(f)[0] in label_basenames:
+                        self.image_files.append(os.path.join(root, f))
+
 
         if not self.image_files:
             self.image_preview.setText("No valid images found.")

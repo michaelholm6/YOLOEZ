@@ -13,4 +13,5 @@ dependencies = [
     "tensorboard>=2.20.0",
     "keyboard>=0.13.5",
     "pyqtgraph>=0.14.0",
+    "pyinstaller>=6.17.0",
 ]
