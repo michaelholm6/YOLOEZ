@@ -1,12 +1,16 @@
 from ultralytics import YOLO
+import gc
 import os
 from utils import show_instructions
-from YOLOEZ.inference_workflow.image_chooser import choose_image_folder
 from YOLOEZ.labelling_workflow.area_of_interest_marking import annotate_images
-from YOLOEZ.inference_workflow.get_model_path import get_model_path
-from YOLOEZ.inference_workflow.save_results import get_save_path, postprocess_and_save_results
+from YOLOEZ.inference_workflow.save_results import get_save_path
 from YOLOEZ.labelling_workflow.crop_and_mask import crop_and_mask_images
-import numpy
+from YOLOEZ.inference_workflow.get_user_inputs_inference import get_user_inference_inputs
+import numpy as np
+import cv2
+import json
+from PyQt5 import QtWidgets, QtCore
+from YOLOEZ.inference_workflow.run_inference import run_yolo_inference
 
 def run_inference_workflow(trained_model_path=None, suppress_instructions=False):
     """
@@ -20,20 +24,21 @@ def run_inference_workflow(trained_model_path=None, suppress_instructions=False)
     if not suppress_instructions:
         show_instructions(
             "Welcome to the Inference Workflow!\n\n"
-            "First, you will select a folder containing images for inference.\n\n"
-            "Supported formats include PNG, JPG, BMP, and TIFF."
+            "In this workflow, you will select images, optionally crop them to areas of interest, "
+            "and run inference using a trained YOLO model to detect objects in the images.\n\n"
+            "In the following screen, you will provide the necessary inputs to proceed."
         )
     
-    image_paths = choose_image_folder()
-    if not image_paths:
-        print("No images selected. Exiting.")
-        return
+    inputs = get_user_inference_inputs()
+    image_paths = inputs["image_paths"]
     
     if not suppress_instructions:
         show_instructions(
             f"You selected {len(image_paths)} image(s).\n\n"
             "Next, you can optionally crop each image to an area of interest.\n"
-            "If you do not wish to crop, simply close the window."
+            "If you do not wish to crop an image, simply leave it unmarked and proceed.\n\n"
+            
+            "When finished, close the window to proceed."
         )
     
     areas_of_interest, _ = annotate_images(image_paths)
@@ -43,30 +48,17 @@ def run_inference_workflow(trained_model_path=None, suppress_instructions=False)
     if not suppress_instructions:
         show_instructions(
             f"Preprocessing complete! {len(cropped_images)} image(s) ready for inference.\n\n"
-            "Next, you will select the trained YOLO model to use for inference."
         )
     
     # --- Step 3: Load trained model ---
-    if not trained_model_path:
-        trained_model_path = get_model_path()
+    trained_model_path = inputs["YOLO_model"]
     
     model = YOLO(trained_model_path)
-    
-    if not suppress_instructions:
-        show_instructions(
-            f"Running inference on {len(cropped_images)} image(s) using model:\n{trained_model_path}\n\n"
-            "This may take a few moments depending on image size and model complexity."
-        )
         
-    results = model([numpy.array(image) for image in list(cropped_images.values())], conf=.015)
+    save_path = inputs["output_folder"]
     
-    if not suppress_instructions:
-        show_instructions(
-            "Inference complete!\n\n"
-            "You can now choose where to save the results for later analysis."
-        )
+    os.makedirs(save_path, exist_ok=True)
     
-    # --- Step 5: Save results ---
-    save_path = get_save_path()
-    if save_path:
-        postprocess_and_save_results(results, list(cropped_images.values()), save_path)
+    run_yolo_inference(
+        model, cropped_images, save_path, inputs["YOLO_confidence"]
+    )

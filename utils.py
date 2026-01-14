@@ -71,7 +71,7 @@ def make_label_with_tooltip(text, tooltip):
     label = QtWidgets.QLabel(text)
     icon_label = QtWidgets.QLabel()
     icon_pix = QtWidgets.QApplication.style().standardIcon(QtWidgets.QStyle.SP_MessageBoxQuestion)
-    icon_label.setPixmap(icon_pix.pixmap(14, 14))
+    icon_label.setPixmap(icon_pix.pixmap(20, 20))
     icon_label.setToolTip(tooltip)
     layout.addWidget(label)
     layout.addWidget(icon_label)

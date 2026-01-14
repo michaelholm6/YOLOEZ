@@ -22,7 +22,7 @@ class YOLOTrainingDialog(QtWidgets.QDialog):
             label = QtWidgets.QLabel(text)
             icon_label = QtWidgets.QLabel()
             icon_pix = self.style().standardIcon(QtWidgets.QStyle.SP_MessageBoxQuestion)
-            icon_label.setPixmap(icon_pix.pixmap(14, 14))
+            icon_label.setPixmap(icon_pix.pixmap(20, 20))
             icon_label.setToolTip(tooltip)
             layout.addWidget(label)
             layout.addWidget(icon_label)
@@ -71,7 +71,7 @@ class YOLOTrainingDialog(QtWidgets.QDialog):
 
             icon_label = QtWidgets.QLabel()
             icon_pix = self.style().standardIcon(QtWidgets.QStyle.SP_MessageBoxQuestion)
-            icon_label.setPixmap(icon_pix.pixmap(14, 14))
+            icon_label.setPixmap(icon_pix.pixmap(20, 20))
             icon_label.setToolTip(tooltip)
             layout.addWidget(icon_label)
 
@@ -297,17 +297,32 @@ than what your hardware can handle can lead to unexplained crashes during traini
         """Ensure the dialog actually starts maximized."""
         super().showEvent(event)
         self.showMaximized()
+        
+    def detect_label_format(self, label_path):
+        with open(label_path, "r") as f:
+            lines = [line.strip().split() for line in f if line.strip()]
+
+        if not lines:
+            return None  # empty labels → reject
+
+        if all(len(l) == 5 for l in lines):
+            return "detection"
+        else:
+            return "segmentation"
 
     # --- Browse functions ---
     def browse_dataset(self):
         folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Select Training Dataset")
         if not folder:
             return
+
         self.dataset_path_edit.setText(folder)
+
         valid_exts = ('.jpg', '.jpeg', '.png', '.bmp', '.tif', '.tiff')
         label_exts = ('.txt',)
 
         self.image_files = []
+        detected_task = None  # lock format from first pair
 
         for root, dirs, files in os.walk(folder):
             label_basenames = {
@@ -317,10 +332,32 @@ than what your hardware can handle can lead to unexplained crashes during traini
             }
 
             for f in sorted(files):
-                if f.lower().endswith(valid_exts):
-                    if os.path.splitext(f)[0] in label_basenames:
-                        self.image_files.append(os.path.join(root, f))
+                if not f.lower().endswith(valid_exts):
+                    continue
 
+                base = os.path.splitext(f)[0]
+                if base not in label_basenames:
+                    continue
+
+                img_path = os.path.join(root, f)
+                label_path = os.path.join(root, base + ".txt")
+
+                try:
+                    label_type = self.detect_label_format(label_path)
+                except Exception:
+                    continue  # unreadable label → skip
+
+                if label_type is None:
+                    continue
+
+                # First valid pair → lock dataset type
+                if detected_task is None:
+                    detected_task = label_type
+                    self.task = detected_task
+
+                # Only keep matching formats
+                if label_type == detected_task:
+                    self.image_files.append(img_path)
 
         if not self.image_files:
             self.image_preview.setText("No valid images found.")
@@ -329,22 +366,14 @@ than what your hardware can handle can lead to unexplained crashes during traini
             self.current_image_index = -1
             return
 
-        # Detect dataset type from first label file
-        first_label_file = os.path.splitext(self.image_files[0])[0] + ".txt"
-        self.task = "segmentation"  # default
-        if os.path.exists(first_label_file):
-            with open(first_label_file, "r") as f:
-                lines = [line.strip().split() for line in f if line.strip()]
-                if lines and all(len(l) == 5 for l in lines):  # class + 4 bbox values
-                    self.task = "detection"
-
-        # Update transformation checkboxes visibility
+        # Update UI
         self.update_transform_visibility()
         self.disable_rotation_if_detection()
 
         self.current_image_index = 0
         self.show_current_image()
         self.update_navigation_buttons()
+
 
 
     def browse_save(self):

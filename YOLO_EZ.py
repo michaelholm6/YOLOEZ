@@ -41,7 +41,7 @@ class ChoiceDialog(QtWidgets.QDialog):
             icon = QtWidgets.QLabel()
             pix = QtWidgets.QApplication.style().standardIcon(
                 QtWidgets.QStyle.SP_MessageBoxQuestion
-            ).pixmap(14, 14)
+            ).pixmap(20, 20)
             icon.setPixmap(pix)
             icon.setToolTip(tooltip)
 
@@ -53,12 +53,12 @@ class ChoiceDialog(QtWidgets.QDialog):
 
         label_container, self.label_button = make_button_with_icon(
             "Label Images",
-            "Start the labeling workflow to label objects in your images."
+            "Start the labeling workflow to label objects in your images. These labels can then be used to train a model."
         )
 
         train_container, self.train_button = make_button_with_icon(
             "Train Model",
-            "Start the training workflow to train an object detection model."
+            "Start the training workflow to train an object detection model using images labeled with the labeling workflow."
         )
 
         use_container, self.use_button = make_button_with_icon(

@@ -36,20 +36,16 @@ class InputDialog(QtWidgets.QDialog):
         self.image_path_edit = QtWidgets.QLineEdit()
         self.browse_image_button = QtWidgets.QPushButton("Browse Folder of Images...")
 
-        self.suppress_checkbox = QtWidgets.QCheckBox()
-
         self.output_path_edit = QtWidgets.QLineEdit()
         self.browse_output_button = QtWidgets.QPushButton("Browse Output Folder...")
         
-        
-        # === Bootstrapping Model Selection ===
+        # === Model Selection ===
         self.model_path_edit = QtWidgets.QLineEdit()
-        self.browse_model_button = QtWidgets.QPushButton("Select Bootstrapping Model...")
+        self.browse_model_button = QtWidgets.QPushButton("Select trained YOLO Model...")
 
         model_label = make_label_with_tooltip(
-            "Bootstrapping Model:",
-            "Optional: Select a pre-trained bootstrapping model to use. This will automatically generate initial annotations for your images. \
-You will have a chance to edit these annotations later. This should be a .pt file, and can be a model you have previously trained using this tool."
+            "Trained YOLO Model:",
+            "Select the trained YOLO model to use for object detection. This should be a model that you trained previously using the training workflow."
         )
         
         self.confidence_slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
@@ -112,31 +108,8 @@ You will have a chance to edit these annotations later. This should be a .pt fil
         outer_layout.addLayout(bottom_row)
 
         # Initially hide; show only if bootstrapping model is selected
-        conf_container.setVisible(False)
         self.confidence_container = conf_container
 
-
-        # === Mode Selection (Bounding Box vs Segmentation) ===
-        
-        mode_label = make_label_with_tooltip(
-            "Annotation Mode:",
-            "Choose how you want to annotate images: Bounding Boxes or Segmentation Masks. Segmentations masks are many sided polygons that can better fit irregular shapes, while bounding boxes are simple rectangles."
-        )
-        mode_label.setToolTip("Choose how you want to annotate images: Bounding Boxes or Segmentation Masks.")
-
-        self.bbox_radio = QtWidgets.QRadioButton("Bounding Boxes")
-        self.segmentation_radio = QtWidgets.QRadioButton("Segmentation")
-
-        self.mode_group = QtWidgets.QButtonGroup(self)
-        self.mode_group.addButton(self.bbox_radio)
-        self.mode_group.addButton(self.segmentation_radio)
-
-        mode_layout = QtWidgets.QHBoxLayout()
-        mode_layout.addWidget(self.bbox_radio)
-        mode_layout.addWidget(self.segmentation_radio)
-        mode_layout.addStretch()
-        mode_container = QtWidgets.QWidget()
-        mode_container.setLayout(mode_layout)
 
         # === Run Button ===
         self.run_button = QtWidgets.QPushButton("Run")
@@ -201,53 +174,11 @@ You will have a chance to edit these annotations later. This should be a .pt fil
             "Output Folder:", "Select a folder where any generated outputs will be saved."
         )
 
-        # === YOLO Save Checkbox ===
-        self.save_yolo_checkbox = QtWidgets.QCheckBox()
-        yolo_container = QtWidgets.QWidget()
-        yolo_layout = QtWidgets.QHBoxLayout(yolo_container)
-        yolo_layout.setContentsMargins(0, 0, 0, 0)
-        yolo_layout.setSpacing(4)
-        yolo_layout.addWidget(self.save_yolo_checkbox)
-        yolo_label = QtWidgets.QLabel("Save YOLO Training Sample")
-        yolo_layout.addWidget(yolo_label)
-        yolo_icon = QtWidgets.QLabel()
-        icon_pix = self.style().standardIcon(QtWidgets.QStyle.SP_MessageBoxQuestion)
-        yolo_icon.setPixmap(icon_pix.pixmap(20, 20))
-        yolo_icon.setToolTip("Check to save a YOLO training samples for future model training based on your annotations.")
-        yolo_layout.addWidget(yolo_icon)
-        yolo_layout.addStretch()
-        
-        #Save unlabeled images checkbox
-        self.save_unlabeled_checkbox = QtWidgets.QCheckBox()
-        unlabeled_container = QtWidgets.QWidget()
-        unlabeled_layout = QtWidgets.QHBoxLayout(unlabeled_container)
-        unlabeled_layout.setContentsMargins(0, 0, 0, 0)
-        unlabeled_layout.setSpacing(4)
-        unlabeled_layout.addWidget(self.save_unlabeled_checkbox)
-        unlabeled_label = QtWidgets.QLabel("Save Unlabeled Images")
-        unlabeled_layout.addWidget(unlabeled_label)
-        unlabeled_icon = QtWidgets.QLabel()
-        icon_pix = self.style().standardIcon(QtWidgets.QStyle.SP_MessageBoxQuestion)
-        unlabeled_icon.setPixmap(icon_pix.pixmap(20, 20))
-        unlabeled_icon.setToolTip("Check to save images that do not contain any labeled objects to the YOLO training sample. This is off by default, because\
- the default behavior is to assume that unlabeled images are unlabeled because you ran out of time trying to label everything. However, it is important to train\
- your model with images that do not contain objects of interest, so you may want to enable this option.")
-        unlabeled_layout.addWidget(unlabeled_icon)
-        unlabeled_layout.addStretch()
-        
-
         # === Controls Layout ===
         controls_layout = QtWidgets.QVBoxLayout()
         controls_layout.addWidget(image_path_label)
         controls_layout.addWidget(self.image_path_edit)
         controls_layout.addWidget(self.browse_image_button)
-        controls_layout.addSpacing(10)
-        controls_layout.addWidget(mode_label)
-        controls_layout.addWidget(mode_container)
-        controls_layout.addSpacing(10)
-        controls_layout.addWidget(yolo_container)
-        controls_layout.addSpacing(10)
-        controls_layout.addWidget(unlabeled_container)
         controls_layout.addSpacing(10)
         controls_layout.addWidget(output_path_label)
         controls_layout.addWidget(self.output_path_edit)
@@ -283,8 +214,7 @@ You will have a chance to edit these annotations later. This should be a .pt fil
         self.next_button.clicked.connect(self.show_next_image)
         self.image_path_edit.textChanged.connect(self.update_run_button_state)
         self.output_path_edit.textChanged.connect(self.update_run_button_state)
-        self.bbox_radio.toggled.connect(self.update_run_button_state)
-        self.segmentation_radio.toggled.connect(self.update_run_button_state)
+        self.model_path_edit.textChanged.connect(self.update_run_button_state) 
 
         self.run_button.setEnabled(False)
         self.update_run_button_state()
@@ -297,7 +227,7 @@ You will have a chance to edit these annotations later. This should be a .pt fil
     def browse_model(self):
         file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
             self,
-            "Select Bootstrapping Model",
+            "Select YOLO Model",
             "",
             "Model Files (*.pt *.pth *.onnx);;All Files (*)"
         )
@@ -396,8 +326,7 @@ You will have a chance to edit these annotations later. This should be a .pt fil
     def update_run_button_state(self):
         image_path = self.image_path_edit.text().strip()
         output_path = self.output_path_edit.text().strip()
-        mode_selected = self.bbox_radio.isChecked() or self.segmentation_radio.isChecked()
-        bootstrapping_model = self.model_path_edit.text().strip()
+        YOLO_model = self.model_path_edit.text().strip()
 
         errors = []
         if not image_path:
@@ -407,13 +336,9 @@ You will have a chance to edit these annotations later. This should be a .pt fil
 
         if not output_path:
             errors.append("Please select an output folder.")
-
-        if not mode_selected:
-            errors.append("Please select either Bounding Boxes or Segmentation.")
             
-        if bootstrapping_model:
-            if not os.path.isfile(bootstrapping_model) or not bootstrapping_model.lower().endswith(('.pt', '.pth', '.onnx')):
-                errors.append("Bootstrapping model path is invalid.")
+        if not os.path.isfile(YOLO_model) or not YOLO_model.lower().endswith(('.pt', '.pth', '.onnx')):
+                errors.append("YOLO model path is invalid.")
 
         if errors:
             self.run_button.setEnabled(False)
@@ -435,20 +360,15 @@ You will have a chance to edit these annotations later. This should be a .pt fil
         self.show_current_image()
 
     def get_values(self):
-        mode = "bounding_box" if self.bbox_radio.isChecked() else "segmentation"
         return {
             "image_paths": self.image_files,
-            "suppress_instructions": self.suppress_checkbox.isChecked(),
             "output_folder": self.output_path_edit.text().strip(),
-            "YOLO_true": self.save_yolo_checkbox.isChecked(),
-            "annotation_mode": mode,
-            "bootstrapping_model": self.model_path_edit.text().strip() or None,
-            "bootstrapping_confidence": self.confidence_spinbox.value() if self.model_path_edit.text().strip() else None,
-            "save_unlabeled_images": self.save_unlabeled_checkbox.isChecked()
+            "YOLO_model": self.model_path_edit.text().strip() or None,
+            "YOLO_confidence": self.confidence_spinbox.value() if self.model_path_edit.text().strip() else None,
         }
 
 
-def get_user_labelling_inputs():
+def get_user_inference_inputs():
     app = QtWidgets.QApplication.instance()
     owns_app = False
     if not app:

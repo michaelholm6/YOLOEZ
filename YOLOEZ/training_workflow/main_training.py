@@ -47,8 +47,8 @@ def run_training_workflow(suppress_instructions=False):
             "Dataset preparation complete!\n\n"
             "The training process will now begin using the specified parameters.\n\n"
             "This may take some time depending on your hardware and dataset size.\n\n"
-            "There will be two plots in the next screen. It make take some time for data to start appearing on them, depending on your dataset size, model size, and hardware capabilities.\n\n"
-            "You can click on a line in the plots to see exact values at each epoch."
+            "There will be two plots in the next screen. It may take some time for data to start appearing on them, depending on your dataset size, model size, and hardware capabilities.\n\n"
+            "You can hover over points in the plots to see exact values."
             )
     
     if previous_model_path is not None:
