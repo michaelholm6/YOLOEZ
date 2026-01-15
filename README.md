@@ -29,7 +29,6 @@ This repository contains the full source code and prebuilt executables for a gra
 
 The tool provides an end to end workflow including:
 - Dataset labeling
-- Dataset validation
 - Model training
 - Model inference
 - Visualization of results
@@ -55,7 +54,7 @@ All functionality is exposed through an intuitive graphical interface. No script
 
 - Image annotation using bounding boxes
 - Image annotation using segmentation masks
-- Dataset organization and validation
+- Dataset organization
 - Training YOLOv8 detection models
 - Training YOLOv8 segmentation models
 - Running inference on new images
@@ -80,15 +79,12 @@ The application will start immediately and guide you through the available workf
 
 The application is organized into clear, sequential workflows:
 
-1. **Dataset Setup**
-   - Select or create a dataset
-   - Choose annotation type: bounding boxes or segmentation
-
-2. **Labeling**
+1. **Labeling**
+   - Load image datasets
    - Annotate images using built in tools
    - Save labels in YOLO compatible format
 
-3. **Training**
+2. **Training**
    - Configure training parameters through the GUI
    - Start training with a single click
    - Monitor progress within the application
@@ -96,7 +92,7 @@ The application is organized into clear, sequential workflows:
 4. **Inference**
    - Load a trained model
    - Run predictions on new images
-   - View results visually
+   - Save results both visually and in JSON format
 
 Each stage includes guidance to help users understand what is required before moving forward.
 
@@ -106,7 +102,7 @@ Each stage includes guidance to help users understand what is required before mo
 
 The GUI is designed to be self explanatory and instructional.
 
-- Tooltips appear when hovering over controls
+- Tooltips appear when hovering over blue question mark icons
 - Instructional popups explain each step of a workflow
 - Validation messages help prevent common mistakes
 - Clear prompts guide users through required actions
@@ -117,25 +113,23 @@ This ensures that even first time users can successfully train and use YOLO mode
 
 ## Screenshots and Visual Examples
 
-Placeholders for example images are listed below. Replace these with actual screenshots when available.
-
 ### Main Application Window
-![Main GUI Window](images/gui_main_placeholder.png)
+![Main GUI Window](images/gui_main.png)
 
 ### Bounding Box Annotation Example
-![Bounding Box Example](images/bounding_box_placeholder.png)
+![Bounding Box Example](images/bounding_box.png)
 
 ### Segmentation Mask Example
-![Segmentation Example](images/segmentation_placeholder.png)
+![Segmentation Example](images/segmentation.png)
 
 ### Tooltip Example
-![Tooltip Example](images/tooltip_placeholder.png)
+![Tooltip Example](images/tooltip.png)
 
-### Training Configuration Panel
-![Training Panel](images/training_panel_placeholder.png)
+### Training Performance Panel
+![Training Panel](images/training_panel.png)
 
-### Inference Results View
-![Inference Results](images/inference_results_placeholder.png)
+### Inference Preperation View
+![Inference Results](images/inference_results.png)
 
 ---
 
@@ -154,7 +148,7 @@ Placeholders for example images are listed below. Replace these with actual scre
 
 ## System Requirements
 
-- Windows or Linux
+- Windows or Linux (When running on a Linux server, a remote desktop must be used to interact with the GUI, terminal commands are not consisten with the goal of this project).
 - GPU recommended for training but not required
 - Sufficient disk space for datasets and trained models
 
@@ -175,5 +169,4 @@ This tool is intended for:
 
 ## License
 
-Specify license information here.
-Replace this section with the appropriate license text or reference.
+This project is licensed under the MIT License – see the [LICENSE](LICENSE) file for details.
