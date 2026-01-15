@@ -1,4 +1,4 @@
-# YOLOv8 GUI Toolkit
+# YOLOEZ
 
 A standalone, GUI based application for labeling data, training models, and running inference with Ultralytics powered YOLOv8 models.  
 This tool supports both bounding box detection and segmentation workflows and is designed to be usable without writing any code.
