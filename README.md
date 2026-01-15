@@ -134,15 +134,15 @@ This ensures that even first time users can successfully train and use YOLO mode
 ---
 
 ## Repository Structure
-
-.
-├── src/ # Application source code
-├── assets/ # Icons and UI assets
-├── docs/ # Documentation resources
-├── images/ # README images and screenshots
-├── compiler.py # Script to automatically compile executable
-├── Various UV environment files
+<pre>
+├── src/                 # Application source code  
+├── assets/              # Icons and UI assets  
+├── docs/                # Documentation resources  
+├── images/              # README images and screenshots  
+├── compiler.py          # Script to automatically compile executable  
+├── Various UV environment files  
 └── README.md
+</pre>
 
 ---
 
