@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 from copy import deepcopy
-from YOLOEZ.labelling_workflow.area_of_interest_marking import get_polygon_from_user
+from src.labelling_workflow.area_of_interest_marking import get_polygon_from_user
 
 def preprocess_images(image_paths):
     """

@@ -1,15 +1,15 @@
-from YOLOEZ.training_workflow.train_test_split import get_train_test_split
-from YOLOEZ.training_workflow.augmentation_options import get_augmentations
-from YOLOEZ.training_workflow.save_model import get_save_root, save_trained_model
+from training_workflow.train_test_split import get_train_test_split
+from training_workflow.augmentation_options import get_augmentations
+from training_workflow.save_model import get_save_root, save_trained_model
 from ultralytics import YOLO
 import os
 from utils import show_instructions
-from YOLOEZ.training_workflow.apply_augmentations import augment_yolo_dataset
-from YOLOEZ.training_workflow.create_yaml import create_yaml
-from YOLOEZ.training_workflow.train_model import run_training
-from YOLOEZ.training_workflow.get_task import get_task
-from YOLOEZ.training_workflow.get_user_inputs_training import get_training_inputs
-from YOLOEZ.training_workflow.dataset_chooser import split_dataset
+from training_workflow.apply_augmentations import augment_yolo_dataset
+from training_workflow.create_yaml import create_yaml
+from training_workflow.train_model import run_training
+from training_workflow.get_task import get_task
+from training_workflow.get_user_inputs_training import get_training_inputs
+from training_workflow.dataset_chooser import split_dataset
 import shutil
 import tempfile
 from pathlib import Path

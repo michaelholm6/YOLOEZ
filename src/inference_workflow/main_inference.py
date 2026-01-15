@@ -2,15 +2,15 @@ from ultralytics import YOLO
 import gc
 import os
 from utils import show_instructions
-from YOLOEZ.labelling_workflow.area_of_interest_marking import annotate_images
-from YOLOEZ.inference_workflow.save_results import get_save_path
-from YOLOEZ.labelling_workflow.crop_and_mask import crop_and_mask_images
-from YOLOEZ.inference_workflow.get_user_inputs_inference import get_user_inference_inputs
+from labelling_workflow.area_of_interest_marking import annotate_images
+from inference_workflow.save_results import get_save_path
+from labelling_workflow.crop_and_mask import crop_and_mask_images
+from inference_workflow.get_user_inputs_inference import get_user_inference_inputs
 import numpy as np
 import cv2
 import json
 from PyQt5 import QtWidgets, QtCore
-from YOLOEZ.inference_workflow.run_inference import run_yolo_inference
+from inference_workflow.run_inference import run_yolo_inference
 
 def run_inference_workflow(trained_model_path=None, suppress_instructions=False):
     """

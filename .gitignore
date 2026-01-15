@@ -5,3 +5,7 @@ runs/*
 build/
 *.pyc
 dist/
+YOLOv8/
+Apple Pictures/
+Selected Apples Pictures/
+

@@ -9,7 +9,7 @@ def generate_exe():
     """
 
     PyInstaller.__main__.run([
-        "main.py",
+        "src/main.py",
         "--name", "YOLOEZ",
         "--icon", "molecule.ico"
     ])

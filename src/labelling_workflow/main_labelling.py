@@ -1,16 +1,26 @@
 # Import your existing steps
-from YOLOEZ.labelling_workflow.image_gatherer import *
-from YOLOEZ.labelling_workflow.area_of_interest_marking import *
-from YOLOEZ.labelling_workflow.save_segmentation_results import *
-from YOLOEZ.labelling_workflow.edit_contour_points import *
-from YOLOEZ.labelling_workflow.get_user_inputs_labelling import *
-from YOLOEZ.labelling_workflow.edit_box_points import *
-from YOLOEZ.labelling_workflow.save_box_results import *
-from YOLOEZ.labelling_workflow.crop_and_mask import *
-from YOLOEZ.labelling_workflow.bootstrap_runner import *
+from labelling_workflow.image_gatherer import *
+from labelling_workflow.area_of_interest_marking import *
+from labelling_workflow.save_segmentation_results import *
+from labelling_workflow.edit_contour_points import *
+from labelling_workflow.get_user_inputs_labelling import *
+from labelling_workflow.edit_box_points import *
+from labelling_workflow.save_box_results import *
+from labelling_workflow.crop_and_mask import *
+from labelling_workflow.bootstrap_runner import *
 from utils import show_instructions
 
 def run_labeling_workflow(suppress_instructions=False):
+    
+    if not suppress_instructions:
+        instructions = (
+        "Welcome to the Labelling Workflow!\n\n"
+        "- You will be guided through a series of steps to label your images.\n"
+        "- Please follow the on-screen instructions at each step.\n"
+        "- You can press 'Esc' at any time to exit the workflow.\n\n"
+        "Click 'OK' to begin."
+    )
+        show_instructions(message=instructions)
     
     args = get_user_labelling_inputs()
         
