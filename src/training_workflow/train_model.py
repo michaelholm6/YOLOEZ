@@ -15,7 +15,7 @@ from PyQt5 import QtCore
 def run_training(dataset_yaml, model_save_dir, model_size, task="detection", prev_model_path=None):
 
     if task == "segmentation":
-        default_model_path = f"yolo11{model_size}-seg.pt"
+        default_model_path = f"yolo12{model_size}-seg.pt"
     else:
         default_model_path = f"yolo12{model_size}.pt"
 
