@@ -129,7 +129,7 @@ This ensures that even first time users can successfully train and use YOLO mode
 ![Training Panel](images/training_panel.png)
 
 ### Inference Preperation View
-![Inference Results](images/inference_results.png)
+![Inference Results](images/inference_page.png)
 
 ---
 
