@@ -1,6 +1,6 @@
 # YOLOEZ
 
-A standalone, GUI based application for labeling data, training models, and running inference with Ultralytics powered YOLOv8 models.  
+A standalone, GUI based application for labeling data, training models, and running inference with Ultralytics powered YOLOv12 models.  
 This tool supports both bounding box detection and segmentation workflows and is designed to be usable without writing any code.
 
 The application guides users through every step with built in tooltips, instructional popups, and clear workflow structure, making YOLO model training and usage accessible to users who may not be familiar with machine learning pipelines or Python development.
@@ -15,11 +15,12 @@ The application guides users through every step with built in tooltips, instruct
 4. [Getting Started](#getting-started)
 5. [Application Workflow](#application-workflow)
 6. [User Guidance and Help System](#user-guidance-and-help-system)
-7. [Screenshots and Visual Examples](#screenshots-and-visual-examples)
-8. [Repository Structure](#repository-structure)
-9. [System Requirements](#system-requirements)
-10. [Intended Audience](#intended-audience)
-11. [License](#license)
+7. [Linux Remote Desktop Setup](#linux-remote-desktop-setup)
+8. [Screenshots and Visual Examples](#screenshots-and-visual-examples)
+9. [Repository Structure](#repository-structure)
+10. [System Requirements](#system-requirements)
+11. [Intended Audience](#intended-audience)
+12. [License](#license)
 
 ---
 
@@ -70,6 +71,7 @@ No installation or environment setup is required.
 2. Download the latest release for your operating system.
 3. Extract the downloaded zip file.
 4. Launch the executable included in the extracted folder.
+5. NOTE: You must keep the executable file in the same directory as the _internal folder.
 
 The application will start immediately and guide you through the available workflows.
 
@@ -111,6 +113,12 @@ This ensures that even first time users can successfully train and use YOLO mode
 
 ---
 
+## Linux Remote Desktop Setup
+
+
+
+---
+
 ## Screenshots and Visual Examples
 
 ### Main Application Window
@@ -149,6 +157,7 @@ This ensures that even first time users can successfully train and use YOLO mode
 ## System Requirements
 
 - Windows or Linux (When running on a headless Linux server, a remote desktop must be used to interact with the GUI, terminal commands are not consistent with the goal of this project).
+   - Instructions for setting up remote desktop on a Linux server
 - GPU recommended for training but not required
 - Sufficient disk space for datasets and trained models
 
