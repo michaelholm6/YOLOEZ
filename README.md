@@ -70,6 +70,7 @@ No installation or environment setup is required.
 2. Download the latest release for your operating system.
 3. Extract the downloaded zip file.
 4. Launch the executable included in the extracted folder.
+5. NOTE: You must keep the executable file in the same directory as the _internal folder.
 
 The application will start immediately and guide you through the available workflows.
 
