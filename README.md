@@ -1,6 +1,6 @@
 # YOLOEZ
 
-A standalone, GUI based application for labeling data, training models, and running inference with Ultralytics powered YOLOv8 models.  
+A standalone, GUI based application for labeling data, training models, and running inference with Ultralytics powered YOLOv12 models.  
 This tool supports both bounding box detection and segmentation workflows and is designed to be usable without writing any code.
 
 The application guides users through every step with built in tooltips, instructional popups, and clear workflow structure, making YOLO model training and usage accessible to users who may not be familiar with machine learning pipelines or Python development.
