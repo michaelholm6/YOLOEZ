@@ -1,4 +1,7 @@
-# dataset_chooser.py
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Michael Holm
+# Developed at Purdue University
+
 from PyQt5 import QtWidgets
 import sys
 import os

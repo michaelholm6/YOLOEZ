@@ -1,4 +1,7 @@
-# Import your existing steps
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Michael Holm
+# Developed at Purdue University
+
 from labelling_workflow.image_gatherer import *
 from labelling_workflow.area_of_interest_marking import *
 from labelling_workflow.save_segmentation_results import *

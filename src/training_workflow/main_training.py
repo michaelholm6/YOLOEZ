@@ -1,3 +1,7 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Michael Holm
+# Developed at Purdue University
+
 from training_workflow.train_test_split import get_train_test_split
 from training_workflow.augmentation_options import get_augmentations
 from training_workflow.save_model import get_save_root, save_trained_model
