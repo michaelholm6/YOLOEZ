@@ -148,7 +148,7 @@ This ensures that even first time users can successfully train and use YOLO mode
 
 ## System Requirements
 
-- Windows or Linux (When running on a headless Linux server, a remote desktop must be used to interact with the GUI, terminal commands are not consisten with the goal of this project).
+- Windows or Linux (When running on a headless Linux server, a remote desktop must be used to interact with the GUI, terminal commands are not consistent with the goal of this project).
 - GPU recommended for training but not required
 - Sufficient disk space for datasets and trained models
 
