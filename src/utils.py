@@ -4,9 +4,7 @@
 
 import cv2
 import ctypes
-import tkinter as tk
-from tkinter import messagebox
-from PyQt5 import QtWidgets, QtGui, QtCore
+from PyQt5 import QtWidgets, QtCore
 import sys
 
 def resize_for_display(img, max_width, max_height):
