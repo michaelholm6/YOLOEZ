@@ -3,9 +3,6 @@
 # Developed at Purdue University
 
 import sys
-import os
-import cv2
-import json
 from PyQt5 import QtWidgets
 
 

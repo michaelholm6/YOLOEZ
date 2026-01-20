@@ -5,8 +5,6 @@
 import sys
 import os
 from PyQt5 import QtWidgets, QtGui, QtCore
-import cv2
-import numpy as np
 
 class InputDialog(QtWidgets.QDialog):
     def __init__(self):

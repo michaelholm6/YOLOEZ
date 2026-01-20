@@ -6,7 +6,6 @@ import cv2
 import json
 import numpy as np
 import os
-import torch
 import gc
 from PyQt5 import QtWidgets, QtCore
 

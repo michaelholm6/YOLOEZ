@@ -6,10 +6,6 @@ import sys
 import numpy as np
 from PyQt5 import QtCore, QtGui, QtWidgets
 import cv2
-import os
-import tkinter as tk
-from PyQt5.QtWidgets import QHBoxLayout, QLabel
-from PyQt5.QtGui import QPixmap, QIcon
 from utils import show_error_window
 
 class BoundingBoxEditorView(QtWidgets.QGraphicsView):
