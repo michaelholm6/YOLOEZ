@@ -108,6 +108,22 @@ class ChoiceDialog(QtWidgets.QDialog):
 def main():
     app = QtWidgets.QApplication(sys.argv)
 
+    # --- Check screen resolution ---
+    screen = app.primaryScreen()
+    size = screen.size()
+    width, height = size.width(), size.height()
+
+    recommended_width, recommended_height = 1920, 1080
+
+    if width < recommended_width or height < recommended_height:
+        QtWidgets.QMessageBox.warning(
+            None,
+            "Screen Resolution Warning",
+            f"Your current screen resolution is {width}×{height}, which is smaller than "
+            f"the recommended {recommended_width}×{recommended_height}.\n\n"
+            "The application may not fit fully on the screen and some elements may appear clipped."
+        )
+
     dialog = ChoiceDialog()
     dialog.exec_()
 

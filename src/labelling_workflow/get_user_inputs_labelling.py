@@ -290,6 +290,7 @@ You will have a chance to edit these annotations later. This should be a .pt fil
         self.update_run_button_state()
 
         # Show dialog
+        
         self.showMaximized()
         self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowStaysOnTopHint)
         self.show()

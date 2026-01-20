@@ -1,25 +1,39 @@
-import threading
 import sys
-import os
-from YOLO_EZ import main as YOLO_EZ_main
 import traceback
-import keyboard
+from PyQt5.QtWidgets import QApplication
+from YOLO_EZ import main as YOLO_EZ_main
 from utils import show_error_window
+from PyQt5.QtCore import QObject, QEvent, Qt
+from PyQt5.QtWidgets import QApplication
+import sys
 
-def on_escape():
-    print("Escape pressed. Exiting program...")
-    os._exit(0)
-    
-keyboard.add_hotkey('esc', on_escape)
+class GlobalEscapeFilter(QObject):
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.KeyPress and event.key() == Qt.Key_Escape:
+            print("Global ESC pressed — quitting application")
+            QApplication.quit()
+            return True
+        return False
 
 def main():
-    YOLO_EZ_main()
+    app = QApplication.instance()
+    if app is None:
+        app = QApplication(sys.argv)
+
+    app.installEventFilter(GlobalEscapeFilter())
+
+    YOLO_EZ_main()  # creates ALL windows, dialogs, etc.
+
+    sys.exit(app.exec_())
 
 if __name__ == "__main__":
     try:
         main()
     except Exception:
         error_msg = traceback.format_exc()
-        print("An unhandled exception occurred:\n", error_msg)
-        show_error_window(f"An unhandled exception occurred:\n\n{error_msg}", title="Unhandled Exception")
+        print(error_msg)
+        show_error_window(
+            f"An unhandled exception occurred:\n\n{error_msg}",
+            title="Unhandled Exception"
+        )
         sys.exit(1)

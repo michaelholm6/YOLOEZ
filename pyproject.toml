@@ -1,17 +1,15 @@
 [project]
-name = "defectdetect"
+name = "yologui"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "scikit-learn>=1.8.0",
-    "ultralytics>=8.3.239",
-    "torch==2.8.0",
-    "torchvision>=0.23",
     "albumentations>=2.0.8",
-    "tensorboard>=2.20.0",
     "keyboard>=0.13.5",
+    "opencv-python>=4.13.0.90",
+    "pyinstaller>=6.18.0",
     "pyqtgraph>=0.14.0",
-    "pyinstaller>=6.17.0",
+    "scikit-learn>=1.8.0",
+    "ultralytics>=8.4.6",
 ]
