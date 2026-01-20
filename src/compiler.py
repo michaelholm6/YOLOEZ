@@ -18,7 +18,7 @@ def generate_exe():
     PyInstaller.__main__.run([
         "main.py",
         "--name", exe_name,
-        "--icon", "molecule.ico"
+        "--icon", "../assets/molecule.ico"
     ])
 
 if __name__ == "__main__":
