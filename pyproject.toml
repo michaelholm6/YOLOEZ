@@ -12,4 +12,12 @@ dependencies = [
     "pyqtgraph>=0.14.0",
     "scikit-learn>=1.8.0",
     "ultralytics>=8.4.6",
+    "torch==2.8.0",
+    # NOTE:
+    # PyQt5 cannot currently be resolved by uv on Windows.
+    # Install manually using:
+    #   pip install PyQt5>=5.15.10
+    "pytest>=9.0.2",
 ]
+
+
