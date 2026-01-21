@@ -3,15 +3,19 @@ name = "yologui"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.12"
 dependencies = [
     "albumentations>=2.0.8",
     "keyboard>=0.13.5",
     "opencv-python>=4.13.0.90",
-    "pyinstaller>=6.18.0",
     "pyqtgraph>=0.14.0",
     "scikit-learn>=1.8.0",
     "ultralytics>=8.4.6",
     "torch==2.8.0",
     "pytest>=9.0.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pyqt5>=5.16.0",
 ]
