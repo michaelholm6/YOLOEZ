@@ -11,7 +11,7 @@ def test_main_runs_without_error(monkeypatch):
 from labelling_workflow.main_labelling import run_labeling_workflow
 
 def test_labeling_workflow_runs_without_gui(tmp_path, monkeypatch):
-    # Mock user inputs for the workflow
+
     test_inputs = {
         "image_paths": [
             "assets/test_images/test_image_1.png",
@@ -28,7 +28,7 @@ def test_labeling_workflow_runs_without_gui(tmp_path, monkeypatch):
         "save_unlabeled_images": False
     }
 
-    # Patch GUI functions so they don't actually pop up
+
     monkeypatch.setattr("labelling_workflow.main_labelling.show_instructions", lambda **kwargs: None)
     monkeypatch.setattr("labelling_workflow.main_labelling.annotate_images", lambda paths: ({}, 1))
     monkeypatch.setattr("labelling_workflow.main_labelling.crop_and_mask_images", lambda images, areas: images)
@@ -38,8 +38,36 @@ def test_labeling_workflow_runs_without_gui(tmp_path, monkeypatch):
     monkeypatch.setattr("labelling_workflow.main_labelling.save_segmentation_results", lambda *args, **kwargs: None)
     monkeypatch.setattr("labelling_workflow.main_labelling.save_box_results", lambda *args, **kwargs: None)
 
-    # Run workflow in test mode
     run_labeling_workflow(suppress_instructions=True, test_inputs=test_inputs)
 
-    # If we reach here, nothing crashed
+
     assert True
+    
+from training_workflow.main_training import run_training_workflow 
+
+def test_training_workflow_runs_without_gui(monkeypatch, tmp_path):
+
+    test_inputs = {
+        "train_split": 0.8,
+        "task": "segment", 
+        "dataset_folder": "images", 
+        "transformations": [],
+        "number_of_augs": 1,
+        "save_folder": tmp_path,
+        "model_size": "nano",
+        "prev_model_path": None,
+    }
+
+
+    monkeypatch.setattr("training_workflow.main_training.show_instructions", lambda *args, **kwargs: None)
+    monkeypatch.setattr("training_workflow.main_training.split_dataset", lambda path, **kwargs: path)
+    monkeypatch.setattr("training_workflow.main_training.augment_yolo_dataset", lambda *args, **kwargs: None)
+    monkeypatch.setattr("training_workflow.main_training.create_yaml", lambda output_dir: str(tmp_path / "dataset.yaml"))
+    monkeypatch.setattr("training_workflow.main_training.run_training", lambda *args, **kwargs: {"mock_result": True})
+
+
+    results = run_training_workflow(suppress_instructions=True, test_inputs=test_inputs)
+
+
+    assert results.get("mock_result") is True
+

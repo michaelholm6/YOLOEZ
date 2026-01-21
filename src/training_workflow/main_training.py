@@ -18,7 +18,7 @@ import shutil
 import tempfile
 from pathlib import Path
 
-def run_training_workflow(suppress_instructions=False):
+def run_training_workflow(suppress_instructions=False, test_inputs=None):
     if not suppress_instructions:
         show_instructions(
             "Welcome to the Training Workflow!\n\n"
@@ -27,8 +27,12 @@ def run_training_workflow(suppress_instructions=False):
             "After that, the training process will begin automatically.\n\n"
             "Press esc at any time to exit the program."
         )
-        
-    inputs = get_training_inputs()
+    
+    if test_inputs is not None:
+        inputs = test_inputs
+    else:
+        inputs = get_training_inputs()
+
 
     split = inputs['train_split']
     task = inputs['task']
@@ -61,8 +65,16 @@ def run_training_workflow(suppress_instructions=False):
     else:
         results = run_training(yaml_file, model_save_dir, model_size, task=task)
     
-    os.remove(os.path.join(os.path.split(dataset_path)[0], "dataset.yaml"))
-    shutil.rmtree(os.path.join(os.path.split(dataset_path)[0], "augmented_dataset"))
-    shutil.rmtree(os.path.join(os.path.split(dataset_path)[0], "yolo_dataset"))
+    dataset_yaml_path = os.path.join(os.path.split(dataset_path)[0], "dataset.yaml")
+    if os.path.exists(dataset_yaml_path):
+        os.remove(dataset_yaml_path)
+
+    augmented_dir = os.path.join(os.path.split(dataset_path)[0], "augmented_dataset")
+    if os.path.exists(augmented_dir):
+        shutil.rmtree(augmented_dir)
+
+    yolo_dataset_dir = os.path.join(os.path.split(dataset_path)[0], "yolo_dataset")
+    if os.path.exists(yolo_dataset_dir):
+        shutil.rmtree(yolo_dataset_dir)
 
     return results
