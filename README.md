@@ -38,6 +38,17 @@ All functionality is exposed through an intuitive graphical interface. No script
 
 ---
 
+## System Requirements
+
+- Windows or Linux (When running on a headless Linux server, a remote desktop must be used to interact with the GUI, terminal commands are not consistent with the goal of this project).
+   - [Instructions for setting up remote desktop on a Linux server](#linux-remote-desktop-setup)
+- GPU recommended for training but not required
+- Sufficient disk space for datasets and trained models
+
+Exact requirements may vary depending on dataset size and model configuration.
+
+---
+
 ## Key Features
 
 - GUI driven YOLOv8 training and inference
@@ -115,7 +126,7 @@ This ensures that even first time users can successfully train and use YOLO mode
 
 ## Linux Remote Desktop Setup
 
-This section explains how to set up a lightweight Linux remote desktop using **XFCE** and **TightVNC**, with minimal use of `sudo`. The desktop can be accessed from **Windows using RealVNC Viewer**. This allows for use of YOLOEZ on Linux-based headless GPU clusters.
+This section explains how to set up a lightweight Linux remote desktop using **XFCE** and **TightVNC**, with minimal use of `sudo`. The desktop can be accessed from **Windows using RealVNC Viewer**. This setup also allows you to run YOLOEZ on Linux-based headless GPU clusters from a Windows computer.
 
 ### Requirements
 
@@ -124,12 +135,53 @@ This section explains how to set up a lightweight Linux remote desktop using **X
 - Network or SSH access
 - Windows machine for remote access
 
-### 1. Install Required Packages on Linux machine (one-time sudo)
+### 1. SSH Into the Linux Server
+
+From Windows PowerShell, Git Bash, or another terminal:
+
+```powershell
+ssh username@linux_server_ip
+````
+
+Replace `username` with your Linux username and `linux_server_ip` with your server’s IP address. This gives you terminal access to perform installation and file transfers.
+
+### 2. Download the Linux Executable from GitHub Releases
+
+On your Windows machine:
+
+1. Open your repo’s **Releases** page:
+   `[https://github.com/<username>/<repo>/releases](https://github.com/michaelholm6/YOLOEZ/releases)`
+2. Download the Linux executable (e.g., `YOLOEZ-linux-x86-64`).
+
+### 3. Transfer the Executable to the Server Using `rsync`
+
+From Windows (Git Bash, WSL, or another terminal):
+
+```bash
+rsync -avP path/to/YOLOEZ-linux-x86-64 username@linux_server_ip:~/YOLOEZ/
+```
+
+* Replace `path/to/YOLOEZ-linux` with the local path of the downloaded file
+* Replace `~/YOLOEZ/` with the desired server directory (it will be created if it doesn’t exist)
+
+SSH into the server if needed:
+
+```bash
+ssh username@linux_server_ip
+```
+
+Make the executable runnable:
+
+```bash
+chmod +x ~/YOLOEZ/YOLOEZ-linux
+```
+
+### 4. Install Required Packages on the Linux Server
 
 ```bash
 sudo apt update
 sudo apt install -y xfce4 xfce4-goodies tightvncserver
-````
+```
 
 Installed components:
 
@@ -137,8 +189,7 @@ Installed components:
 * **xfce4-goodies** — additional XFCE utilities
 * **tightvncserver** — VNC server
 
-
-### 2. Initialize TightVNC (no sudo)
+### 5. Initialize TightVNC
 
 Run the VNC server once to set a password and create configuration files:
 
@@ -152,8 +203,7 @@ After setup completes, stop the server:
 tightvncserver -kill :1
 ```
 
-
-### 3. Configure VNC to Start XFCE
+### 6. Configure VNC to Start XFCE
 
 Edit the VNC startup script:
 
@@ -177,7 +227,7 @@ Make the script executable:
 chmod +x ~/.vnc/xstartup
 ```
 
-### 4. Start the VNC Server (no sudo)
+### 7. Start the VNC Server
 
 ```bash
 tightvncserver -geometry 1920x1080
@@ -194,49 +244,45 @@ This means:
 * Display `:1`
 * Port `5901`
 
+### 8. Firewall Configuration (optional)
 
-### 5. Firewall Configuration (optional)
-
-If you need direct access and a firewall is enabled:
+If direct access is required and a firewall is enabled:
 
 ```bash
 sudo ufw allow 5901/tcp
 ```
 
-### 6. Connect Securely Using SSH Tunnel
+### 9. Connect Securely Using SSH Tunnel
 
 From Windows PowerShell:
 
 ```powershell
-ssh -L 5901:localhost:5901 username@linux_host_ip
+ssh -L 5901:localhost:5901 username@linux_server_ip
 ```
 
 This forwards the VNC connection securely over SSH.
 
-
-### 7. Install RealVNC Viewer on Windows
+### 10. Install RealVNC Viewer on Windows
 
 Download and install **RealVNC Viewer** (Viewer only):
 
 * [https://www.realvnc.com/en/connect/download/viewer/](https://www.realvnc.com/en/connect/download/viewer/)
 
-
-### 8. Connect from Windows
+### 11. Connect from Windows
 
 1. Open **RealVNC Viewer**
 2. Enter the connection address:
 
-     ```
-     localhost:5901
-     ```
-     
+```
+localhost:5901
+```
+
 3. Click **Connect**
 4. Enter your VNC password
 
 You should now see the XFCE desktop.
 
-
-### 9. Managing VNC Sessions
+### 12. Managing VNC Sessions
 
 List sessions:
 
@@ -256,14 +302,31 @@ Start a new session:
 tightvncserver
 ```
 
+### 13. Running the YOLOEZ Linux Executable
+
+From your SSH session or a terminal inside the XFCE desktop:
+
+1. Navigate to the executable directory:
+
+```bash
+cd ~/YOLOEZ
+```
+
+2. Run the executable:
+
+```bash
+./YOLOEZ-linux-x86-64
+```
+
+The GUI will appear on your remote desktop session, and you can proceed normally with use.
 
 ### Notes
 
-* Each display `:N` uses port `5900 + N`
+* Each VNC display `:N` uses port `5900 + N`
 * VNC passwords are separate from system passwords
+* Downloaded executables must be made executable (`chmod +x`) before running
 
-
-
+---
 
 ## Screenshots and Visual Examples
 
@@ -297,17 +360,6 @@ tightvncserver
 ├── Various UV environment files  
 └── README.md
 </pre>
-
----
-
-## System Requirements
-
-- Windows or Linux (When running on a headless Linux server, a remote desktop must be used to interact with the GUI, terminal commands are not consistent with the goal of this project).
-   - Instructions for setting up remote desktop on a Linux server
-- GPU recommended for training but not required
-- Sufficient disk space for datasets and trained models
-
-Exact requirements may vary depending on dataset size and model configuration.
 
 ---
 
