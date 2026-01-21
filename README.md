@@ -153,12 +153,12 @@ On your Windows machine:
    `[https://github.com/<username>/<repo>/releases](https://github.com/michaelholm6/YOLOEZ/releases)`
 2. Download the Linux executable (e.g., `YOLOEZ-linux-x86-64`).
 
-### 3. Transfer the Executable to the Server Using `rsync`
+### 3. Transfer the Executable to the Server Using `scp`
 
 From Windows (Git Bash, WSL, or another terminal):
 
 ```bash
-rsync -avP path/to/YOLOEZ-linux-x86-64 username@linux_server_ip:~/YOLOEZ/
+scp path/to/YOLOEZ-linux-x86-64 username@linux_server_ip:~/YOLOEZ/
 ```
 
 * Replace `path/to/YOLOEZ-linux` with the local path of the downloaded file
