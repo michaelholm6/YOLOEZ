@@ -115,9 +115,153 @@ This ensures that even first time users can successfully train and use YOLO mode
 
 ## Linux Remote Desktop Setup
 
+This section explains how to set up a lightweight Linux remote desktop using **XFCE** and **TightVNC**, with minimal use of `sudo`. The desktop can be accessed from **Windows using RealVNC Viewer**. This allows for use of YOLOEZ on Linux-based headless GPU clusters.
+
+### Requirements
+
+- Linux machine (Debian/Ubuntu-based)
+- Non-root user account
+- Network or SSH access
+- Windows machine for remote access
+
+### 1. Install Required Packages (one-time sudo)
+
+```bash
+sudo apt update
+sudo apt install -y xfce4 xfce4-goodies tightvncserver
+````
+
+Installed components:
+
+* **xfce4** — lightweight desktop environment
+* **xfce4-goodies** — additional XFCE utilities
+* **tightvncserver** — VNC server
 
 
----
+### 2. Initialize TightVNC (no sudo)
+
+Run the VNC server once to set a password and create configuration files:
+
+```bash
+tightvncserver
+```
+
+After setup completes, stop the server:
+
+```bash
+tightvncserver -kill :1
+```
+
+
+### 3. Configure VNC to Start XFCE
+
+Edit the VNC startup script:
+
+```bash
+nano ~/.vnc/xstartup
+```
+
+Replace the file contents with:
+
+```sh
+#!/bin/sh
+unset SESSION_MANAGER
+unset DBUS_SESSION_BUS_ADDRESS
+
+exec startxfce4 &
+```
+
+Make the script executable:
+
+```bash
+chmod +x ~/.vnc/xstartup
+```
+
+### 4. Start the VNC Server (no sudo)
+
+```bash
+tightvncserver -geometry 1920x1080
+```
+
+Example output:
+
+```
+New 'X' desktop is hostname:1
+```
+
+This means:
+
+* Display `:1`
+* Port `5901`
+
+
+### 5. Firewall Configuration (optional)
+
+If you need direct access and a firewall is enabled:
+
+```bash
+sudo ufw allow 5901/tcp
+```
+
+### 6. Connect Securely Using SSH Tunnel
+
+From Windows PowerShell:
+
+```powershell
+ssh -L 5901:localhost:5901 username@linux_host_ip
+```
+
+This forwards the VNC connection securely over SSH.
+
+
+### 7. Install RealVNC Viewer on Windows
+
+Download and install **RealVNC Viewer** (Viewer only):
+
+* [https://www.realvnc.com/en/connect/download/viewer/](https://www.realvnc.com/en/connect/download/viewer/)
+
+
+### 8. Connect from Windows
+
+1. Open **RealVNC Viewer**
+2. Enter the connection address:
+
+     ```
+     localhost:5901
+     ```
+     
+3. Click **Connect**
+4. Enter your VNC password
+
+You should now see the XFCE desktop.
+
+
+### 9. Managing VNC Sessions
+
+List sessions:
+
+```bash
+tightvncserver -list
+```
+
+Stop a session:
+
+```bash
+tightvncserver -kill :1
+```
+
+Start a new session:
+
+```bash
+tightvncserver
+```
+
+
+### Notes
+
+* Each display `:N` uses port `5900 + N`
+* VNC passwords are separate from system passwords
+
 
 ## Screenshots and Visual Examples
 
