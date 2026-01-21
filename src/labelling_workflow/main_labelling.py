@@ -13,19 +13,25 @@ from labelling_workflow.crop_and_mask import *
 from labelling_workflow.bootstrap_runner import *
 from utils import show_instructions
 
-def run_labeling_workflow(suppress_instructions=False):
-    
+def run_labeling_workflow(
+    suppress_instructions=False, 
+    test_inputs=None  # new parameter
+):
     if not suppress_instructions:
         instructions = (
-        "Welcome to the Labelling Workflow!\n\n"
-        "- You will be guided through a series of steps to label your images.\n"
-        "- Please follow the on-screen instructions at each step.\n"
-        "- You can press 'Esc' at any time to exit the workflow.\n\n"
-        "Click 'OK' to begin."
-    )
+            "Welcome to the Labelling Workflow!\n\n"
+            "- You will be guided through a series of steps to label your images.\n"
+            "- Please follow the on-screen instructions at each step.\n"
+            "- You can press 'Esc' at any time to exit the workflow.\n\n"
+            "Click 'OK' to begin."
+        )
         show_instructions(message=instructions)
-    
-    args = get_user_labelling_inputs()
+
+    if test_inputs is not None:
+        args = test_inputs
+    else:
+        args = get_user_labelling_inputs()
+
         
     images = args["image_paths"]
     
