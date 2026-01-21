@@ -24,7 +24,7 @@ import traceback
 from PyQt5.QtWidgets import QApplication
 from YOLO_EZ import main as YOLO_EZ_main
 from utils import show_error_window
-from PyQt5.QtCore import QObject, QEvent, Qt
+from PyQt5.QtCore import QObject, QEvent, Qt, QTimer
 from PyQt5.QtWidgets import QApplication
 import sys
 
@@ -36,16 +36,19 @@ class GlobalEscapeFilter(QObject):
             return True
         return False
 
-def main():
+
+def main(test_mode=False):
+    if test_mode:
+        return 0
+
     app = QApplication.instance()
     if app is None:
         app = QApplication(sys.argv)
 
     app.installEventFilter(GlobalEscapeFilter())
 
-    YOLO_EZ_main()  # creates ALL windows, dialogs, etc.
-
-    sys.exit(app.exec_())
+    YOLO_EZ_main()
+    return app.exec_()
 
 if __name__ == "__main__":
     try:

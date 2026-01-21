@@ -1,3 +1,5 @@
+![CI](https://github.com/michaelholm6/YOLOEZ/actions/workflows/test.yml/badge.svg)
+
 # YOLOEZ
 
 A standalone, GUI based application for labeling data, training models, and running inference with Ultralytics powered YOLO11 models.  

@@ -12,4 +12,6 @@ dependencies = [
     "pyqtgraph>=0.14.0",
     "scikit-learn>=1.8.0",
     "ultralytics>=8.4.6",
+    "torch==2.8.0",
+    "pytest>=9.0.2",
 ]
