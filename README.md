@@ -1,6 +1,6 @@
 # YOLOEZ
 
-A standalone, GUI based application for labeling data, training models, and running inference with Ultralytics powered YOLOv12 models.  
+A standalone, GUI based application for labeling data, training models, and running inference with Ultralytics powered YOLO11 models.  
 This tool supports both bounding box detection and segmentation workflows and is designed to be usable without writing any code.
 
 The application guides users through every step with built in tooltips, instructional popups, and clear workflow structure, making YOLO model training and usage accessible to users who may not be familiar with machine learning pipelines or Python development.
@@ -15,11 +15,12 @@ The application guides users through every step with built in tooltips, instruct
 4. [Getting Started](#getting-started)
 5. [Application Workflow](#application-workflow)
 6. [User Guidance and Help System](#user-guidance-and-help-system)
-7. [Screenshots and Visual Examples](#screenshots-and-visual-examples)
-8. [Repository Structure](#repository-structure)
-9. [System Requirements](#system-requirements)
-10. [Intended Audience](#intended-audience)
-11. [License](#license)
+7. [Linux Remote Desktop Setup](#linux-remote-desktop-setup)
+8. [Screenshots and Visual Examples](#screenshots-and-visual-examples)
+9. [Repository Structure](#repository-structure)
+10. [System Requirements](#system-requirements)
+11. [Intended Audience](#intended-audience)
+12. [License](#license)
 
 ---
 
@@ -112,6 +113,158 @@ This ensures that even first time users can successfully train and use YOLO mode
 
 ---
 
+## Linux Remote Desktop Setup
+
+This section explains how to set up a lightweight Linux remote desktop using **XFCE** and **TightVNC**, with minimal use of `sudo`. The desktop can be accessed from **Windows using RealVNC Viewer**. This allows for use of YOLOEZ on Linux-based headless GPU clusters.
+
+### Requirements
+
+- Linux machine (Debian/Ubuntu-based)
+- Non-root user account
+- Network or SSH access
+- Windows machine for remote access
+
+### 1. Install Required Packages on Linux machine (one-time sudo)
+
+```bash
+sudo apt update
+sudo apt install -y xfce4 xfce4-goodies tightvncserver
+````
+
+Installed components:
+
+* **xfce4** — lightweight desktop environment
+* **xfce4-goodies** — additional XFCE utilities
+* **tightvncserver** — VNC server
+
+
+### 2. Initialize TightVNC (no sudo)
+
+Run the VNC server once to set a password and create configuration files:
+
+```bash
+tightvncserver
+```
+
+After setup completes, stop the server:
+
+```bash
+tightvncserver -kill :1
+```
+
+
+### 3. Configure VNC to Start XFCE
+
+Edit the VNC startup script:
+
+```bash
+nano ~/.vnc/xstartup
+```
+
+Replace the file contents with:
+
+```sh
+#!/bin/sh
+unset SESSION_MANAGER
+unset DBUS_SESSION_BUS_ADDRESS
+
+exec startxfce4 &
+```
+
+Make the script executable:
+
+```bash
+chmod +x ~/.vnc/xstartup
+```
+
+### 4. Start the VNC Server (no sudo)
+
+```bash
+tightvncserver -geometry 1920x1080
+```
+
+Example output:
+
+```
+New 'X' desktop is hostname:1
+```
+
+This means:
+
+* Display `:1`
+* Port `5901`
+
+
+### 5. Firewall Configuration (optional)
+
+If you need direct access and a firewall is enabled:
+
+```bash
+sudo ufw allow 5901/tcp
+```
+
+### 6. Connect Securely Using SSH Tunnel
+
+From Windows PowerShell:
+
+```powershell
+ssh -L 5901:localhost:5901 username@linux_host_ip
+```
+
+This forwards the VNC connection securely over SSH.
+
+
+### 7. Install RealVNC Viewer on Windows
+
+Download and install **RealVNC Viewer** (Viewer only):
+
+* [https://www.realvnc.com/en/connect/download/viewer/](https://www.realvnc.com/en/connect/download/viewer/)
+
+
+### 8. Connect from Windows
+
+1. Open **RealVNC Viewer**
+2. Enter the connection address:
+
+     ```
+     localhost:5901
+     ```
+     
+3. Click **Connect**
+4. Enter your VNC password
+
+You should now see the XFCE desktop.
+
+
+### 9. Managing VNC Sessions
+
+List sessions:
+
+```bash
+tightvncserver -list
+```
+
+Stop a session:
+
+```bash
+tightvncserver -kill :1
+```
+
+Start a new session:
+
+```bash
+tightvncserver
+```
+
+
+### Notes
+
+* Each display `:N` uses port `5900 + N`
+* VNC passwords are separate from system passwords
+
+
+
+
 ## Screenshots and Visual Examples
 
 ### Main Application Window
@@ -150,6 +303,7 @@ This ensures that even first time users can successfully train and use YOLO mode
 ## System Requirements
 
 - Windows or Linux (When running on a headless Linux server, a remote desktop must be used to interact with the GUI, terminal commands are not consistent with the goal of this project).
+   - Instructions for setting up remote desktop on a Linux server
 - GPU recommended for training but not required
 - Sufficient disk space for datasets and trained models
 
