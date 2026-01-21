@@ -17,5 +17,5 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "pyqt5>=5.16.0",
+    "pyqt5>=5.15.11",
 ]
