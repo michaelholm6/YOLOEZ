@@ -124,7 +124,7 @@ This section explains how to set up a lightweight Linux remote desktop using **X
 - Network or SSH access
 - Windows machine for remote access
 
-### 1. Install Required Packages (one-time sudo)
+### 1. Install Required Packages on Linux machine (one-time sudo)
 
 ```bash
 sudo apt update
@@ -261,6 +261,8 @@ tightvncserver
 
 * Each display `:N` uses port `5900 + N`
 * VNC passwords are separate from system passwords
+
+
 
 
 ## Screenshots and Visual Examples
