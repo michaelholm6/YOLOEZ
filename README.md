@@ -1,4 +1,5 @@
-![CI](https://github.com/michaelholm6/YOLOEZ/actions/workflows/test.yml/badge.svg)
+Main branch: ![CI](https://github.com/michaelholm6/YOLOEZ/actions/workflows/test.yml/badge.svg?branch=main)  
+Development branch: ![CI](https://github.com/michaelholm6/YOLOEZ/actions/workflows/test.yml/badge.svg?branch=development)
 
 # YOLOEZ
 
