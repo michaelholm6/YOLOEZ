@@ -132,6 +132,25 @@ def test_dialog_can_open_and_close(qtbot):
 
     assert True
     
+import os
+from PyQt5 import QtWidgets, QtCore
+    
+from labelling_workflow.get_user_inputs_labelling import InputDialog
+    
+def test_input_dialog_can_open_and_close_headless():
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
+    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+    dialog = InputDialog()
+    dialog.show()
+
+    QtCore.QTimer.singleShot(0, dialog.close)
+
+    for _ in range(20):
+        app.processEvents()
+
+    assert dialog is not None
+    
 
     
 
