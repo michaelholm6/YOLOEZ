@@ -117,7 +117,7 @@ def test_inference_workflow_runs_without_gui(monkeypatch, tmp_path):
 from training_workflow.get_user_inputs_training import YOLOTrainingDialog
 
 @pytest.mark.timeout(10)
-def test_dialog_can_open_and_close(qtbot):
+def test_training_input_dialog_can_open_and_close(qtbot):
     """
     Smoke test: the dialog should be able to be constructed,
     shown, and closed without crashing.
@@ -136,7 +136,7 @@ from PyQt5 import QtWidgets, QtCore
     
 from labelling_workflow.get_user_inputs_labelling import InputDialogLabelling
     
-def test_input_dialog_can_open_and_close_headless():
+def test_labelling_input_dialog_can_open_and_close():
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
@@ -152,7 +152,7 @@ def test_input_dialog_can_open_and_close_headless():
     
 from inference_workflow.get_user_inputs_inference import InputDialogInference
     
-def test_input_dialog_can_open_and_close_inference_headless():
+def test_inference_input_dialog_can_open_and_close():
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
