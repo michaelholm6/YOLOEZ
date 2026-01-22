@@ -71,3 +71,48 @@ def test_training_workflow_runs_without_gui(monkeypatch, tmp_path):
 
     assert results.get("mock_result") is True
 
+from inference_workflow.main_inference import run_inference_workflow
+
+def test_inference_workflow_runs_without_gui(monkeypatch, tmp_path):
+
+    test_inputs = {
+        "image_paths": [
+            "assets/test_images/test_image_1.jpg",
+            "assets/test_images/test_image_2.jpg",
+            "assets/test_images/test_image_3.jpg",
+            "assets/test_images/test_image_4.jpg",
+            "assets/test_images/test_image_5.jpg",
+        ],
+        "YOLO_model": "fake_model.pt",
+        "YOLO_confidence": 0.25,
+        "output_folder": tmp_path,
+    }
+
+
+    monkeypatch.setattr("inference_workflow.main_inference.show_instructions", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        "inference_workflow.main_inference.annotate_images",
+        lambda images: ({img: None for img in images}, 1),
+    )
+    monkeypatch.setattr(
+        "inference_workflow.main_inference.crop_and_mask_images",
+        lambda images, aois: images,
+    )
+
+
+    class DummyYOLO:
+        def __init__(self, *args, **kwargs):
+            pass
+
+
+    monkeypatch.setattr("inference_workflow.main_inference.YOLO", DummyYOLO)
+    monkeypatch.setattr("inference_workflow.main_inference.run_yolo_inference", lambda *args, **kwargs: None)
+
+
+    result = run_inference_workflow(suppress_instructions=True, test_inputs=test_inputs)
+
+
+    assert True
+    
+
+

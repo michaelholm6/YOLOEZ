@@ -10,7 +10,7 @@ from labelling_workflow.crop_and_mask import crop_and_mask_images
 from inference_workflow.get_user_inputs_inference import get_user_inference_inputs
 from inference_workflow.run_inference import run_yolo_inference
 
-def run_inference_workflow(trained_model_path=None, suppress_instructions=False):
+def run_inference_workflow(trained_model_path=None, suppress_instructions=False, test_inputs=False):
     """
     Main method for performing inference with a trained YOLO model.
     
@@ -18,16 +18,20 @@ def run_inference_workflow(trained_model_path=None, suppress_instructions=False)
         trained_model_path (str): Path to the trained YOLO .pt/.pth model file.
         suppress_instructions (bool): If True, skips showing instructions to the user.
     """
+    if test_inputs is None:
+        if not suppress_instructions:
+            show_instructions(
+                "Welcome to the Inference Workflow!\n\n"
+                "In this workflow, you will select images, optionally crop them to areas of interest, "
+                "and run inference using a trained YOLO model to detect objects in the images.\n\n"
+                "In the following screen, you will provide the necessary inputs to proceed."
+            )
     
-    if not suppress_instructions:
-        show_instructions(
-            "Welcome to the Inference Workflow!\n\n"
-            "In this workflow, you will select images, optionally crop them to areas of interest, "
-            "and run inference using a trained YOLO model to detect objects in the images.\n\n"
-            "In the following screen, you will provide the necessary inputs to proceed."
-        )
+        inputs = get_user_inference_inputs()
     
-    inputs = get_user_inference_inputs()
+    else:
+        inputs = test_inputs    
+    
     image_paths = inputs["image_paths"]
     
     if not suppress_instructions:
