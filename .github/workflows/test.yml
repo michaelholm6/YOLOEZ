@@ -38,6 +38,7 @@ jobs:
           pip install -e .[dev]
 
       - name: Run tests
+        shell: bash
         env:
           QT_QPA_PLATFORM: offscreen
         run: |
