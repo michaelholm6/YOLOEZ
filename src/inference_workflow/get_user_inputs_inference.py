@@ -6,7 +6,7 @@ import sys
 import os
 from PyQt5 import QtWidgets, QtGui, QtCore
 
-class InputDialog(QtWidgets.QDialog):
+class InputDialogInference(QtWidgets.QDialog):
     def __init__(self):
         super().__init__()
         font = QtGui.QFont()
@@ -376,7 +376,7 @@ def get_user_inference_inputs():
         app = QtWidgets.QApplication(sys.argv)
         owns_app = True
 
-    dialog = InputDialog()
+    dialog = InputDialogInference()
     result = None
     if dialog.exec_() == QtWidgets.QDialog.Accepted:
         result = dialog.get_values()
