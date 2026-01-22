@@ -30,7 +30,7 @@ The application guides users through every step with built in tooltips, instruct
 
 ## Overview
 
-This repository contains the full source code and prebuilt executables for a graphical application that simplifies the process of working with YOLOv8 models.
+This repository contains the full source code and prebuilt executables for a graphical application that simplifies the process of working with YOLO11 models.
 
 The tool provides an end to end workflow including:
 - Dataset labeling
@@ -55,7 +55,7 @@ Exact requirements may vary depending on dataset size and model configuration.
 
 ## Key Features
 
-- GUI driven YOLOv8 training and inference
+- GUI driven YOLO11 training and inference
 - Support for bounding box detection and segmentation models
 - Integrated dataset labeling tools
 - Built in training configuration interface
@@ -71,8 +71,8 @@ Exact requirements may vary depending on dataset size and model configuration.
 - Image annotation using bounding boxes
 - Image annotation using segmentation masks
 - Dataset organization
-- Training YOLOv8 detection models
-- Training YOLOv8 segmentation models
+- Training YOLO11 detection models
+- Training YOLO11 segmentation models
 - Running inference on new images
 - Visualizing predictions directly in the GUI
 
@@ -374,7 +374,7 @@ This tool is intended for:
 - Students
 - Engineers
 - Domain experts without ML backgrounds
-- Anyone who wants to train and use YOLOv8 models without writing code
+- Anyone who wants to train and use YOLO11 models without writing code
 
 ---
 
