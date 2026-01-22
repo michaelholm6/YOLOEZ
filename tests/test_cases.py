@@ -114,6 +114,24 @@ def test_inference_workflow_runs_without_gui(monkeypatch, tmp_path):
 
     assert True
     
+from training_workflow.get_user_inputs_training import YOLOTrainingDialog
+
+
+@pytest.mark.timeout(10)
+def test_dialog_can_open_and_close(qtbot):
+    """
+    Smoke test: the dialog should be able to be constructed,
+    shown, and closed without crashing.
+    """
+
+    dlg = YOLOTrainingDialog()
+    dlg.show()
+    qtbot.wait(200)
+    dlg.close()
+    qtbot.wait(100)
+
+    assert True
+    
 
     
 
