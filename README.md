@@ -78,9 +78,9 @@ Exact requirements may vary depending on dataset size and model configuration.
 
 No installation or environment setup is required. If you're trying to run this on a linux remote desktop, reference [this section](#linux-remote-desktop-setup).
 
-1. Navigate to the **[Releases]**(https://github.com/michaelholm6/YOLOEZ/releases) section of this repository, located on the right side of the GitHub page.
+1. Navigate to the [**Releases**](https://github.com/michaelholm6/YOLOEZ/releases) section of this repository, located on the right side of the GitHub page.
 2. Download the latest release for your operating system. If downloading for Linux, download all numbered zip files.
-   NOTE: If downloading for Linux, refer to [this section](#2a-download-transfer-and-prepare-yoloez-executable) for guidance on combining multiple zip files.
+   NOTE: If downloading for Linux, refer to [this section](#6-combine-the-split-zip-files-into-a-single-zip) for guidance on combining multiple zip files.
 4. Extract the downloaded zip file.
 5. Launch the executable included in the extracted folder.
 6. NOTE: You must keep the executable file in the same directory as the _internal folder.
