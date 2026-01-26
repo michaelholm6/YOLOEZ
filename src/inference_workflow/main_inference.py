@@ -10,7 +10,7 @@ from labelling_workflow.crop_and_mask import crop_and_mask_images
 from inference_workflow.get_user_inputs_inference import get_user_inference_inputs
 from inference_workflow.run_inference import run_yolo_inference
 
-def run_inference_workflow(trained_model_path=None, suppress_instructions=False, test_inputs=False):
+def run_inference_workflow(trained_model_path=None, suppress_instructions=False, test_inputs=None):
     """
     Main method for performing inference with a trained YOLO model.
     

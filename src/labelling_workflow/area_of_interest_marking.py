@@ -6,7 +6,7 @@ import sys
 import os
 from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QSlider
 from PyQt5.QtGui import QPixmap, QPainter, QPen, QColor, QKeyEvent, QImage
-from PyQt5.QtCore import Qt, QPoint, QTimer
+from PyQt5.QtCore import Qt, QPoint, QTimer, QEventLoop
 import cv2
 from utils import show_error_window
 
@@ -279,8 +279,10 @@ class PolygonAnnotatorWindow(QWidget):
     Main window: top area is the PolygonCanvas, bottombar contains Previous/Next buttons.
     """
 
-    def __init__(self, image_paths):
+    def __init__(self, image_paths, loop):
         super().__init__()
+        self.close_flag = False
+        self.loop = loop
         self.image_paths = image_paths
         self.index = 0
         self.results = {p: [] for p in image_paths}  # polygons in image coords
@@ -295,9 +297,27 @@ class PolygonAnnotatorWindow(QWidget):
         self.next_btn.clicked.connect(lambda: self.change_image(1))
 
         # Layout buttons full width
-        btn_layout = QHBoxLayout()
-        btn_layout.addWidget(self.prev_btn)
-        btn_layout.addWidget(self.next_btn)
+        nav_btn_layout = QHBoxLayout()
+        nav_btn_layout.addWidget(self.prev_btn, stretch=1)
+        nav_btn_layout.addWidget(self.next_btn, stretch=1)
+
+        # Bottom row: Finish button (blue)
+        self.finish_btn = QPushButton("Finish")
+        self.finish_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #0078d7;
+                color: white;
+                border-radius: 6px;
+                padding: 8px 16px;
+                font-size: 14pt;
+            }
+            QPushButton:hover { background-color: #005a9e; }
+            QPushButton:pressed { background-color: #004578; }
+        """)
+        self.finish_btn.clicked.connect(self.finish_annotation)
+
+        finish_layout = QHBoxLayout()
+        finish_layout.addWidget(self.finish_btn, stretch=1)
 
         # Status label
         self.status_label = QLabel("")
@@ -323,7 +343,8 @@ class PolygonAnnotatorWindow(QWidget):
         main_layout.addWidget(self.canvas, stretch=1)
         main_layout.addLayout(slider_layout)
         main_layout.addLayout(status_layout)
-        main_layout.addLayout(btn_layout)
+        main_layout.addLayout(nav_btn_layout)
+        main_layout.addLayout(finish_layout)
 
         self.setLayout(main_layout)
         self.setWindowTitle("AOI Annotator (C=close polygon, R=reset)")
@@ -334,10 +355,28 @@ class PolygonAnnotatorWindow(QWidget):
 
         # Load first image
         self.load_current_image()
+        
+    def finish_annotation(self):
+        """Called when Finish button is clicked"""
+        self.save_current_polygon()
+        self.loop.quit()   # stop local loop
+        self.close_flag = True
+        self.close()       # triggers closeEvent
 
     def update_line_thickness(self, value):
         self.canvas.line_thickness = value
         self.canvas.update()
+        
+    def closeEvent(self, event):
+        """Called when the window is closed"""
+        if getattr(self, "close_flag", False):
+            # Finish button triggered — just close window, do not exit program
+            event.accept()
+        else:
+            # User clicked X — fully exit program
+            print("Window closed — exiting program.")
+            QApplication.quit()
+            sys.exit(0)
 
     def load_current_image(self):
         path = self.image_paths[self.index]
@@ -382,30 +421,28 @@ class PolygonAnnotatorWindow(QWidget):
             self.close()
         else:
             super().keyPressEvent(event)
-
-    def closeEvent(self, event):
-        self.save_current_polygon()
-        event.accept()
         
         
 
 def annotate_images(image_paths):
-    """Top-level helper: launches the GUI and returns {path: [[x,y], ...]}, line thickness"""
+    """Launches GUI and returns {path: [[x,y], ...]} and line thickness"""
     app = QApplication.instance()
     created_app = False
     if app is None:
         app = QApplication(sys.argv)
         created_app = True
 
-    win = PolygonAnnotatorWindow(image_paths)
+    loop = QEventLoop()  # local loop to block until Finish/close
+
+    win = PolygonAnnotatorWindow(image_paths, loop)
     win.show()
-    if created_app:
-        app.exec_()
-    else:
-        app.exec_()
+
+    # block here until user clicks Finish or closes the window
+    loop.exec_()
 
     # return polygons and final line thickness
     return win.results, win.canvas.line_thickness
+
 
 
 # Example usage

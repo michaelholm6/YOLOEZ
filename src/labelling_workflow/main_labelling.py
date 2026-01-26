@@ -39,6 +39,8 @@ def run_labeling_workflow(
         instructions = (
         "Instructions for Marking the Area of Interest:\n\n"
         "- You will now select areas of interest for each image. You will do this by drawing a polygon around the area of interest.\n"
+        "- This is meant to make labelling easier by blacking out areas outside the area of interest, so you don't have to label the entire image, if there are"
+        "lots of instances of your object of interest in the image.\n"
         "- The polygon should outline the area where you want to detect objects.\n"
         "- Left click to add points and outline your polygon.\n"
         "- Press 'C' to close the area of interest polygon.\n"
@@ -106,11 +108,11 @@ def run_labeling_workflow(
         
     if args['annotation_mode'] == 'segmentation':
     
-        save_segmentation_results(images, contours, line_thickness, args["output_folder"], areas_of_interest, save_yolo, args['save_unlabeled_images'])
+        save_segmentation_results(images, contours, cropped_images, line_thickness, args["output_folder"], save_yolo, args['save_unlabeled_images'])
         
     else:
     
-        save_box_results(images, contours, line_thickness, args["output_folder"], areas_of_interest, save_yolo, args['save_unlabeled_images'])  
+        save_box_results(images, contours, cropped_images, line_thickness, args["output_folder"], save_yolo, areas_of_interest)
         
     if not suppress_instructions:
         message = "Labeling workflow complete! Results have been saved to the specified output folder."

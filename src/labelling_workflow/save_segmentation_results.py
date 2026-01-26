@@ -9,52 +9,50 @@ import numpy as np
 def save_segmentation_results(
     image_paths,
     contours_dict,
+    masked_images_dict,
     line_thickness,
     output_dir,
-    areas_of_interest,
     save_yolo_dataset=True,
     save_unlabeled_images=False
 ):
+    """
+    Saves segmentation results for AOI-masked images (black outside AOI).
+
+    Args:
+        image_paths (list[str])
+        contours_dict (dict[str, list[np.ndarray]])
+        masked_images_dict (dict[str, np.ndarray])  # full-size, black outside AOI
+        line_thickness (int)
+        output_dir (str)
+    """
     os.makedirs(output_dir, exist_ok=True)
-    results = []
 
     contour_vis_dir = os.path.join(output_dir, "contour_visualizations")
+    mask_dir = os.path.join(output_dir, "segmentation_masks")
     os.makedirs(contour_vis_dir, exist_ok=True)
+    os.makedirs(mask_dir, exist_ok=True)
+
+    results = []
 
     for img_path in image_paths:
-        img = cv2.imread(img_path)
-        if img is None:
-            print(f"Skipping {img_path}: failed to load.")
+        base_img = masked_images_dict.get(img_path, None)
+        if base_img is None:
+            print(f"Skipping {img_path}: masked image not found.")
             continue
 
         cnts = contours_dict.get(img_path, [])
         cnts = [np.array(c, dtype=np.int32) for c in cnts]
 
-        # 🔹 Only skip if unlabeled images are NOT allowed
         if len(cnts) == 0 and not save_unlabeled_images:
-            print(f"{img_path}: no contours → skipping sample.")
+            print(f"{img_path}: no contours → skipping.")
             continue
 
-        # ---------- AOI handling ----------
-        area_of_interest = areas_of_interest.get(img_path, [])
-        has_aoi = len(area_of_interest) > 0
+        h_img, w_img = base_img.shape[:2]
+        img_name = os.path.splitext(os.path.basename(img_path))[0]
 
-        if has_aoi:
-            aoi_np = np.array(area_of_interest, dtype=np.int32)
-            x, y, w, h = cv2.boundingRect(aoi_np)
-
-            cropped = img[y:y+h, x:x+w].copy()
-            mask = np.zeros(cropped.shape[:2], dtype=np.uint8)
-
-            shifted_aoi = aoi_np - [x, y]
-            cv2.fillPoly(mask, [shifted_aoi], 255)
-
-            base_img = cv2.bitwise_and(cropped, cropped, mask=mask)
-        else:
-            x, y, w, h = 0, 0, img.shape[1], img.shape[0]
-            base_img = img.copy()
-
-        # ---------- Draw contours ----------
+        # --------------------------------------------------
+        # 1. Contour visualization (for debugging)
+        # --------------------------------------------------
         contour_vis = base_img.copy()
         for cnt in cnts:
             cv2.drawContours(
@@ -65,37 +63,48 @@ def save_segmentation_results(
                 line_thickness
             )
 
-        img_name = os.path.splitext(os.path.basename(img_path))[0]
-
-        # ---------- Save contour visualization ----------
         contour_img_path = os.path.join(
             contour_vis_dir,
             f"{img_name}_contours.png"
         )
         cv2.imwrite(contour_img_path, contour_vis)
 
-        # ---------- YOLO dataset ----------
+        # --------------------------------------------------
+        # 2. Binary segmentation mask
+        #    White = object, Black = background
+        # --------------------------------------------------
+        seg_mask = np.zeros((h_img, w_img), dtype=np.uint8)
+
+        for cnt in cnts:
+            if len(cnt) >= 3:
+                cv2.fillPoly(seg_mask, [cnt], 255)
+
+        mask_path = os.path.join(mask_dir, f"{img_name}_mask.png")
+        cv2.imwrite(mask_path, seg_mask)
+
+        # --------------------------------------------------
+        # 3. YOLO polygon dataset (full image coordinates)
+        # --------------------------------------------------
         if save_yolo_dataset:
-            yolo_dir = os.path.join(output_dir, f"yolo_data_{img_name}")
+            yolo_dir = os.path.join(output_dir, "yolo_dataset")
             os.makedirs(yolo_dir, exist_ok=True)
 
-            # Save image
             img_out_path = os.path.join(yolo_dir, f"{img_name}.png")
             cv2.imwrite(img_out_path, base_img)
 
-            # Save label file (may be empty)
             txt_path = os.path.join(yolo_dir, f"{img_name}.txt")
-            h_img, w_img = base_img.shape[:2]
-
             with open(txt_path, "w") as f:
                 for cnt in cnts:
+                    if len(cnt) < 3:
+                        continue
+
                     polygon = []
                     for pt in cnt:
                         px, py = pt[0]
-                        polygon.extend([px / w_img, py / h_img])
-
-                    if len(polygon) < 6:
-                        continue
+                        polygon.extend([
+                            px / w_img,
+                            py / h_img
+                        ])
 
                     class_id = 0
                     poly_str = " ".join(f"{p:.6f}" for p in polygon)

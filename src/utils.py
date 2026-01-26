@@ -53,7 +53,7 @@ def show_instructions(message: str, title: str = "Instructions"):
     btn_layout.addWidget(btn)
     layout.addLayout(btn_layout)
 
-    # -------- Sizing logic (key part) --------
+    # -------- Sizing logic --------
     screen = QtWidgets.QApplication.primaryScreen()
     geom = screen.availableGeometry()
 
@@ -63,7 +63,13 @@ def show_instructions(message: str, title: str = "Instructions"):
         min(500, int(geom.height() * 0.7))
     )
 
-    dialog.exec_()
+    result = dialog.exec_()
+
+    # If dialog was closed with the window 'X', exit the script
+    if result != QtWidgets.QDialog.Accepted:
+        print("Instructions window closed — exiting script.")
+        sys.exit(0)
+
 
 def make_label_with_tooltip(text, tooltip):
     container = QtWidgets.QWidget()

@@ -21,22 +21,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import sys
 import traceback
+
 from PyQt5.QtWidgets import QApplication
+
 from YOLO_EZ import main as YOLO_EZ_main
 from utils import show_error_window
-from PyQt5.QtCore import QObject, QEvent, Qt, QTimer
-import sys
 
-class GlobalEscapeFilter(QObject):
-    def eventFilter(self, obj, event):
-        if event.type() == QEvent.KeyPress and event.key() == Qt.Key_Escape:
-            print("Global ESC pressed — quitting application")
-            QApplication.quit()
-            return True
-        return False
-
-
-def main(test_mode=False):
+def main(test_mode: bool = False) -> int:
     if test_mode:
         return 0
 
@@ -44,17 +35,20 @@ def main(test_mode=False):
     if app is None:
         app = QApplication(sys.argv)
 
-    app.installEventFilter(GlobalEscapeFilter())
-
     YOLO_EZ_main()
+
     return app.exec_()
+
 
 if __name__ == "__main__":
     try:
-        main()
+        sys.exit(main())
+    except SystemExit:
+        raise
     except Exception:
         error_msg = traceback.format_exc()
         print(error_msg)
+
         show_error_window(
             f"An unhandled exception occurred:\n\n{error_msg}",
             title="Unhandled Exception"
