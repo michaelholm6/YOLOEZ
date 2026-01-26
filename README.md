@@ -152,9 +152,9 @@ Installed components:
 
 ---
 
-### 2. **Download all parts** from the [releases page](https://github.com/michaelholm6/YOLOEZ/releases) to your **local Windows machine** for your specific architecture. If you're not sure which files you need, you probably need the ones title YOLOEZ-linux-x86_64.zip.001, YOLOEZ-linux-x86_64.zip.002, etc.
+### 2. Download all parts from the [releases page](https://github.com/michaelholm6/YOLOEZ/releases) to your **local Windows machine** for your specific architecture. If you're not sure which files you need, you probably need the ones title YOLOEZ-linux-x86_64.zip.001, YOLOEZ-linux-x86_64.zip.002, etc.
 
-### 3. **Copy the files to your Linux server** using `scp` (or WinSCP):
+### 3. Copy the files to your Linux server using `scp` (or WinSCP):
 
 ```powershell
 scp path/to/YOLOEZ-linux-x86_64.zip.* username@linux_host_ip:/home/username/
@@ -162,19 +162,19 @@ scp path/to/YOLOEZ-linux-x86_64.zip.* username@linux_host_ip:/home/username/
 
 > Replace `username` and `linux_host_ip` with your Linux credentials. Replace ```path/to/``` with the path that you downloaded the individual zip files to.
 
-### 4. **SSH into the Linux server**:
+### 4. SSH into the Linux server:
 
 ```bash
 ssh username@linux_host_ip
 ```
 
-### 5. **Navigate to the folder containing the split ZIPs**:
+### 5. Navigate to the folder containing the split ZIPs:
 
 ```bash
 cd /home/username
 ```
 
-### 6. **Combine the split ZIP files** into a single ZIP:
+### 6. Combine the split ZIP files into a single ZIP:
 
 ```bash
 cat YOLOEZ-linux-x86_64.zip.* > YOLOEZ-linux-x86_64.zip
@@ -182,13 +182,13 @@ cat YOLOEZ-linux-x86_64.zip.* > YOLOEZ-linux-x86_64.zip
 
 > `cat` concatenates the numeric parts in order (`.001`, `.002`, …). Make sure they are named sequentially.
 
-### 7. **Extract the combined ZIP**:
+### 7. Extract the combined ZIP:
 
 ```bash
 unzip YOLOEZ-linux-x86_64.zip
 ```
 
-### 8. **Make the YOLOEZ executable runnable**:
+### 8. Make the YOLOEZ executable runnable:
 
 ```bash
 chmod +x YOLOEZ
