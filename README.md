@@ -11,14 +11,14 @@ The application guides users through every step with built in tooltips, instruct
 
 1. [Overview](#overview)
 2. [Key Features](#key-features)
-3. [Supported Tasks](#supported-tasks)
-4. [Getting Started](#getting-started)
-5. [Application Workflow](#application-workflow)
-6. [User Guidance and Help System](#user-guidance-and-help-system)
-7. [Linux Remote Desktop Setup](#linux-remote-desktop-setup)
-8. [Screenshots and Visual Examples](#screenshots-and-visual-examples)
-9. [Repository Structure](#repository-structure)
-10. [System Requirements](#system-requirements)
+3. [System Requirements](#system-requirements)
+4. [Supported Tasks](#supported-tasks)
+5. [Getting Started](#getting-started)
+6. [Application Workflow](#application-workflow)
+7. [User Guidance and Help System](#user-guidance-and-help-system)
+8. [Linux Remote Desktop Setup](#linux-remote-desktop-setup)
+9. [Screenshots and Visual Examples](#screenshots-and-visual-examples)
+10. [Repository Structure](#repository-structure)
 11. [Intended Audience](#intended-audience)
 12. [License](#license)
 
@@ -48,6 +48,17 @@ All functionality is exposed through an intuitive graphical interface. No script
 - Context sensitive tooltips throughout the interface
 - No coding required
 - Packaged executables for easy installation
+
+---
+
+## System Requirements
+
+- Windows or Linux (When running on a headless Linux server, a remote desktop must be used to interact with the GUI, terminal commands are not consistent with the goal of this project).
+   - Instructions for setting up remote desktop on a Linux server
+- GPU recommended for training but not required
+- Sufficient disk space for datasets and trained models
+
+Exact requirements may vary depending on dataset size and model configuration.
 
 ---
 
@@ -297,17 +308,6 @@ tightvncserver
 ├── Various UV environment files  
 └── README.md
 </pre>
-
----
-
-## System Requirements
-
-- Windows or Linux (When running on a headless Linux server, a remote desktop must be used to interact with the GUI, terminal commands are not consistent with the goal of this project).
-   - Instructions for setting up remote desktop on a Linux server
-- GPU recommended for training but not required
-- Sufficient disk space for datasets and trained models
-
-Exact requirements may vary depending on dataset size and model configuration.
 
 ---
 
