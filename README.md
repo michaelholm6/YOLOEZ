@@ -150,8 +150,6 @@ Installed components:
 * **tightvncserver** — VNC server
 * **unzip** — utility to extract zip files
 
----
-
 ### 2. Download all parts from the [releases page](https://github.com/michaelholm6/YOLOEZ/releases) to your **local Windows machine** for your specific architecture. If you're not sure which files you need, you probably need the ones title YOLOEZ-linux-x86_64.zip.001, YOLOEZ-linux-x86_64.zip.002, etc.
 
 ### 3. Copy the files to your Linux server using `scp` (or WinSCP):
@@ -194,8 +192,6 @@ unzip YOLOEZ-linux-x86_64.zip
 chmod +x YOLOEZ
 ```
 
----
-
 ### 9. Initialize TightVNC (no sudo)
 
 Run the VNC server once to set a password and create configuration files:
@@ -209,8 +205,6 @@ After setup completes, stop the server:
 ```bash
 tightvncserver -kill :1
 ```
-
----
 
 ### 10. Configure VNC to Start XFCE
 
@@ -233,8 +227,6 @@ Make executable:
 ```bash
 chmod +x ~/.vnc/xstartup
 ```
-
----
 
 ### 11. Start the VNC Server (no sudo)
 
