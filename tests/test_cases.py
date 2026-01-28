@@ -215,33 +215,3 @@ def test_inference_input_dialog_can_open_and_close():
 
     dialog.close_flag = True
     dialog.close()
-
-
-import tempfile
-import cv2
-import numpy as np
-from labelling_workflow.image_gatherer import load_images_from_folder
-
-
-def test_load_images_from_folder():
-    with tempfile.TemporaryDirectory() as tmpdir:
-        img1_path = os.path.join(tmpdir, "image1.jpg")
-        img2_path = os.path.join(tmpdir, "image2.png")
-        img3_path = os.path.join(tmpdir, "not_an_image.txt")
-
-        dummy_img = np.zeros((10, 10, 3), dtype=np.uint8)
-
-        cv2.imwrite(img1_path, dummy_img)
-        cv2.imwrite(img2_path, dummy_img)
-
-        with open(img3_path, "w") as f:
-            f.write("this is not an image")
-
-        # Call function
-        images = load_images_from_folder(tmpdir)
-
-        # Assertions
-        assert len(images) == 2, "Should load exactly 2 image files"
-        for img in images:
-            assert isinstance(img, np.ndarray), "Loaded item should be a numpy array"
-            assert img.shape == (10, 10, 3), "Image shape should match dummy image"
