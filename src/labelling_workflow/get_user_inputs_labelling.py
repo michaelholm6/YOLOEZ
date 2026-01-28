@@ -50,7 +50,7 @@ class InputDialogLabelling(QtWidgets.QDialog):
         model_label = make_label_with_tooltip(
             "Bootstrapping Model:",
             "Optional: Select a pre-trained bootstrapping model to use. This will automatically generate initial annotations for your images. \
-You will have a chance to edit these annotations later. This should be a .pt file, and can be a model you have previously trained using this tool.\
+You will have a chance to edit these annotations later. This should be a .pt file, and can be a model you have previously trained using this tool. \
 The idea here is that you can incrementally improve your model by labelling some images, training a model, and then using that model to bootstrap annotations on more images."
         )
         

@@ -47,7 +47,7 @@ class InputDialogInference(QtWidgets.QDialog):
 
         model_label = make_label_with_tooltip(
             "Trained YOLO Model:",
-            "Select the trained YOLO model to use for object detection. This should be a model that you trained previously using the training workflow."
+            "Select the trained YOLO model to use for object detection. This should be a model that you trained previously using the training workflow. This should be a .pt file."
         )
         
         self.confidence_slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
