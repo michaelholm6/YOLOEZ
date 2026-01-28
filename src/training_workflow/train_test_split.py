@@ -3,7 +3,7 @@
 # Developed at Purdue University
 
 from PyQt5 import QtWidgets, QtCore, QtGui
-import sys
+
 
 def get_train_test_split():
 
@@ -29,6 +29,7 @@ def get_train_test_split():
         return dialog.doubleValue() / 100.0
 
     return None
+
 
 if __name__ == "__main__":
     split = get_train_test_split()

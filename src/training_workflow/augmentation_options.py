@@ -5,6 +5,7 @@
 from PyQt5 import QtWidgets, QtGui, QtCore
 import sys
 
+
 class AugmentationDialog(QtWidgets.QDialog):
     def __init__(self, task="segmentation"):
         super().__init__()
@@ -22,7 +23,10 @@ class AugmentationDialog(QtWidgets.QDialog):
         all_options = [
             ("Flip", "Add horizontally flipped images to the training set"),
             ("Rotate", "Add rotated images to the training set"),
-            ("Color Jitter", "Add color jittering to the dataset. Randomly changes brightness, contrast, saturation, and hue"),
+            (
+                "Color Jitter",
+                "Add color jittering to the dataset. Randomly changes brightness, contrast, saturation, and hue",
+            ),
             ("Blur", "Add blurred images to the training set"),
             ("Noise", "Add images with random noise to the training set"),
             ("Scale", "Add scaled images to the training set"),
@@ -94,7 +98,9 @@ class AugmentationDialog(QtWidgets.QDialog):
 
     def get_aug_dict(self):
         """Return dictionary compatible with build_transform(), plus augmentation count."""
-        selected = [self.options[i][0] for i, cb in enumerate(self.checkboxes) if cb.isChecked()]
+        selected = [
+            self.options[i][0] for i, cb in enumerate(self.checkboxes) if cb.isChecked()
+        ]
         return {
             "flip": "Flip" in selected,
             "rotate": "Rotate" in selected,  # safe: won't exist for detection
@@ -102,8 +108,9 @@ class AugmentationDialog(QtWidgets.QDialog):
             "color": "Color Jitter" in selected,
             "blur": "Blur" in selected,
             "noise": "Noise" in selected,
-            "num_aug_per_image": self.aug_count_spin.value()
+            "num_aug_per_image": self.aug_count_spin.value(),
         }
+
 
 def get_augmentations(task="segmentation"):
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
@@ -118,5 +125,5 @@ def get_augmentations(task="segmentation"):
         "color": False,
         "blur": False,
         "noise": False,
-        "num_aug_per_image": 0
+        "num_aug_per_image": 0,
     }, 0

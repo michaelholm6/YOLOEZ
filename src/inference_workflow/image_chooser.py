@@ -6,6 +6,7 @@ from PyQt5 import QtWidgets
 import sys
 import os
 
+
 def choose_image_folder():
     """
     Opens a folder selection dialog to let the user choose a directory
@@ -22,7 +23,7 @@ def choose_image_folder():
         None,
         "Select Folder Containing Images for Inference",
         "",
-        QtWidgets.QFileDialog.ShowDirsOnly | QtWidgets.QFileDialog.DontResolveSymlinks
+        QtWidgets.QFileDialog.ShowDirsOnly | QtWidgets.QFileDialog.DontResolveSymlinks,
     )
 
     if not folder:
@@ -31,9 +32,7 @@ def choose_image_folder():
     # Gather supported image files from the folder
     exts = (".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".tif")
     image_files = [
-        os.path.join(folder, f)
-        for f in os.listdir(folder)
-        if f.lower().endswith(exts)
+        os.path.join(folder, f) for f in os.listdir(folder) if f.lower().endswith(exts)
     ]
 
     if not image_files:

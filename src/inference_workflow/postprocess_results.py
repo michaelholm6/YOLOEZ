@@ -5,16 +5,17 @@
 import os
 import cv2
 
+
 def postprocess_results(results, output_dir=None, save_images=True, print_summary=True):
     """
     Postprocess YOLO inference results.
-    
+
     Args:
         results (list): List of ultralytics YOLO result objects.
         output_dir (str, optional): Directory to save annotated images. If None, nothing saved.
         save_images (bool): Whether to save annotated images.
         print_summary (bool): Whether to print detections to console.
-    
+
     Returns:
         list[dict]: Structured list of detections with class, confidence, and bounding boxes.
     """
@@ -40,7 +41,7 @@ def postprocess_results(results, output_dir=None, save_images=True, print_summar
                 "class_id": cls_id,
                 "class_name": label,
                 "confidence": conf,
-                "bbox": xyxy
+                "bbox": xyxy,
             }
             img_detections.append(det)
 

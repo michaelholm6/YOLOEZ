@@ -6,6 +6,7 @@ import sys
 import os
 from PyQt5 import QtWidgets, QtGui, QtCore
 
+
 class InputDialogInference(QtWidgets.QDialog):
     def __init__(self):
         super().__init__()
@@ -18,7 +19,7 @@ class InputDialogInference(QtWidgets.QDialog):
         self._resize_timer.setSingleShot(True)
         self._resize_timer.timeout.connect(self.show_current_image)
         self.close_flag = False
-        
+
         def make_label_with_tooltip(text, tooltip):
             container = QtWidgets.QWidget()
             layout = QtWidgets.QHBoxLayout(container)
@@ -40,19 +41,19 @@ class InputDialogInference(QtWidgets.QDialog):
 
         self.output_path_edit = QtWidgets.QLineEdit()
         self.browse_output_button = QtWidgets.QPushButton("Browse Output Folder...")
-        
+
         # === Model Selection ===
         self.model_path_edit = QtWidgets.QLineEdit()
         self.browse_model_button = QtWidgets.QPushButton("Select trained YOLO Model...")
 
         model_label = make_label_with_tooltip(
             "Trained YOLO Model:",
-            "Select the trained YOLO model to use for object detection. This should be a model that you trained previously using the training workflow. This should be a .pt file."
+            "Select the trained YOLO model to use for object detection. This should be a model that you trained previously using the training workflow. This should be a .pt file.",
         )
-        
+
         self.confidence_slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
         self.confidence_slider.setRange(0, 100)  # slider values 0–100
-        self.confidence_slider.setValue(50)      # default 0.5
+        self.confidence_slider.setValue(50)  # default 0.5
         self.confidence_slider.setSingleStep(1)
 
         self.confidence_spinbox = QtWidgets.QDoubleSpinBox()
@@ -112,7 +113,6 @@ class InputDialogInference(QtWidgets.QDialog):
         # Initially hide; show only if bootstrapping model is selected
         self.confidence_container = conf_container
 
-
         # === Run Button ===
         self.run_button = QtWidgets.QPushButton("Run")
         self.run_button.setStyleSheet("""
@@ -134,18 +134,22 @@ class InputDialogInference(QtWidgets.QDialog):
         self.status_label.setPalette(palette)
         self.status_label.setWordWrap(True)
         font = self.status_label.font()
-        font.setPointSize(16)   # choose whatever size you want
+        font.setPointSize(16)  # choose whatever size you want
         self.status_label.setFont(font)
         self.status_label.show()
 
         # === Image Preview and Navigation ===
         self.image_preview = QtWidgets.QLabel()
-        self.image_preview.setStyleSheet("border: 1px solid black; background-color: #eee;")
+        self.image_preview.setStyleSheet(
+            "border: 1px solid black; background-color: #eee;"
+        )
         self.image_preview.setAlignment(QtCore.Qt.AlignCenter)
         self.image_preview.setStyleSheet("font-size: 16pt;")
         self.image_preview.setText("No Folder Selected")
         self.image_preview.setScaledContents(False)
-        self.image_preview.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        self.image_preview.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
+        )
 
         # Keep track of folder images
         self.image_files = []
@@ -170,10 +174,12 @@ class InputDialogInference(QtWidgets.QDialog):
         # === Helper to create label + tooltip ===
 
         image_path_label = make_label_with_tooltip(
-            "Image Folder:", "Select a folder containing input images to label for future training."
+            "Image Folder:",
+            "Select a folder containing input images to label for future training.",
         )
         output_path_label = make_label_with_tooltip(
-            "Output Folder:", "Select a folder where any generated outputs will be saved."
+            "Output Folder:",
+            "Select a folder where any generated outputs will be saved.",
         )
 
         # === Controls Layout ===
@@ -216,7 +222,7 @@ class InputDialogInference(QtWidgets.QDialog):
         self.next_button.clicked.connect(self.show_next_image)
         self.image_path_edit.textChanged.connect(self.update_run_button_state)
         self.output_path_edit.textChanged.connect(self.update_run_button_state)
-        self.model_path_edit.textChanged.connect(self.update_run_button_state) 
+        self.model_path_edit.textChanged.connect(self.update_run_button_state)
 
         self.run_button.setEnabled(False)
         self.update_run_button_state()
@@ -225,31 +231,32 @@ class InputDialogInference(QtWidgets.QDialog):
         self.showMaximized()
         self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowStaysOnTopHint)
         self.show()
-        
+
     def browse_model(self):
         file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
             self,
             "Select YOLO Model",
             "",
-            "Model Files (*.pt *.pth *.onnx);;All Files (*)"
+            "Model Files (*.pt *.pth *.onnx);;All Files (*)",
         )
         if file_path:
             self.model_path_edit.setText(file_path)
-            
+
         if self.model_path_edit.text().strip():
             self.confidence_container.setVisible(True)
         else:
             self.confidence_container.setVisible(False)
-    
 
     # === Folder Browse ===
     def browse_image(self):
-        folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Select Folder of Images")
+        folder = QtWidgets.QFileDialog.getExistingDirectory(
+            self, "Select Folder of Images"
+        )
         if not folder:
             return
 
         self.image_path_edit.setText(folder)
-        valid_exts = ('.jpg', '.jpeg', '.png', '.tif', '.tiff', '.bmp')
+        valid_exts = (".jpg", ".jpeg", ".png", ".tif", ".tiff", ".bmp")
         self.image_files = [
             os.path.join(folder, f)
             for f in sorted(os.listdir(folder))
@@ -285,16 +292,14 @@ class InputDialogInference(QtWidgets.QDialog):
 
         label_size = self.image_preview.size()
         w, h = label_size.width(), label_size.height()
-        rounded_size = (w//10*10, h//10*10)
+        rounded_size = (w // 10 * 10, h // 10 * 10)
 
         if getattr(self, "_last_scaled_size", None) == rounded_size:
             return
         self._last_scaled_size = rounded_size
 
         scaled_pixmap = self._original_pixmap.scaled(
-            label_size,
-            QtCore.Qt.KeepAspectRatio,
-            QtCore.Qt.SmoothTransformation
+            label_size, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation
         )
         self.image_preview.setPixmap(scaled_pixmap)
 
@@ -316,11 +321,15 @@ class InputDialogInference(QtWidgets.QDialog):
 
     def update_navigation_buttons(self):
         self.prev_button.setEnabled(self.current_image_index > 0)
-        self.next_button.setEnabled(self.current_image_index < len(self.image_files) - 1)
+        self.next_button.setEnabled(
+            self.current_image_index < len(self.image_files) - 1
+        )
 
     # === Output Folder ===
     def browse_output(self):
-        folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Select Output Folder")
+        folder = QtWidgets.QFileDialog.getExistingDirectory(
+            self, "Select Output Folder"
+        )
         if folder:
             self.output_path_edit.setText(folder)
 
@@ -338,9 +347,11 @@ class InputDialogInference(QtWidgets.QDialog):
 
         if not output_path:
             errors.append("Please select an output folder.")
-            
-        if not os.path.isfile(YOLO_model) or not YOLO_model.lower().endswith(('.pt', '.pth', '.onnx')):
-                errors.append("YOLO model path is invalid.")
+
+        if not os.path.isfile(YOLO_model) or not YOLO_model.lower().endswith(
+            (".pt", ".pth", ".onnx")
+        ):
+            errors.append("YOLO model path is invalid.")
 
         if errors:
             self.run_button.setEnabled(False)
@@ -349,12 +360,12 @@ class InputDialogInference(QtWidgets.QDialog):
         else:
             self.run_button.setEnabled(True)
             self.status_label.hide()
-            
+
     def on_run_clicked(self):
         """Called when the Run button is clicked"""
         self.close_flag = True  # window can close without quitting program
-        self.accept() 
-        
+        self.accept()
+
     def closeEvent(self, event):
         """Called when the window is closed"""
         if getattr(self, "close_flag", False):
@@ -382,7 +393,11 @@ class InputDialogInference(QtWidgets.QDialog):
             "image_paths": self.image_files,
             "output_folder": self.output_path_edit.text().strip(),
             "YOLO_model": self.model_path_edit.text().strip() or None,
-            "YOLO_confidence": self.confidence_spinbox.value() if self.model_path_edit.text().strip() else None,
+            "YOLO_confidence": (
+                self.confidence_spinbox.value()
+                if self.model_path_edit.text().strip()
+                else None
+            ),
         }
 
 

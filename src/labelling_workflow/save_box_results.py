@@ -6,6 +6,7 @@ import os
 import cv2
 import numpy as np
 
+
 def save_box_results(
     image_paths,
     boxes_dict,
@@ -13,7 +14,7 @@ def save_box_results(
     line_thickness,
     output_dir,
     save_yolo_dataset=True,
-    save_unlabeled_images=False
+    save_unlabeled_images=False,
 ):
     """
     Save bounding-box results for AOI-masked images (black outside AOI).
@@ -64,17 +65,10 @@ def save_box_results(
                 continue
 
             cv2.rectangle(
-                box_vis,
-                (bx1, by1),
-                (bx2, by2),
-                (0, 255, 0),
-                int(line_thickness)
+                box_vis, (bx1, by1), (bx2, by2), (0, 255, 0), int(line_thickness)
             )
 
-        box_img_path = os.path.join(
-            box_vis_dir,
-            f"{img_name}_boxes.png"
-        )
+        box_img_path = os.path.join(box_vis_dir, f"{img_name}_boxes.png")
         cv2.imwrite(box_img_path, box_vis)
 
         # --------------------------------------------------

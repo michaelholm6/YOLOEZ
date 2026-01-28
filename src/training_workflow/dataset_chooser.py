@@ -10,6 +10,7 @@ from sklearn.model_selection import train_test_split
 import tempfile
 from utils import show_error_window
 
+
 def split_dataset(folder, train_split=0.8):
     """
     Lets the user choose a raw dataset folder (or use the provided folder)
@@ -17,7 +18,9 @@ def split_dataset(folder, train_split=0.8):
     """
     if folder is None:
         app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
-        folder = QtWidgets.QFileDialog.getExistingDirectory(None, "Select Raw Dataset Folder")
+        folder = QtWidgets.QFileDialog.getExistingDirectory(
+            None, "Select Raw Dataset Folder"
+        )
 
     if folder and os.path.isdir(folder):
         # Output folder inside temp
@@ -25,7 +28,9 @@ def split_dataset(folder, train_split=0.8):
         os.makedirs(output_dir, exist_ok=True)
 
         # Prepare dataset
-        prepare_yolo_dataset(folder, output_dir, train_split=train_split, class_names=["defect"])
+        prepare_yolo_dataset(
+            folder, output_dir, train_split=train_split, class_names=["defect"]
+        )
 
         return output_dir  # path with YOLO-ready dataset + dataset.yaml
     else:
@@ -41,9 +46,9 @@ def prepare_yolo_dataset(input_dir, output_dir, train_split=0.8, class_names=Non
 
     # Create output dirs
     images_train = os.path.join(output_dir, "images/train")
-    images_val   = os.path.join(output_dir, "images/val")
+    images_val = os.path.join(output_dir, "images/val")
     labels_train = os.path.join(output_dir, "labels/train")
-    labels_val   = os.path.join(output_dir, "labels/val")
+    labels_val = os.path.join(output_dir, "labels/val")
     for d in [images_train, images_val, labels_train, labels_val]:
         os.makedirs(d, exist_ok=True)
 
@@ -60,7 +65,9 @@ def prepare_yolo_dataset(input_dir, output_dir, train_split=0.8, class_names=Non
                     data_pairs.append((img_path, label_path))
 
     if not data_pairs:
-        show_error_window("No valid image-label pairs found in the selected dataset folder.")
+        show_error_window(
+            "No valid image-label pairs found in the selected dataset folder."
+        )
         return None
 
     # Train/val split

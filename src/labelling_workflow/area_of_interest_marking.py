@@ -8,11 +8,15 @@ import sys
 import os
 import cv2
 from PyQt5.QtWidgets import (
-    QApplication, QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QLabel, QSlider
+    QApplication,
+    QWidget,
+    QPushButton,
+    QHBoxLayout,
+    QVBoxLayout,
+    QLabel,
+    QSlider,
 )
-from PyQt5.QtGui import (
-    QPixmap, QPainter, QPen, QColor, QImage, QKeyEvent
-)
+from PyQt5.QtGui import QPixmap, QPainter, QPen, QColor, QImage, QKeyEvent
 from PyQt5.QtCore import Qt, QPoint, QEventLoop
 
 
@@ -39,7 +43,7 @@ class PolygonCanvas(QWidget):
         self.polygon_pts_widget = []  # list of QPoint in widget coordinates
         self.polygon_closed = False
         self.line_thickness = 2
-        
+
         self.hover_first = False
 
         self.setMouseTracking(True)
@@ -62,15 +66,13 @@ class PolygonCanvas(QWidget):
             for poly_img in saved_polygon_image_coords:
                 poly_widget = {
                     "points": [
-                        self.image_to_widget_coords(ix, iy)
-                        for (ix, iy) in poly_img
+                        self.image_to_widget_coords(ix, iy) for (ix, iy) in poly_img
                     ],
-                    "closed": True
+                    "closed": True,
                 }
                 self.polygons.append(poly_widget)
 
         self.update()
-
 
     def update_scaled_image(self):
         """Compute scaled_pixmap, offsets and scale factor based on current widget size."""
@@ -81,11 +83,22 @@ class PolygonCanvas(QWidget):
 
         # convert to QImage/QPixmap
         if len(self.orig_image.shape) == 2:
-            qimg = QImage(self.orig_image.data, self.orig_image.shape[1], self.orig_image.shape[0],
-                          self.orig_image.strides[0], QImage.Format_Grayscale8)
+            qimg = QImage(
+                self.orig_image.data,
+                self.orig_image.shape[1],
+                self.orig_image.shape[0],
+                self.orig_image.strides[0],
+                QImage.Format_Grayscale8,
+            )
         else:
             rgb = cv2.cvtColor(self.orig_image, cv2.COLOR_BGR2RGB)
-            qimg = QImage(rgb.data, rgb.shape[1], rgb.shape[0], rgb.strides[0], QImage.Format_RGB888)
+            qimg = QImage(
+                rgb.data,
+                rgb.shape[1],
+                rgb.shape[0],
+                rgb.strides[0],
+                QImage.Format_RGB888,
+            )
 
         pix = QPixmap.fromImage(qimg)
         # scale with keep aspect ratio
@@ -98,12 +111,14 @@ class PolygonCanvas(QWidget):
 
         # uniform scale from image -> widget
         self.scale = scaled.width() / max(1, self.orig_w)
-        
+
     def mouseMoveEvent(self, event):
         pts = self.current_polygon["points"]
         if len(pts) > 0 and not self.current_polygon["closed"]:
             first_pt = pts[0]
-            dist_sq = (first_pt.x() - event.pos().x())**2 + (first_pt.y() - event.pos().y())**2
+            dist_sq = (first_pt.x() - event.pos().x()) ** 2 + (
+                first_pt.y() - event.pos().y()
+            ) ** 2
             self.hover_first = dist_sq <= 100
             self.update()
         else:
@@ -121,11 +136,11 @@ class PolygonCanvas(QWidget):
         ix = max(0, min(self.orig_w - 1, ix))
         iy = max(0, min(self.orig_h - 1, iy))
         return ix, iy
-    
+
     def add_point(self, pos):
-            if not self.polygon_closed:
-                self.polygon_pts_widget.append(pos)
-                self.update()
+        if not self.polygon_closed:
+            self.polygon_pts_widget.append(pos)
+            self.update()
 
     def image_to_widget_coords(self, ix, iy):
         """Convert image coords to widget QPoint."""
@@ -179,8 +194,6 @@ class PolygonCanvas(QWidget):
             painter.setBrush(color)
             painter.drawEllipse(pt, 5, 5)
 
-
-
     def mousePressEvent(self, event):
         if event.button() != Qt.LeftButton or not self.scaled_pixmap:
             return
@@ -188,8 +201,10 @@ class PolygonCanvas(QWidget):
         pos = event.pos()
 
         # Only accept clicks inside the image
-        if not (self.offset_x <= pos.x() <= self.offset_x + self.scaled_pixmap.width() and
-                self.offset_y <= pos.y() <= self.offset_y + self.scaled_pixmap.height()):
+        if not (
+            self.offset_x <= pos.x() <= self.offset_x + self.scaled_pixmap.width()
+            and self.offset_y <= pos.y() <= self.offset_y + self.scaled_pixmap.height()
+        ):
             return
 
         pts = self.current_polygon["points"]
@@ -197,7 +212,7 @@ class PolygonCanvas(QWidget):
         # If first point clicked (and polygon has ≥3 points), close polygon
         if len(pts) >= 3:
             first_pt = pts[0]
-            dist_sq = (first_pt.x() - pos.x())**2 + (first_pt.y() - pos.y())**2
+            dist_sq = (first_pt.x() - pos.x()) ** 2 + (first_pt.y() - pos.y()) ** 2
             if dist_sq <= 100:  # within 10px
                 self.close_polygon()
                 return
@@ -206,16 +221,19 @@ class PolygonCanvas(QWidget):
         pts.append(pos)
         self.update()
 
-
     def resizeEvent(self, event):
         # Recompute scaled image and convert any existing polygon in image coords back
         prev_image = self.orig_image
         if prev_image is not None:
             # Convert current stored polygon (widget coords) into image coords,
             # then reload and reconvert to widget coords under new scale.
-            img_coords = [self.widget_to_image_coords(pt) for pt in self.polygon_pts_widget]
+            img_coords = [
+                self.widget_to_image_coords(pt) for pt in self.polygon_pts_widget
+            ]
             self.update_scaled_image()
-            self.polygon_pts_widget = [self.image_to_widget_coords(ix, iy) for (ix, iy) in img_coords]
+            self.polygon_pts_widget = [
+                self.image_to_widget_coords(ix, iy) for (ix, iy) in img_coords
+            ]
         else:
             self.update_scaled_image()
         super().resizeEvent(event)
@@ -227,7 +245,6 @@ class PolygonCanvas(QWidget):
             pts_img = [self.widget_to_image_coords(pt) for pt in poly["points"]]
             all_polys.append(pts_img)
         return all_polys
-
 
     def reset_polygon(self):
         """Reset only the current in-progress polygon, allow multiple AOIs."""
@@ -241,16 +258,21 @@ class PolygonCanvas(QWidget):
             self.current_polygon["closed"] = True
             self.polygons.append(self.current_polygon)
             self.undo_stack.append({"action": "add", "polygon": self.current_polygon})
-            self.current_polygon = {"points": [], "closed": False}  # ready for next polygon
+            self.current_polygon = {
+                "points": [],
+                "closed": False,
+            }  # ready for next polygon
             self.update()
             return True
         return False
-    
+
     def undo(self):
         """Undo last action: either cancel current polygon or remove last completed polygon."""
         if self.current_polygon["points"]:
             # cancel in-progress polygon
-            self.undo_stack.append({"action": "cancel_current", "polygon": self.current_polygon})
+            self.undo_stack.append(
+                {"action": "cancel_current", "polygon": self.current_polygon}
+            )
             self.current_polygon = {"points": [], "closed": False}
             self.hover_first = False
         elif self.polygons:
@@ -310,7 +332,7 @@ class PolygonAnnotatorWindow(QWidget):
         status_layout = QHBoxLayout()
         status_layout.addWidget(self.status_label)
         status_layout.addStretch(1)
-        
+
         self.thickness_slider = QSlider(Qt.Horizontal)
         self.thickness_slider.setMinimum(1)
         self.thickness_slider.setMaximum(50)
@@ -341,18 +363,18 @@ class PolygonAnnotatorWindow(QWidget):
 
         # Load first image
         self.load_current_image()
-        
+
     def finish_annotation(self):
         """Called when Finish button is clicked"""
         self.save_current_polygon()
-        self.loop.quit()   # stop local loop
+        self.loop.quit()  # stop local loop
         self.close_flag = True
-        self.close()       # triggers closeEvent
+        self.close()  # triggers closeEvent
 
     def update_line_thickness(self, value):
         self.canvas.line_thickness = value
         self.canvas.update()
-        
+
     def closeEvent(self, event):
         """Called when the window is closed"""
         if getattr(self, "close_flag", False):
@@ -406,8 +428,7 @@ class PolygonAnnotatorWindow(QWidget):
             self.close()
         else:
             super().keyPressEvent(event)
-        
-        
+
 
 def annotate_images(image_paths):
     """Launches GUI and returns {path: [[x,y], ...]} and line thickness"""
@@ -429,12 +450,15 @@ def annotate_images(image_paths):
     return win.results, win.canvas.line_thickness
 
 
-
 # Example usage
 if __name__ == "__main__":
     folder = "path/to/images"
-    valid_exts = ('.jpg', '.jpeg', '.png', '.tif', '.tiff', '.bmp')
-    image_files = [os.path.join(folder, f) for f in sorted(os.listdir(folder)) if f.lower().endswith(valid_exts)]
+    valid_exts = (".jpg", ".jpeg", ".png", ".tif", ".tiff", ".bmp")
+    image_files = [
+        os.path.join(folder, f)
+        for f in sorted(os.listdir(folder))
+        if f.lower().endswith(valid_exts)
+    ]
 
     polygons = annotate_images(image_files)
     for path, poly in polygons.items():

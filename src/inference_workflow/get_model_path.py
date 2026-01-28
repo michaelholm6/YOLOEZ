@@ -6,6 +6,7 @@ from PyQt5 import QtWidgets
 import sys
 import os
 
+
 def get_model_path():
     """
     Opens a file dialog for the user to select a trained YOLO model (.pt or .pth).

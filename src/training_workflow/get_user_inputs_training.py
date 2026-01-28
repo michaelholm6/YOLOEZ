@@ -7,6 +7,7 @@ from PyQt5 import QtWidgets, QtGui, QtCore
 import cv2
 import numpy as np
 
+
 class YOLOTrainingDialog(QtWidgets.QDialog):
     def __init__(self):
         super().__init__()
@@ -39,7 +40,7 @@ class YOLOTrainingDialog(QtWidgets.QDialog):
         # Dataset selection
         dataset_container = make_label_with_tooltip(
             "Training Dataset Folder:",
-            "Select the root folder containing your training images and YOLO label txt files created using this tool."
+            "Select the root folder containing your training images and YOLO label txt files created using this tool.",
         )
 
         self.dataset_path_edit = QtWidgets.QLineEdit()
@@ -51,13 +52,18 @@ class YOLOTrainingDialog(QtWidgets.QDialog):
         # Transformations
         # --- Transformations ---
         apply_transforms_label = make_label_with_tooltip(
-            "Apply Data Augmentations:", "Data augmentations help improve model robustness by artificially increasing dataset diversity. Select the augmentations you want to apply during training.\
-Baiscally this will create more images from your existing ones by applying these transformations, and use those images for training.")
+            "Apply Data Augmentations:",
+            "Data augmentations help improve model robustness by artificially increasing dataset diversity. Select the augmentations you want to apply during training.\
+Baiscally this will create more images from your existing ones by applying these transformations, and use those images for training.",
+        )
         left_layout.addWidget(apply_transforms_label)
         self.transform_options = [
             ("Flip", "Randomly horizontally flip some images."),
             ("Rotate", "Randomly rotate some images. Disabled for detection tasks."),
-            ("Color Jitter", "Randomly adjust brightness/contrast/saturation/hue of some images."),
+            (
+                "Color Jitter",
+                "Randomly adjust brightness/contrast/saturation/hue of some images.",
+            ),
             ("Blur", "Randomly apply Gaussian blur to some photos."),
             ("Noise", "Randomly add Gaussian noise to some photos."),
             ("Scale", "Randomly scale some photos."),
@@ -95,12 +101,11 @@ Baiscally this will create more images from your existing ones by applying these
         else:
             self.rotate_container.show()
 
-
         # Number of augmentations per image
         aug_layout = QtWidgets.QHBoxLayout()
         aug_label_container = make_label_with_tooltip(
             "Augmentations per image:",
-            "Set how many augmented versions of each image to generate."
+            "Set how many augmented versions of each image to generate.",
         )
         self.aug_spin = QtWidgets.QSpinBox()
         self.aug_spin.setMinimum(1)
@@ -114,17 +119,17 @@ Baiscally this will create more images from your existing ones by applying these
         model_label_container = make_label_with_tooltip(
             "YOLO Model Size:",
             "Select the model size (nano, small, medium, large, extra-large) to train. Larger models are typically more accurate but require more computational resources. Choosing a model that is larger\
-than what your hardware can handle can lead to unexplained crashes during training."
+than what your hardware can handle can lead to unexplained crashes during training.",
         )
         left_layout.addWidget(model_label_container)
         self.model_combo = QtWidgets.QComboBox()
         self.model_combo.addItems(["Nano", "Small", "Medium", "Large", "Extra-Large"])
         left_layout.addWidget(self.model_combo)
-        
+
         split_container = make_label_with_tooltip(
             "Train/Test Split (% for training):",
             "Specify the fraction of images used for training. The rest will be used for validation. Validation is a set that's not seen during training and is used to evaluate model performance throughout the training process.\
-A typical split is 80% for training and 20% for validation."
+A typical split is 80% for training and 20% for validation.",
         )
         self.split_spin = QtWidgets.QSpinBox()
         self.split_spin.setMinimum(1)
@@ -138,7 +143,7 @@ A typical split is 80% for training and 20% for validation."
         # --- Previously Trained Model ---
         prev_model_container = make_label_with_tooltip(
             "Continue Training from Model:",
-            "Optional: Select a previously trained YOLO model to continue training. This should be a .pt file."
+            "Optional: Select a previously trained YOLO model to continue training. This should be a .pt file.",
         )
         self.prev_model_edit = QtWidgets.QLineEdit()
         self.browse_prev_model_button = QtWidgets.QPushButton("Browse Model...")
@@ -154,7 +159,7 @@ A typical split is 80% for training and 20% for validation."
         # Save directory
         save_container = make_label_with_tooltip(
             "Save Directory:",
-            "Select the folder where the trained model and results will be saved."
+            "Select the folder where the trained model and results will be saved.",
         )
         self.save_path_edit = QtWidgets.QLineEdit()
         self.browse_save_button = QtWidgets.QPushButton("Browse Save Directory...")
@@ -163,13 +168,15 @@ A typical split is 80% for training and 20% for validation."
         left_layout.addWidget(self.browse_save_button)
         self.dataset_path_edit.textChanged.connect(self.update_run_button_state)
         self.save_path_edit.textChanged.connect(self.update_run_button_state)
-        self.browse_dataset_button.clicked.connect(lambda: self.update_run_button_state())
+        self.browse_dataset_button.clicked.connect(
+            lambda: self.update_run_button_state()
+        )
         self.browse_save_button.clicked.connect(lambda: self.update_run_button_state())
 
         # Run button
         run_container = QtWidgets.QWidget()
         run_layout = QtWidgets.QVBoxLayout(run_container)
-        run_layout.setContentsMargins(0,0,0,0)
+        run_layout.setContentsMargins(0, 0, 0, 0)
         run_layout.setSpacing(4)
 
         # Run button
@@ -194,16 +201,17 @@ A typical split is 80% for training and 20% for validation."
         self.status_label.setStyleSheet("color: red;")
         self.status_label.setWordWrap(True)
         self.status_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
-        self.status_label.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+        self.status_label.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed
+        )
         font = self.status_label.font()
-        font.setPointSize(16)   # choose whatever size you want
+        font.setPointSize(16)  # choose whatever size you want
         self.status_label.setFont(font)
         run_layout.addWidget(self.status_label)
 
         # Add the container to your left_layout
         left_layout.addWidget(run_container)
         left_layout.addStretch()
-        
 
         left_container = QtWidgets.QWidget()
         left_container.setLayout(left_layout)
@@ -213,8 +221,12 @@ A typical split is 80% for training and 20% for validation."
         right_layout = QtWidgets.QVBoxLayout()
         self.image_preview = QtWidgets.QLabel("No Dataset Selected")
         self.image_preview.setAlignment(QtCore.Qt.AlignCenter)
-        self.image_preview.setStyleSheet("border: 1px solid black; background-color: #eee; font-size: 16pt;")
-        self.image_preview.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored)
+        self.image_preview.setStyleSheet(
+            "border: 1px solid black; background-color: #eee; font-size: 16pt;"
+        )
+        self.image_preview.setSizePolicy(
+            QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored
+        )
         self.image_preview.setScaledContents(False)
         right_layout.addWidget(self.image_preview)
 
@@ -250,18 +262,18 @@ A typical split is 80% for training and 20% for validation."
         self.run_button.clicked.connect(self.on_run_clicked)
         for cb in self.transform_checkboxes:
             cb.stateChanged.connect(self.disable_rotation_if_detection)
-            
+
         self.setWindowFlags(QtCore.Qt.Window | QtCore.Qt.WindowStaysOnTopHint)
         self.showMaximized()
         self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowStaysOnTopHint)
         self.show()
         self.update_run_button_state()
-        
+
     def on_run_clicked(self):
         """Called when the Run button is clicked"""
         self.close_flag = True  # window can close without quitting program
-        self.accept()           # close the dialog
-        
+        self.accept()  # close the dialog
+
     def closeEvent(self, event):
         """Called when the window is closed"""
         if getattr(self, "close_flag", False):
@@ -272,7 +284,7 @@ A typical split is 80% for training and 20% for validation."
             print("Window closed — exiting program.")
             QtWidgets.QApplication.quit()
             sys.exit(0)
-            
+
     def update_run_button_state(self):
         errors = []
         dataset_folder = self.dataset_path_edit.text().strip()
@@ -295,17 +307,16 @@ A typical split is 80% for training and 20% for validation."
             self.run_button.setEnabled(True)
             self.status_label.setText("")
 
-                
     def browse_prev_model(self):
         file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
             self,
             "Select Previously Trained Model",
             "",
-            "Model Files (*.pt *.pth *.onnx);;All Files (*)"
+            "Model Files (*.pt *.pth *.onnx);;All Files (*)",
         )
         if file_path:
             self.prev_model_edit.setText(file_path)
-            
+
     def update_transform_visibility(self):
         if self.task == "detection":
             self.rotate_container.hide()
@@ -319,7 +330,7 @@ A typical split is 80% for training and 20% for validation."
         """Ensure the dialog actually starts maximized."""
         super().showEvent(event)
         self.showMaximized()
-        
+
     def detect_label_format(self, label_path):
         """Return 'detection', 'segmentation', or None for empty/unreadable labels."""
         with open(label_path, "r") as f:
@@ -334,23 +345,23 @@ A typical split is 80% for training and 20% for validation."
 
     # --- Browse functions ---
     def browse_dataset(self):
-        folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Select Training Dataset")
+        folder = QtWidgets.QFileDialog.getExistingDirectory(
+            self, "Select Training Dataset"
+        )
         if not folder:
             return
 
         self.dataset_path_edit.setText(folder)
 
-        valid_exts = ('.jpg', '.jpeg', '.png', '.bmp', '.tif', '.tiff')
-        label_exts = ('.txt',)
+        valid_exts = (".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff")
+        label_exts = (".txt",)
 
         self.image_files = []
         detected_task = None  # lock dataset type from first **non-empty** label
 
         for root, dirs, files in os.walk(folder):
             label_basenames = {
-                os.path.splitext(f)[0]
-                for f in files
-                if f.lower().endswith(label_exts)
+                os.path.splitext(f)[0] for f in files if f.lower().endswith(label_exts)
             }
 
             for f in sorted(files):
@@ -381,7 +392,7 @@ A typical split is 80% for training and 20% for validation."
                 # Only keep matching formats
                 if label_type == detected_task:
                     self.image_files.append(img_path)
-    
+
         if detected_task is None:
             self.image_files = []
             self.image_preview.setText("No valid images found.")
@@ -398,10 +409,10 @@ A typical split is 80% for training and 20% for validation."
         self.show_current_image()
         self.update_navigation_buttons()
 
-
-
     def browse_save(self):
-        folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Select Save Directory")
+        folder = QtWidgets.QFileDialog.getExistingDirectory(
+            self, "Select Save Directory"
+        )
         if folder:
             self.save_path_edit.setText(folder)
 
@@ -429,25 +440,41 @@ A typical split is 80% for training and 20% for validation."
                     coords = [float(x) for x in parts[1:]]
                     if len(coords) == 4:  # bbox
                         xc, yc, bw, bh = coords
-                        x1 = int((xc - bw/2) * w)
-                        y1 = int((yc - bh/2) * h)
-                        x2 = int((xc + bw/2) * w)
-                        y2 = int((yc + bh/2) * h)
+                        x1 = int((xc - bw / 2) * w)
+                        y1 = int((yc - bh / 2) * h)
+                        x2 = int((xc + bw / 2) * w)
+                        y2 = int((yc + bh / 2) * h)
                         cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
                     else:
-                        pts = [(int(coords[i]*w), int(coords[i+1]*h)) for i in range(0, len(coords), 2)]
-                        cv2.polylines(img, [np.array(pts)], isClosed=True, color=(0, 0, 255), thickness=2)
+                        pts = [
+                            (int(coords[i] * w), int(coords[i + 1] * h))
+                            for i in range(0, len(coords), 2)
+                        ]
+                        cv2.polylines(
+                            img,
+                            [np.array(pts)],
+                            isClosed=True,
+                            color=(0, 0, 255),
+                            thickness=2,
+                        )
 
         img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        qt_img = QtGui.QImage(img_rgb.data, img_rgb.shape[1], img_rgb.shape[0],
-                              img_rgb.strides[0], QtGui.QImage.Format_RGB888)
+        qt_img = QtGui.QImage(
+            img_rgb.data,
+            img_rgb.shape[1],
+            img_rgb.shape[0],
+            img_rgb.strides[0],
+            QtGui.QImage.Format_RGB888,
+        )
         pixmap = QtGui.QPixmap.fromImage(qt_img)
         label_size = self.image_preview.size()
-        scaled_pixmap = pixmap.scaled(label_size, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation)
+        scaled_pixmap = pixmap.scaled(
+            label_size, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation
+        )
         self.image_preview.setPixmap(scaled_pixmap)
 
     def show_next_image(self):
-        if self.current_image_index < len(self.image_files)-1:
+        if self.current_image_index < len(self.image_files) - 1:
             self.current_image_index += 1
             self.show_current_image()
         self.update_navigation_buttons()
@@ -460,7 +487,9 @@ A typical split is 80% for training and 20% for validation."
 
     def update_navigation_buttons(self):
         self.prev_button.setEnabled(self.current_image_index > 0)
-        self.next_button.setEnabled(self.current_image_index < len(self.image_files)-1)
+        self.next_button.setEnabled(
+            self.current_image_index < len(self.image_files) - 1
+        )
 
     # --- Transformations ---
     def get_transform_dict(self):
@@ -489,13 +518,13 @@ A typical split is 80% for training and 20% for validation."
     # --- Get final values ---
     def get_values(self):
         model_size_map = {
-            "Nano": "n", 
+            "Nano": "n",
             "Small": "s",
             "Medium": "m",
             "Large": "l",
-            "Extra-Large": "x"
+            "Extra-Large": "x",
         }
-        
+
         return {
             "dataset_folder": self.dataset_path_edit.text().strip(),
             "save_folder": self.save_path_edit.text().strip(),
@@ -504,8 +533,9 @@ A typical split is 80% for training and 20% for validation."
             "transformations": self.get_transform_dict(),
             "train_split": self.split_spin.value() / 100.0,
             "prev_model_path": self.prev_model_edit.text().strip() or None,
-            "number_of_augs": self.aug_spin.value()
+            "number_of_augs": self.aug_spin.value(),
         }
+
 
 def get_training_inputs():
     app = QtWidgets.QApplication.instance()
@@ -522,6 +552,7 @@ def get_training_inputs():
     if owns_app:
         app.quit()
     return result
+
 
 if __name__ == "__main__":
     inputs = get_training_inputs()

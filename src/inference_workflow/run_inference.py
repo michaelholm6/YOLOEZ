@@ -9,20 +9,11 @@ import os
 import gc
 from PyQt5 import QtWidgets, QtCore
 
-def run_yolo_inference(
-    model,
-    cropped_images,
-    save_path,
-    conf,
-    parent=None
-):
+
+def run_yolo_inference(model, cropped_images, save_path, conf, parent=None):
     num_images = len(cropped_images)
     progress = QtWidgets.QProgressDialog(
-        "Running inference...",
-        "Cancel",
-        0,
-        num_images,
-        parent
+        "Running inference...", "Cancel", 0, num_images, parent
     )
     progress.setWindowTitle("Inference")
     progress.setWindowModality(QtCore.Qt.WindowModal)
@@ -67,22 +58,24 @@ def run_yolo_inference(
             if masks:
                 mask_data = masks.data[j].cpu().numpy()
                 contours, _ = cv2.findContours(
-                    mask_data.astype('uint8'),
+                    mask_data.astype("uint8"),
                     cv2.RETR_EXTERNAL,
-                    cv2.CHAIN_APPROX_SIMPLE
+                    cv2.CHAIN_APPROX_SIMPLE,
                 )
                 if contours:
                     polygon = contours[0].reshape(-1, 2).tolist()
                 del mask_data
 
-            det_list.append({
-                "image_index": i,
-                "class_id": cls_id,
-                "class_name": label,
-                "confidence": conf_val,
-                "bbox": xyxy,
-                "segmentation": polygon
-            })
+            det_list.append(
+                {
+                    "image_index": i,
+                    "class_id": cls_id,
+                    "class_name": label,
+                    "confidence": conf_val,
+                    "bbox": xyxy,
+                    "segmentation": polygon,
+                }
+            )
 
         json_path = os.path.join(save_path, f"result_{i}.json")
         with open(json_path, "w") as f:

@@ -12,12 +12,13 @@ from pyqtgraph.exporters import ImageExporter
 import os
 import numpy as np
 from datetime import datetime
-import math
 from utils import show_error_window
 from PyQt5 import QtCore
 
 
-def run_training(dataset_yaml, model_save_dir, model_size, task="detection", prev_model_path=None):
+def run_training(
+    dataset_yaml, model_save_dir, model_size, task="detection", prev_model_path=None
+):
 
     if task == "segmentation":
         default_model_path = f"yolo11{model_size}-seg.pt"
@@ -31,7 +32,9 @@ def run_training(dataset_yaml, model_save_dir, model_size, task="detection", pre
     # --- Handle previous model ---
     if prev_model_path:
         if not os.path.isfile(prev_model_path):
-            show_error_window(f"The specified previous model path does not exist:\n{prev_model_path}")
+            show_error_window(
+                f"The specified previous model path does not exist:\n{prev_model_path}"
+            )
             return
         model_path = prev_model_path
         print(f"✅ Continuing training from previous model: {model_path}")
@@ -39,11 +42,11 @@ def run_training(dataset_yaml, model_save_dir, model_size, task="detection", pre
         model_path = default_model_path
         print(f"ℹ Starting training from default weights: {model_path}")
 
-
     # ---------------- GUI ----------------
     class TrainingGUI(QtWidgets.QWidget):
         save_and_close_requested = QtCore.pyqtSignal()
-        def __init__(self, device_text='Device: CPU'):
+
+        def __init__(self, device_text="Device: CPU"):
             super().__init__()
             self.setWindowTitle("YOLO Training Monitor")
             self.save_and_close_requested.connect(self._save_and_close)
@@ -60,7 +63,9 @@ def run_training(dataset_yaml, model_save_dir, model_size, task="detection", pre
                 label.setObjectName("value_label")
 
                 icon_label = QtWidgets.QLabel()
-                icon_pix = self.style().standardIcon(QtWidgets.QStyle.SP_MessageBoxQuestion)
+                icon_pix = self.style().standardIcon(
+                    QtWidgets.QStyle.SP_MessageBoxQuestion
+                )
                 icon_label.setPixmap(icon_pix.pixmap(14, 14))
                 icon_label.setToolTip(tooltip)
 
@@ -82,76 +87,100 @@ def run_training(dataset_yaml, model_save_dir, model_size, task="detection", pre
             metrics_layout = QtWidgets.QVBoxLayout()
             self.precision_container, self.precision_label = make_label_with_tooltip(
                 "Precision: 0.0",
-                " How reliable the model is when it says an object is present. Higher is better. Range is from 0 to 1."
+                " How reliable the model is when it says an object is present. Higher is better. Range is from 0 to 1.",
             )
             self.recall_container, self.recall_label = make_label_with_tooltip(
                 "Recall: 0.0",
-                "How well the model finds all objects present. Higher is better. Range is from 0 to 1."
+                "How well the model finds all objects present. Higher is better. Range is from 0 to 1.",
             )
             self.map_container, self.map_label = make_label_with_tooltip(
                 "mAP0.5–0.95: 0.0",
-                "How good the model is at locating and classifying objects. Higher is better. Range is from 0 to 1."
+                "How good the model is at locating and classifying objects. Higher is better. Range is from 0 to 1.",
             )
-            for c in [self.precision_container, self.recall_container, self.map_container]:
+            for c in [
+                self.precision_container,
+                self.recall_container,
+                self.map_container,
+            ]:
                 metrics_layout.addWidget(c)
             layout.addLayout(metrics_layout)
 
             # ===== Metrics Plot =====
             self.metrics_plot = pg.PlotWidget(title="Metrics")
-            self.metrics_plot.setBackground('w')              # ← white background
-            self.metrics_plot.getAxis('left').setPen('k')     # ← black axes
-            self.metrics_plot.getAxis('bottom').setPen('k')
+            self.metrics_plot.setBackground("w")  # ← white background
+            self.metrics_plot.getAxis("left").setPen("k")  # ← black axes
+            self.metrics_plot.getAxis("bottom").setPen("k")
             self.metrics_plot.addLegend()
-            self.metrics_plot.setLabel("left", "Value", color='k')
-            self.metrics_plot.setLabel("bottom", "Epoch", color='k')
+            self.metrics_plot.setLabel("left", "Value", color="k")
+            self.metrics_plot.setLabel("bottom", "Epoch", color="k")
             layout.addWidget(self.metrics_plot)
 
-            self.precision_curve = self.metrics_plot.plot(pen=pg.mkPen(color="r", width=2), name="Precision")
-            self.recall_curve    = self.metrics_plot.plot(pen=pg.mkPen(color="b", width=2), name="Recall")
-            self.map_curve       = self.metrics_plot.plot(pen=pg.mkPen(color="g", width=2), name="mAP0.5–0.95")
+            self.precision_curve = self.metrics_plot.plot(
+                pen=pg.mkPen(color="r", width=2), name="Precision"
+            )
+            self.recall_curve = self.metrics_plot.plot(
+                pen=pg.mkPen(color="b", width=2), name="Recall"
+            )
+            self.map_curve = self.metrics_plot.plot(
+                pen=pg.mkPen(color="g", width=2), name="mAP0.5–0.95"
+            )
 
             # ===== Loss Labels =====
             loss_labels_layout = QtWidgets.QVBoxLayout()
             self.box_loss_container, self.box_loss_label = make_label_with_tooltip(
                 "Validation Box Loss: 0.0",
-                "This is a metric indicating how well the model predicts bounding boxes for detected objects. Lower is better. Range is from 0 to ∞."
+                "This is a metric indicating how well the model predicts bounding boxes for detected objects. Lower is better. Range is from 0 to ∞.",
             )
             self.cls_loss_container, self.cls_loss_label = make_label_with_tooltip(
                 "Validation Classsification Loss: 0.0",
-                "This is a metric indicating how well the model classifies detected objects. Lower is better. Range is from 0 to ∞."
+                "This is a metric indicating how well the model classifies detected objects. Lower is better. Range is from 0 to ∞.",
             )
             self.dfl_loss_container, self.dfl_loss_label = make_label_with_tooltip(
                 "Validation Distiribution Focal Loss: 0.0",
-                "This is a metric indicating how well the predicted bounding box distributions align with the ground truth. Lower is better. Range is from 0 to ∞."
+                "This is a metric indicating how well the predicted bounding box distributions align with the ground truth. Lower is better. Range is from 0 to ∞.",
             )
-            for c in [self.box_loss_container, self.cls_loss_container, self.dfl_loss_container]:
+            for c in [
+                self.box_loss_container,
+                self.cls_loss_container,
+                self.dfl_loss_container,
+            ]:
                 loss_labels_layout.addWidget(c)
             layout.addLayout(loss_labels_layout)
 
             # ===== Loss Plot =====
             self.loss_plot = pg.PlotWidget(title="Validation Losses")
-            self.loss_plot.setBackground('w')                  # ← white background
-            self.loss_plot.getAxis('left').setPen('k')
-            self.loss_plot.getAxis('bottom').setPen('k')
+            self.loss_plot.setBackground("w")  # ← white background
+            self.loss_plot.getAxis("left").setPen("k")
+            self.loss_plot.getAxis("bottom").setPen("k")
             self.loss_plot.addLegend()
-            self.loss_plot.setLabel("left", "Loss (log scale)", color='k')
-            self.loss_plot.setLabel("bottom", "Epoch", color='k')
+            self.loss_plot.setLabel("left", "Loss (log scale)", color="k")
+            self.loss_plot.setLabel("bottom", "Epoch", color="k")
             self.loss_plot.setLogMode(y=True)
             layout.addWidget(self.loss_plot)
 
-            self.box_loss_curve = self.loss_plot.plot(pen=pg.mkPen(color="y", width=2), name="Box Loss")
-            self.cls_loss_curve = self.loss_plot.plot(pen=pg.mkPen(color="c", width=2), name="Cls Loss")
-            self.dfl_loss_curve = self.loss_plot.plot(pen=pg.mkPen(color="m", width=2), name="DFL Loss")
+            self.box_loss_curve = self.loss_plot.plot(
+                pen=pg.mkPen(color="y", width=2), name="Box Loss"
+            )
+            self.cls_loss_curve = self.loss_plot.plot(
+                pen=pg.mkPen(color="c", width=2), name="Cls Loss"
+            )
+            self.dfl_loss_curve = self.loss_plot.plot(
+                pen=pg.mkPen(color="m", width=2), name="DFL Loss"
+            )
 
             # ===== Autoscale Buttons =====
             autoscale_layout = QtWidgets.QHBoxLayout()
             layout.addLayout(autoscale_layout)
             self.metrics_autoscale_btn = QtWidgets.QPushButton("Autoscale Metrics Plot")
-            self.metrics_autoscale_btn.clicked.connect(lambda: self.autoscale_plot(self.metrics_plot, 'metrics'))
+            self.metrics_autoscale_btn.clicked.connect(
+                lambda: self.autoscale_plot(self.metrics_plot, "metrics")
+            )
             autoscale_layout.addWidget(self.metrics_autoscale_btn)
 
             self.loss_autoscale_btn = QtWidgets.QPushButton("Autoscale Loss Plot")
-            self.loss_autoscale_btn.clicked.connect(lambda: self.autoscale_plot(self.loss_plot, 'loss'))
+            self.loss_autoscale_btn.clicked.connect(
+                lambda: self.autoscale_plot(self.loss_plot, "loss")
+            )
             autoscale_layout.addWidget(self.loss_autoscale_btn)
 
             # ===== Stop Button =====
@@ -170,42 +199,52 @@ def run_training(dataset_yaml, model_save_dir, model_size, task="detection", pre
             self.selected_loss_line = None
 
             # ===== Markers =====
-            self.marker_metrics = pg.ScatterPlotItem(size=10, brush=pg.mkBrush('k'))
-            self.marker_metrics_text = pg.TextItem(anchor=(0,1), color='k')
+            self.marker_metrics = pg.ScatterPlotItem(size=10, brush=pg.mkBrush("k"))
+            self.marker_metrics_text = pg.TextItem(anchor=(0, 1), color="k")
             self.metrics_plot.addItem(self.marker_metrics)
             self.metrics_plot.addItem(self.marker_metrics_text)
             self.marker_metrics.setVisible(False)
             self.marker_metrics_text.setVisible(False)
 
-            self.marker_loss = pg.ScatterPlotItem(size=10, brush=pg.mkBrush('k'))
-            self.marker_loss_text = pg.TextItem(anchor=(0,1), color='k')
+            self.marker_loss = pg.ScatterPlotItem(size=10, brush=pg.mkBrush("k"))
+            self.marker_loss_text = pg.TextItem(anchor=(0, 1), color="k")
             self.loss_plot.addItem(self.marker_loss)
             self.loss_plot.addItem(self.marker_loss_text)
             self.marker_loss.setVisible(False)
             self.marker_loss_text.setVisible(False)
 
             # ===== Connect Clicks / Moves =====
-            self.metrics_plot.scene().sigMouseClicked.connect(lambda evt: self.on_click(evt, self.metrics_plot))
-            self.metrics_plot.scene().sigMouseMoved.connect(lambda evt: self.on_mouse_move(evt, self.metrics_plot))
-            self.loss_plot.scene().sigMouseClicked.connect(lambda evt: self.on_click(evt, self.loss_plot))
-            self.loss_plot.scene().sigMouseMoved.connect(lambda evt: self.on_mouse_move(evt, self.loss_plot))
+            self.metrics_plot.scene().sigMouseClicked.connect(
+                lambda evt: self.on_click(evt, self.metrics_plot)
+            )
+            self.metrics_plot.scene().sigMouseMoved.connect(
+                lambda evt: self.on_mouse_move(evt, self.metrics_plot)
+            )
+            self.loss_plot.scene().sigMouseClicked.connect(
+                lambda evt: self.on_click(evt, self.loss_plot)
+            )
+            self.loss_plot.scene().sigMouseMoved.connect(
+                lambda evt: self.on_mouse_move(evt, self.loss_plot)
+            )
 
         # ---------------- Methods ----------------
         def request_stop(self):
             self.stop_requested = True
             self.stop_button.setEnabled(False)
             self.stop_button.setText("Stopping. Please wait a moment...")
-            
+
         def _save_and_close(self):
             # Force a full redraw before export
             QtWidgets.QApplication.processEvents()
 
-            #self.save_plots(model_save_dir)
+            # self.save_plots(model_save_dir)
 
-            #QtWidgets.QApplication.processEvents()
+            # QtWidgets.QApplication.processEvents()
             self.close()
 
-        def update_metrics(self, epoch, precision, recall, map_value, box_loss, cls_loss, dfl_loss):
+        def update_metrics(
+            self, epoch, precision, recall, map_value, box_loss, cls_loss, dfl_loss
+        ):
             self.epochs.append(epoch)
             self.precision_data.append(precision)
             self.recall_data.append(recall)
@@ -219,8 +258,12 @@ def run_training(dataset_yaml, model_save_dir, model_size, task="detection", pre
             self.recall_label.setText(f"Recall: {recall:.4f}")
             self.map_label.setText(f"mAP0.5–0.95: {map_value:.4f}")
             self.box_loss_label.setText(f"Validation Box Loss: {box_loss:.4f}")
-            self.cls_loss_label.setText(f"Validation Classification Loss: {cls_loss:.4f}")
-            self.dfl_loss_label.setText(f"Validation Distribution Focal Loss: {dfl_loss:.4f}")
+            self.cls_loss_label.setText(
+                f"Validation Classification Loss: {cls_loss:.4f}"
+            )
+            self.dfl_loss_label.setText(
+                f"Validation Distribution Focal Loss: {dfl_loss:.4f}"
+            )
 
             # Update plots
             self.precision_curve.setData(self.epochs, self.precision_data)
@@ -229,7 +272,7 @@ def run_training(dataset_yaml, model_save_dir, model_size, task="detection", pre
             self.box_loss_curve.setData(self.epochs, self.box_loss_data)
             self.cls_loss_curve.setData(self.epochs, self.cls_loss_data)
             self.dfl_loss_curve.setData(self.epochs, self.dfl_loss_data)
-            
+
         def save_plots(self, model_save_dir):
             """Save metrics and loss plots to model_save_dir/plots with timestamp, autoscaled and clean."""
             plots_dir = os.path.join(model_save_dir, "plots")
@@ -243,7 +286,7 @@ def run_training(dataset_yaml, model_save_dir, model_size, task="detection", pre
             self.marker_metrics_text.setVisible(False)
             self.selected_metrics_line = None  # deselect any line
             self.metrics_plot.enableAutoRange()
-            
+
             self.metrics_plot.repaint()
             QtWidgets.QApplication.processEvents()
 
@@ -256,11 +299,11 @@ def run_training(dataset_yaml, model_save_dir, model_size, task="detection", pre
             # Temporarily remove markers
             self.marker_loss.setVisible(False)
             self.marker_loss_text.setVisible(False)
-            self.selected_loss_line = None  # deselect any line 
+            self.selected_loss_line = None  # deselect any line
             self.loss_plot.enableAutoRange()
             self.loss_plot.repaint()
             loss_exporter = ImageExporter(self.loss_plot.plotItem)
-            
+
             loss_file = os.path.join(plots_dir, f"loss_plot_{timestamp}.png")
             loss_exporter.export(loss_file)
             print(f"✅ Saved loss plot: {loss_file}")
@@ -338,23 +381,22 @@ def run_training(dataset_yaml, model_save_dir, model_size, task="detection", pre
 
             marker.setVisible(True)
             text_item.setVisible(True)
-            
-        
+
         def autoscale_plot(self, plot, plot_type):
             """
             Autoscale the given plot while preserving the currently selected line and its marker.
-            
+
             Args:
                 plot (PlotWidget): The PyQtGraph plot to autoscale.
                 plot_type (str): Either 'metrics' or 'loss', to determine which marker to update.
             """
             # Determine selected line and marker based on plot type
-            if plot_type == 'metrics':
-                selected_attr = 'selected_metrics_line'
+            if plot_type == "metrics":
+                selected_attr = "selected_metrics_line"
                 marker = self.marker_metrics
                 marker_text = self.marker_metrics_text
             else:
-                selected_attr = 'selected_loss_line'
+                selected_attr = "selected_loss_line"
                 marker = self.marker_loss
                 marker_text = self.marker_loss_text
 
@@ -379,10 +421,8 @@ def run_training(dataset_yaml, model_save_dir, model_size, task="detection", pre
                     marker.setVisible(True)
                     marker_text.setVisible(True)
 
-            
-            
         def update_marker_text_position(
-            self, plot, text_item, x_val, y_val, x_offset_frac=.05 , y_offset_frac=0.05
+            self, plot, text_item, x_val, y_val, x_offset_frac=0.05, y_offset_frac=0.05
         ):
             """
             Place the TextItem near the point (x_val, y_val) in data coordinates.
@@ -421,10 +461,6 @@ def run_training(dataset_yaml, model_save_dir, model_size, task="detection", pre
 
             text_item.setPos(x_text, y_text)
 
-
-
-
-
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
     gui = TrainingGUI(device_text=device_text)
     gui.showMaximized()
@@ -448,7 +484,6 @@ def run_training(dataset_yaml, model_save_dir, model_size, task="detection", pre
             if gui.stop_requested:
                 trainer.stop = True
 
-
         model.add_callback("on_fit_epoch_end", on_epoch_end)
 
         model.train(
@@ -458,9 +493,9 @@ def run_training(dataset_yaml, model_save_dir, model_size, task="detection", pre
             project=model_save_dir,
             name="YOLO_EZ_training",
             patience=0,
-            save=True
+            save=True,
         )
-        
+
         gui.save_and_close_requested.emit()
 
     thread = threading.Thread(target=train_thread)

@@ -5,6 +5,7 @@
 import numpy as np
 import cv2
 
+
 def clip_edges_to_polygon(edges, polygon_pts, small_patch_thresh=0.1):
     """
     edges: binary array (0/1) where 1 = edge pixels, 0 = background
@@ -20,7 +21,9 @@ def clip_edges_to_polygon(edges, polygon_pts, small_patch_thresh=0.1):
     inv_edges = 1 - edges
 
     # Step 2: Label connected components (black patches)
-    num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(inv_edges, connectivity=8)
+    num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(
+        inv_edges, connectivity=8
+    )
 
     # Find largest black patch
     largest_area = np.max(stats[1:, cv2.CC_STAT_AREA]) if num_labels > 1 else 0
@@ -43,6 +46,8 @@ def clip_edges_to_polygon(edges, polygon_pts, small_patch_thresh=0.1):
     final_mask = cv2.bitwise_and(xor_mask, poly_mask)
 
     # Step 5: Find contours
-    contours, _ = cv2.findContours(final_mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours, _ = cv2.findContours(
+        final_mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+    )
 
     return contours

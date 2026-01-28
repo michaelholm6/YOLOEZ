@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 
+
 def crop_and_mask_images(image_paths, aois_dict):
     """
     Mask images so that only the AOI polygons remain visible.
@@ -9,7 +10,7 @@ def crop_and_mask_images(image_paths, aois_dict):
 
     Args:
         image_paths (list[str]): List of image file paths.
-        aois_dict (dict): {image_path: list of polygons}, 
+        aois_dict (dict): {image_path: list of polygons},
                           each polygon is a list of [x, y] points.
 
     Returns:

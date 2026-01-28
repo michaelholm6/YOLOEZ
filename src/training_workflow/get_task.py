@@ -2,7 +2,8 @@
 # Copyright (C) 2026 Michael Holm
 # Developed at Purdue University
 
-from PyQt5 import QtWidgets, QtCore, QtGui
+from PyQt5 import QtWidgets, QtGui
+
 
 class TaskSelectionDialog(QtWidgets.QDialog):
     def __init__(self):
@@ -17,8 +18,9 @@ class TaskSelectionDialog(QtWidgets.QDialog):
 
         # Center on screen
         screen = QtWidgets.QApplication.primaryScreen().geometry()
-        self.move((screen.width() - self.width()) // 2,
-                  (screen.height() - self.height()) // 2)
+        self.move(
+            (screen.width() - self.width()) // 2, (screen.height() - self.height()) // 2
+        )
 
         layout = QtWidgets.QVBoxLayout(self)
 
@@ -37,6 +39,7 @@ class TaskSelectionDialog(QtWidgets.QDialog):
     def set_choice(self, choice):
         self.chosen = choice
         self.accept()  # closes the dialog
+
 
 def get_task():
     # Check if QApplication exists; if not, create one
