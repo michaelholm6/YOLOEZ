@@ -112,13 +112,11 @@ class ChoiceDialog(QtWidgets.QDialog):
 def main():
     app = QtWidgets.QApplication(sys.argv)
 
-    # --- Check screen resolution ---
+    # Normal screen resolution check
     screen = app.primaryScreen()
     size = screen.size()
     width, height = size.width(), size.height()
-
     recommended_width, recommended_height = 1920, 1080
-
     if width < recommended_width or height < recommended_height:
         QtWidgets.QMessageBox.warning(
             None,
@@ -130,14 +128,15 @@ def main():
 
     dialog = ChoiceDialog()
     dialog.exec_()
-
+    chosen = dialog.chosen
     suppress_instructions = dialog.checkbox.isChecked()
 
-    if dialog.chosen == "label":
+
+    # Run the workflow without showing GUI
+    if chosen == "label":
         run_labeling_workflow(suppress_instructions=suppress_instructions)
-    elif dialog.chosen == "train":
+    elif chosen == "train":
         run_training_workflow(suppress_instructions=suppress_instructions)
-    elif dialog.chosen == "use":
+    elif chosen == "use":
         run_inference_workflow(suppress_instructions=suppress_instructions)
 
-    sys.exit()

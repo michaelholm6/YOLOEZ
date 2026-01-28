@@ -3,7 +3,7 @@
 A standalone, GUI based application for labeling data, training models, and running inference with Ultralytics powered YOLO11 models.  
 This tool supports both bounding box detection and segmentation workflows and is designed to be usable without writing any code.
 
-The application guides users through every step with built in tooltips, instructional popups, and clear workflow structure, making YOLO model training and usage accessible to users who may not be familiar with machine learning pipelines or Python development.
+The application guides users through every step with built-in tooltips, instructional popups, and clear workflow structure, making YOLO model training and usage accessible to users who may not be familiar with machine learning pipelines or Python development.
 
 ---
 
@@ -28,7 +28,7 @@ The application guides users through every step with built in tooltips, instruct
 
 This repository contains the full source code and prebuilt executables for a graphical application that simplifies the process of working with YOLO11 models.
 
-The tool provides an end to end workflow including:
+The tool provides an end-to-end workflow including:
 - Dataset labeling
 - Model training
 - Model inference
@@ -43,7 +43,7 @@ All functionality is exposed through an intuitive graphical interface. No script
 - GUI driven YOLO11 training and inference
 - Support for bounding box detection and segmentation models
 - Integrated dataset labeling tools
-- Built in training configuration interface
+- built-in training configuration interface
 - Step by step instructional popups
 - Context sensitive tooltips throughout the interface
 - No coding required
@@ -53,7 +53,7 @@ All functionality is exposed through an intuitive graphical interface. No script
 
 ## System Requirements
 
-- Windows or Linux (When running on a headless Linux server, a remote desktop must be used to interact with the GUI, terminal commands are not consistent with the goal of this project).
+- Windows or Linux (When running on a headless Linux server, a remote desktop must be used to interact with the GUI; terminal commands are outside the intended workflow.).
    - [Instructions for setting up remote desktop on a Linux server](#linux-remote-desktop-setup)
 - GPU recommended for training but not required
 - Sufficient disk space for datasets and trained models
@@ -78,12 +78,12 @@ Exact requirements may vary depending on dataset size and model configuration.
 
 No installation or environment setup is required. If you're trying to run this on a linux remote desktop, reference [this section](#linux-remote-desktop-setup).
 
-1. Navigate to the **[Releases]**(https://github.com/michaelholm6/YOLOEZ/releases) section of this repository, located on the right side of the GitHub page.
+1. Navigate to the [**Releases**](https://github.com/michaelholm6/YOLOEZ/releases) section of this repository, located on the right side of the GitHub page.
 2. Download the latest release for your operating system. If downloading for Linux, download all numbered zip files.
-   NOTE: If downloading for Linux, refer to [this section](#2a-download-transfer-and-prepare-yoloez-executable) for guidance on combining multiple zip files.
-4. Extract the downloaded zip file.
-5. Launch the executable included in the extracted folder.
-6. NOTE: You must keep the executable file in the same directory as the _internal folder.
+   NOTE: If downloading for Linux, refer to [this section](#6-combine-the-split-zip-files-into-a-single-zip) for guidance on combining multiple zip files.
+3. Extract the downloaded zip file.
+4. Launch the executable included in the extracted folder.
+5. NOTE: You must keep the executable file in the same directory as the _internal folder.
 
 The application will start immediately and guide you through the available workflows.
 
@@ -95,7 +95,7 @@ The application is organized into clear, sequential workflows:
 
 1. **Labeling**
    - Load image datasets
-   - Annotate images using built in tools
+   - Annotate images using built-in tools
    - Save labels in YOLO compatible format
 
 2. **Training**
@@ -103,7 +103,7 @@ The application is organized into clear, sequential workflows:
    - Start training with a single click
    - Monitor progress within the application
 
-4. **Inference**
+3. **Inference**
    - Load a trained model
    - Run predictions on new images
    - Save results both visually and in JSON format
@@ -114,7 +114,7 @@ Each stage includes guidance to help users understand what is required before mo
 
 ## User Guidance and Help System
 
-The GUI is designed to be self explanatory and instructional.
+The GUI is designed to be self-explanatory and instructional.
 
 - Tooltips appear when hovering over blue question mark icons
 - Instructional popups explain each step of a workflow
@@ -136,7 +136,7 @@ This section explains how to set up a lightweight Linux remote desktop using **X
 - Network or SSH access
 - Windows machine for remote access
 
-### 1. Install Required Packages on Linux machine (one-time sudo)
+### 1. Install Required Packages on Linux machine
 
 ```bash
 sudo apt update
@@ -150,11 +150,9 @@ Installed components:
 * **tightvncserver** — VNC server
 * **unzip** — utility to extract zip files
 
----
+### 2. Download all parts from the [releases page](https://github.com/michaelholm6/YOLOEZ/releases) to your **local Windows machine** for your specific architecture. If you're not sure which files you need, you probably need the ones title YOLOEZ-linux-x86_64.zip.001, YOLOEZ-linux-x86_64.zip.002, etc.
 
-### 2. **Download all parts** from the [releases page](https://github.com/michaelholm6/YOLOEZ/releases) to your **local Windows machine** for your specific architecture. If you're not sure which files you need, you probably need the ones title YOLOEZ-linux-x86_64.zip.001, YOLOEZ-linux-x86_64.zip.002, etc.
-
-### 3. **Copy the files to your Linux server** using `scp` (or WinSCP):
+### 3. Copy the files to your Linux server using `scp` (or WinSCP):
 
 ```powershell
 scp path/to/YOLOEZ-linux-x86_64.zip.* username@linux_host_ip:/home/username/
@@ -162,19 +160,19 @@ scp path/to/YOLOEZ-linux-x86_64.zip.* username@linux_host_ip:/home/username/
 
 > Replace `username` and `linux_host_ip` with your Linux credentials. Replace ```path/to/``` with the path that you downloaded the individual zip files to.
 
-### 4. **SSH into the Linux server**:
+### 4. SSH into the Linux server:
 
 ```bash
 ssh username@linux_host_ip
 ```
 
-### 5. **Navigate to the folder containing the split ZIPs**:
+### 5. Navigate to the folder containing the split ZIPs:
 
 ```bash
 cd /home/username
 ```
 
-### 6. **Combine the split ZIP files** into a single ZIP:
+### 6. Combine the split ZIP files into a single ZIP:
 
 ```bash
 cat YOLOEZ-linux-x86_64.zip.* > YOLOEZ-linux-x86_64.zip
@@ -182,21 +180,19 @@ cat YOLOEZ-linux-x86_64.zip.* > YOLOEZ-linux-x86_64.zip
 
 > `cat` concatenates the numeric parts in order (`.001`, `.002`, …). Make sure they are named sequentially.
 
-### 7. **Extract the combined ZIP**:
+### 7. Extract the combined ZIP:
 
 ```bash
 unzip YOLOEZ-linux-x86_64.zip
 ```
 
-### 8. **Make the YOLOEZ executable runnable**:
+### 8. Make the YOLOEZ executable runnable:
 
 ```bash
 chmod +x YOLOEZ
 ```
 
----
-
-### 9. Initialize TightVNC (no sudo)
+### 9. Initialize TightVNC
 
 Run the VNC server once to set a password and create configuration files:
 
@@ -209,8 +205,6 @@ After setup completes, stop the server:
 ```bash
 tightvncserver -kill :1
 ```
-
----
 
 ### 10. Configure VNC to Start XFCE
 
@@ -234,9 +228,7 @@ Make executable:
 chmod +x ~/.vnc/xstartup
 ```
 
----
-
-### 11. Start the VNC Server (no sudo)
+### 11. Start the VNC Server
 
 ```bash
 tightvncserver -geometry 1920x1080
@@ -294,8 +286,14 @@ Download and install **RealVNC Viewer** (Viewer only):
 
 You should now see the XFCE desktop.
 
+### 16. Open Executable
 
-### 16. Managing VNC Sessions
+1. In the remote desktop viewer, navigate to /home/username
+2. Find the unzipped executable, and run it
+3. The tool will now guide you through using it
+
+
+### 17. Managing VNC Sessions
 
 List sessions:
 
@@ -341,7 +339,7 @@ tightvncserver
 ### Training Performance Panel
 ![Training Panel](images/training_panel.png)
 
-### Inference Preperation View
+### Inference Preparation View
 ![Inference Results](images/inference_page.png)
 
 ---

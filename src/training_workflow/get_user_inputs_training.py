@@ -15,6 +15,7 @@ class YOLOTrainingDialog(QtWidgets.QDialog):
         font.setPointSize(14)
         self.setFont(font)
         self.task = "segmentation"
+        self.close_flag = False
 
         # --- Helper function for tooltips ---
         def make_label_with_tooltip(text, tooltip):
@@ -50,7 +51,8 @@ class YOLOTrainingDialog(QtWidgets.QDialog):
         # Transformations
         # --- Transformations ---
         apply_transforms_label = make_label_with_tooltip(
-            "Apply Data Augmentations:", "Data augmentations help improve model robustness by artificially increasing dataset diversity. Select the augmentations you want to apply during training.")
+            "Apply Data Augmentations:", "Data augmentations help improve model robustness by artificially increasing dataset diversity. Select the augmentations you want to apply during training.\
+Baiscally this will create more images from your existing ones by applying these transformations, and use those images for training.")
         left_layout.addWidget(apply_transforms_label)
         self.transform_options = [
             ("Flip", "Randomly horizontally flip some images."),
@@ -121,7 +123,8 @@ than what your hardware can handle can lead to unexplained crashes during traini
         
         split_container = make_label_with_tooltip(
             "Train/Test Split (% for training):",
-            "Specify the fraction of images used for training. The rest will be used for validation. Validation is a set that's not seen during training and is used to evaluate model performance throughout the training process."
+            "Specify the fraction of images used for training. The rest will be used for validation. Validation is a set that's not seen during training and is used to evaluate model performance throughout the training process.\
+A typical split is 80% for training and 20% for validation."
         )
         self.split_spin = QtWidgets.QSpinBox()
         self.split_spin.setMinimum(1)
@@ -244,7 +247,7 @@ than what your hardware can handle can lead to unexplained crashes during traini
         self.browse_save_button.clicked.connect(self.browse_save)
         self.prev_button.clicked.connect(self.show_previous_image)
         self.next_button.clicked.connect(self.show_next_image)
-        self.run_button.clicked.connect(self.accept)
+        self.run_button.clicked.connect(self.on_run_clicked)
         for cb in self.transform_checkboxes:
             cb.stateChanged.connect(self.disable_rotation_if_detection)
             
@@ -253,6 +256,22 @@ than what your hardware can handle can lead to unexplained crashes during traini
         self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowStaysOnTopHint)
         self.show()
         self.update_run_button_state()
+        
+    def on_run_clicked(self):
+        """Called when the Run button is clicked"""
+        self.close_flag = True  # window can close without quitting program
+        self.accept()           # close the dialog
+        
+    def closeEvent(self, event):
+        """Called when the window is closed"""
+        if getattr(self, "close_flag", False):
+            # Run button triggered — just close dialog, do not exit program
+            event.accept()
+        else:
+            # User clicked X — fully exit program
+            print("Window closed — exiting program.")
+            QtWidgets.QApplication.quit()
+            sys.exit(0)
             
     def update_run_button_state(self):
         errors = []
@@ -302,13 +321,13 @@ than what your hardware can handle can lead to unexplained crashes during traini
         self.showMaximized()
         
     def detect_label_format(self, label_path):
+        """Return 'detection', 'segmentation', or None for empty/unreadable labels."""
         with open(label_path, "r") as f:
             lines = [line.strip().split() for line in f if line.strip()]
 
         if not lines:
-            return None  # empty labels → reject
-
-        if all(len(l) == 5 for l in lines):
+            return "empty"  # treat empty label as valid, but not for task locking
+        elif all(len(l) == 5 for l in lines):
             return "detection"
         else:
             return "segmentation"
@@ -325,7 +344,7 @@ than what your hardware can handle can lead to unexplained crashes during traini
         label_exts = ('.txt',)
 
         self.image_files = []
-        detected_task = None  # lock format from first pair
+        detected_task = None  # lock dataset type from first **non-empty** label
 
         for root, dirs, files in os.walk(folder):
             label_basenames = {
@@ -350,10 +369,11 @@ than what your hardware can handle can lead to unexplained crashes during traini
                 except Exception:
                     continue  # unreadable label → skip
 
-                if label_type is None:
+                if label_type == "empty":
+                    self.image_files.append(img_path)
                     continue
 
-                # First valid pair → lock dataset type
+                # First non-empty label → lock dataset type
                 if detected_task is None:
                     detected_task = label_type
                     self.task = detected_task
@@ -361,8 +381,9 @@ than what your hardware can handle can lead to unexplained crashes during traini
                 # Only keep matching formats
                 if label_type == detected_task:
                     self.image_files.append(img_path)
-
-        if not self.image_files:
+    
+        if detected_task is None:
+            self.image_files = []
             self.image_preview.setText("No valid images found.")
             self.prev_button.setEnabled(False)
             self.next_button.setEnabled(False)

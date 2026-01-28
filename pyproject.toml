@@ -3,21 +3,24 @@ name = "yologui"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.12"
 dependencies = [
     "albumentations>=2.0.8",
     "keyboard>=0.13.5",
     "opencv-python>=4.13.0.90",
-    "pyinstaller>=6.18.0",
     "pyqtgraph>=0.14.0",
     "scikit-learn>=1.8.0",
     "ultralytics>=8.4.6",
     "torch==2.8.0",
-    # NOTE:
-    # PyQt5 cannot currently be resolved by uv on Windows.
-    # Install manually using:
-    #   pip install PyQt5>=5.15.10
+]
+
+[project.optional-dependencies]
+dev = [
     "pytest>=9.0.2",
+    "pytest-qt>=4.1.0",
+    "pyqt5>=5.15.11",
+    "pytest-timeout>=2.4.0",
+    "pytest-qt>=4.5.0",
 ]
 
 

@@ -94,7 +94,7 @@ def augment_yolo_dataset(dataset_dir, aug_dict, output_dir, num_augments=1, task
                 continue
 
             detected = detect_label_format(lbl_path)
-            if detected != task:
+            if detected != task and detected is not None:
                 print(f"Skipping {name}: expected {task}, found {detected}")
                 continue
 

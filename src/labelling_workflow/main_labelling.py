@@ -13,33 +13,40 @@ from labelling_workflow.crop_and_mask import *
 from labelling_workflow.bootstrap_runner import *
 from utils import show_instructions
 
-def run_labeling_workflow(suppress_instructions=False):
-    
+def run_labeling_workflow(
+    suppress_instructions=False, 
+    test_inputs=None  # new parameter
+):
     if not suppress_instructions:
         instructions = (
-        "Welcome to the Labelling Workflow!\n\n"
-        "- You will be guided through a series of steps to label your images.\n"
-        "- Please follow the on-screen instructions at each step.\n"
-        "- You can press 'Esc' at any time to exit the workflow.\n\n"
-        "Click 'OK' to begin."
-    )
+            "Welcome to the Labelling Workflow!\n\n"
+            "- You will be guided through a series of steps to label your images.\n"
+            "- Please follow the on-screen instructions at each step.\n"
+            "- You can close a window at any time to exit the workflow.\n\n"
+            "Click 'OK' to begin."
+        )
         show_instructions(message=instructions)
-    
-    args = get_user_labelling_inputs()
+
+    if test_inputs is not None:
+        args = test_inputs
+    else:
+        args = get_user_labelling_inputs()
+
         
     images = args["image_paths"]
     
     if not suppress_instructions:
         instructions = (
         "Instructions for Marking the Area of Interest:\n\n"
-        "- You will now select areas of interest for each image. You will do this by drawing a polygon around the area of interest.\n"
-        "- The polygon should outline the area where you want to detect objects.\n"
+        "- You will now select areas of interest for each image. You will do this by drawing a polygon around the areas of interest.\n"
+        "- This is meant to make labelling easier by blacking out areas outside the areas of interest, so you don't have to label the entire image, if there are"
+        "lots of instances of your object of interest in the image.\n"
+        "- The polygons should outline the areas where you want to detect objects.\n"
         "- Left click to add points and outline your polygon.\n"
-        "- Press 'C' to close the area of interest polygon.\n"
-        "- Press 'R' to reset points.\n"
+        "- Close a polygon by clicking on the first point again.\n"
+        "- Press 'Ctrl+Z' to undo the last action.\n"
         "- If you want the entire image as the area of interest, just don't draw a polygon on that image.\n"
-        "- Press 'Esc' to cancel and close the application.\n"
-        "- When finished, close the window.\n"
+        "- When finished, click the 'Finish' button.\n"
     )
         show_instructions(message=instructions)
         
@@ -58,16 +65,15 @@ def run_labeling_workflow(suppress_instructions=False):
             instructions = (
                 "Instructions for Editing Contours:\n\n"
                 "- You will now manually edit or create contours on the image.\n"
-                "- Left click and hold to select points by circling them with a lasso.\n"
+                "- Left click and drag to select points by circling them with a lasso.\n"
                 "- Right click and drag to pan the image.\n"
-                "- Press 'C' to create a new contour by clicking to add points. Close the contour by pressing 'C' again.\n"
+                "- Press 'C' to create a new contour by clicking to add points. Close the contour by selecting the first point again.\n"
                 "- Press 'D' to delete selected points.\n"
-                "- Press 'U' to undo the last action. NOTE: You cannot undo creating individual points while in create mode, but you can move/delete them after exiting create mode.\n"
+                "- Press 'Ctrl+Z' to undo the last action. NOTE: You cannot undo creating individual points while in create mode, but you can move/delete them after exiting create mode.\n"
                 "- Press 'S' to scale selected points (drag mouse relative to center).\n"
                 "- Press 'M' to move selected points (drag mouse).\n"
                 "- Press 'R' to rotate selected points (drag mouse relative to center).\n"
                 "- Use the mouse wheel to zoom in and out.\n"
-                "- Press 'Esc' to cancel and close the application.\n"
                 "- Press the same key again or left click to exit a mode.\n\n"
                 "When you're done, simply close the window to continue."
             )
@@ -85,10 +91,9 @@ def run_labeling_workflow(suppress_instructions=False):
                 "- Right click and drag to pan the image.\n"
                 "- Press 'C' to create a new bounding box by clicking and dragging.\n"
                 "- Press 'D' to delete selected points (this will delete all boxes associated with those points).\n"
-                "- Press 'U' to undo the last action.\n"
+                "- Press 'ctrl+Z' to undo the last action.\n"
                 "- Use the mouse wheel to zoom in and out.\n"
-                "- Press 'Esc' to cancel and close the application.\n"
-                "- Press the same key again or left click to exit a mode.\n\n"
+                "- Press the same key again, left click, or press 'esc' to exit a mode.\n\n"
                 "When you're done, simply close the window to continue."
                 
             )
@@ -100,12 +105,15 @@ def run_labeling_workflow(suppress_instructions=False):
         
     if args['annotation_mode'] == 'segmentation':
     
-        save_segmentation_results(images, contours, line_thickness, args["output_folder"], areas_of_interest, save_yolo, args['save_unlabeled_images'])
+        save_segmentation_results(images, contours, cropped_images, line_thickness, args["output_folder"], save_yolo, args['save_unlabeled_images'])
         
     else:
     
-        save_box_results(images, contours, line_thickness, args["output_folder"], areas_of_interest, save_yolo, args['save_unlabeled_images'])  
+        save_box_results(images, contours, cropped_images, line_thickness, args["output_folder"], save_yolo, areas_of_interest)
         
     if not suppress_instructions:
-        message = "Labeling workflow complete! Results have been saved to the specified output folder."
-        show_instructions(message=message, title="Workflow Complete")  
+        show_instructions(
+            "Labelling complete!\n\n"
+            f"Results saved to: {args['output_folder']}\n\n"
+            "TOLOEZ will now close."
+        )
