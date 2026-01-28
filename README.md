@@ -1,5 +1,8 @@
 # YOLOEZ
 
+![CI main](https://github.com/michaelholm6/YOLOEZ/actions/workflows/ci.yml/badge.svg?branch=main)
+![CI dev](https://github.com/michaelholm6/YOLOEZ/actions/workflows/ci.yml/badge.svg?branch=development)
+
 A standalone, GUI based application for labeling data, training models, and running inference with Ultralytics powered YOLO11 models.  
 This tool supports both bounding box detection and segmentation workflows and is designed to be usable without writing any code.
 
