@@ -25,7 +25,7 @@ def run_training_workflow(suppress_instructions=False, test_inputs=None):
             "First, you will provide inputs to set up your training session.\n"
             "You will select your dataset, training parameters, and augmentation options.\n\n"
             "After that, the training process will begin automatically.\n\n"
-            "Press esc at any time to exit the program."
+            "Close a window at any time to exit the program."
         )
     
     if test_inputs is not None:
@@ -76,5 +76,12 @@ def run_training_workflow(suppress_instructions=False, test_inputs=None):
     yolo_dataset_dir = os.path.join(os.path.split(dataset_path)[0], "yolo_dataset")
     if os.path.exists(yolo_dataset_dir):
         shutil.rmtree(yolo_dataset_dir)
+        
+    if not suppress_instructions:
+        show_instructions(
+            "Training complete!\n\n"
+            f"Trained model saved to: {model_save_dir}\n\n"
+            "TOLOEZ will now close."
+        )
 
     return results

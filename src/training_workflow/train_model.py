@@ -16,12 +16,13 @@ import math
 from utils import show_error_window
 from PyQt5 import QtCore
 
+
 def run_training(dataset_yaml, model_save_dir, model_size, task="detection", prev_model_path=None):
 
     if task == "segmentation":
-        default_model_path = f"yolo12{model_size}-seg.pt"
+        default_model_path = f"yolo11{model_size}-seg.pt"
     else:
-        default_model_path = f"yolo12{model_size}.pt"
+        default_model_path = f"yolo11{model_size}.pt"
 
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
     device_text = "GPU" if "cuda" in device else "CPU"
@@ -81,15 +82,15 @@ def run_training(dataset_yaml, model_save_dir, model_size, task="detection", pre
             metrics_layout = QtWidgets.QVBoxLayout()
             self.precision_container, self.precision_label = make_label_with_tooltip(
                 "Precision: 0.0",
-                " How reliable the model is when it says an object is present. Higher is better."
+                " How reliable the model is when it says an object is present. Higher is better. Range is from 0 to 1."
             )
             self.recall_container, self.recall_label = make_label_with_tooltip(
                 "Recall: 0.0",
-                "How well the model finds all objects present. Higher is better."
+                "How well the model finds all objects present. Higher is better. Range is from 0 to 1."
             )
             self.map_container, self.map_label = make_label_with_tooltip(
                 "mAP0.5–0.95: 0.0",
-                "How good the model is at locating and classifying objects. Higher is better."
+                "How good the model is at locating and classifying objects. Higher is better. Range is from 0 to 1."
             )
             for c in [self.precision_container, self.recall_container, self.map_container]:
                 metrics_layout.addWidget(c)
@@ -113,15 +114,15 @@ def run_training(dataset_yaml, model_save_dir, model_size, task="detection", pre
             loss_labels_layout = QtWidgets.QVBoxLayout()
             self.box_loss_container, self.box_loss_label = make_label_with_tooltip(
                 "Validation Box Loss: 0.0",
-                "This is a metric indicating how well the model predicts bounding boxes for detected objects. Lower is better."
+                "This is a metric indicating how well the model predicts bounding boxes for detected objects. Lower is better. Range is from 0 to ∞."
             )
             self.cls_loss_container, self.cls_loss_label = make_label_with_tooltip(
                 "Validation Classsification Loss: 0.0",
-                "This is a metric indicating how well the model classifies detected objects. Lower is better."
+                "This is a metric indicating how well the model classifies detected objects. Lower is better. Range is from 0 to ∞."
             )
             self.dfl_loss_container, self.dfl_loss_label = make_label_with_tooltip(
                 "Validation Distiribution Focal Loss: 0.0",
-                "This is a metric indicating how well the predicted bounding box distributions align with the ground truth. Lower is better."
+                "This is a metric indicating how well the predicted bounding box distributions align with the ground truth. Lower is better. Range is from 0 to ∞."
             )
             for c in [self.box_loss_container, self.cls_loss_container, self.dfl_loss_container]:
                 loss_labels_layout.addWidget(c)
@@ -199,9 +200,9 @@ def run_training(dataset_yaml, model_save_dir, model_size, task="detection", pre
             # Force a full redraw before export
             QtWidgets.QApplication.processEvents()
 
-            self.save_plots(model_save_dir)
+            #self.save_plots(model_save_dir)
 
-            QtWidgets.QApplication.processEvents()
+            #QtWidgets.QApplication.processEvents()
             self.close()
 
         def update_metrics(self, epoch, precision, recall, map_value, box_loss, cls_loss, dfl_loss):
@@ -455,7 +456,7 @@ def run_training(dataset_yaml, model_save_dir, model_size, task="detection", pre
             epochs=int(1e10),
             device=device,
             project=model_save_dir,
-            name="weights",
+            name="YOLO_EZ_training",
             patience=0,
             save=True
         )

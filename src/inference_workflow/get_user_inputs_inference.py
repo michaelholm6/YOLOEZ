@@ -17,6 +17,7 @@ class InputDialogInference(QtWidgets.QDialog):
         self._resize_timer = QtCore.QTimer(self)
         self._resize_timer.setSingleShot(True)
         self._resize_timer.timeout.connect(self.show_current_image)
+        self.close_flag = False
         
         def make_label_with_tooltip(text, tooltip):
             container = QtWidgets.QWidget()
@@ -210,7 +211,7 @@ class InputDialogInference(QtWidgets.QDialog):
         self.browse_image_button.clicked.connect(self.browse_image)
         self.browse_model_button.clicked.connect(self.browse_model)
         self.browse_output_button.clicked.connect(self.browse_output)
-        self.run_button.clicked.connect(self.accept)
+        self.run_button.clicked.connect(self.on_run_clicked)
         self.prev_button.clicked.connect(self.show_previous_image)
         self.next_button.clicked.connect(self.show_next_image)
         self.image_path_edit.textChanged.connect(self.update_run_button_state)
@@ -348,6 +349,22 @@ class InputDialogInference(QtWidgets.QDialog):
         else:
             self.run_button.setEnabled(True)
             self.status_label.hide()
+            
+    def on_run_clicked(self):
+        """Called when the Run button is clicked"""
+        self.close_flag = True  # window can close without quitting program
+        self.accept() 
+        
+    def closeEvent(self, event):
+        """Called when the window is closed"""
+        if getattr(self, "close_flag", False):
+            # Run button triggered — just close dialog, do not exit program
+            event.accept()
+        else:
+            # User clicked X — fully exit program
+            print("Window closed — exiting program.")
+            QtWidgets.QApplication.quit()
+            sys.exit(0)
 
     # === Misc ===
     def keyPressEvent(self, event: QtGui.QKeyEvent):

@@ -33,7 +33,7 @@ def run_yolo_on_crops(images_dict, model_path, confidence_threshold=0.5, annotat
     results_dict = {}
 
     for img_path, img in images_dict.items():
-        results = model.predict(img, verbose=False)
+        results = model.predict(img, verbose=False, conf=confidence_threshold, save=False)
         result = results[0]  # one per image
         contours_list = []
 

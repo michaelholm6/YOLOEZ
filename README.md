@@ -192,7 +192,7 @@ unzip YOLOEZ-linux-x86_64.zip
 chmod +x YOLOEZ
 ```
 
-### 9. Initialize TightVNC (no sudo)
+### 9. Initialize TightVNC
 
 Run the VNC server once to set a password and create configuration files:
 
@@ -228,7 +228,7 @@ Make executable:
 chmod +x ~/.vnc/xstartup
 ```
 
-### 11. Start the VNC Server (no sudo)
+### 11. Start the VNC Server
 
 ```bash
 tightvncserver -geometry 1920x1080

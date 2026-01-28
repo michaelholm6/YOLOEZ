@@ -64,3 +64,10 @@ def run_inference_workflow(trained_model_path=None, suppress_instructions=False,
     run_yolo_inference(
         model, cropped_images, save_path, inputs["YOLO_confidence"]
     )
+    
+    if not suppress_instructions:
+        show_instructions(
+            "Inference complete!\n\n"
+            f"Results saved to: {save_path}\n\n"
+            "TOLOEZ will now close."
+        )

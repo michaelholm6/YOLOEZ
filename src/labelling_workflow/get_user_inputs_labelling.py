@@ -50,7 +50,8 @@ class InputDialogLabelling(QtWidgets.QDialog):
         model_label = make_label_with_tooltip(
             "Bootstrapping Model:",
             "Optional: Select a pre-trained bootstrapping model to use. This will automatically generate initial annotations for your images. \
-You will have a chance to edit these annotations later. This should be a .pt file, and can be a model you have previously trained using this tool."
+You will have a chance to edit these annotations later. This should be a .pt file, and can be a model you have previously trained using this tool.\
+The idea here is that you can incrementally improve your model by labelling some images, training a model, and then using that model to bootstrap annotations on more images."
         )
         
         self.confidence_slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
@@ -138,6 +139,7 @@ You will have a chance to edit these annotations later. This should be a .pt fil
         mode_layout.addStretch()
         mode_container = QtWidgets.QWidget()
         mode_container.setLayout(mode_layout)
+        self.close_flag = False
 
         # === Run Button ===
         self.run_button = QtWidgets.QPushButton("Run")
@@ -279,13 +281,14 @@ You will have a chance to edit these annotations later. This should be a .pt fil
         self.browse_image_button.clicked.connect(self.browse_image)
         self.browse_model_button.clicked.connect(self.browse_model)
         self.browse_output_button.clicked.connect(self.browse_output)
-        self.run_button.clicked.connect(self.accept)
+        self.run_button.clicked.connect(self.on_run_clicked)
         self.prev_button.clicked.connect(self.show_previous_image)
         self.next_button.clicked.connect(self.show_next_image)
         self.image_path_edit.textChanged.connect(self.update_run_button_state)
         self.output_path_edit.textChanged.connect(self.update_run_button_state)
         self.bbox_radio.toggled.connect(self.update_run_button_state)
         self.segmentation_radio.toggled.connect(self.update_run_button_state)
+        self.model_path_edit.textChanged.connect(self.update_run_button_state)
 
         self.run_button.setEnabled(False)
         self.update_run_button_state()
@@ -311,6 +314,9 @@ You will have a chance to edit these annotations later. This should be a .pt fil
         else:
             self.confidence_container.setVisible(False)
     
+    def on_run_clicked(self):
+        self.close_flag = True
+        self.accept()
 
     # === Folder Browse ===
     def browse_image(self):
@@ -335,6 +341,17 @@ You will have a chance to edit these annotations later. This should be a .pt fil
         self.current_image_index = 0
         self.show_current_image()
         self.update_navigation_buttons()
+        
+    def closeEvent(self, event):
+        """Called when the window is closed"""
+        if getattr(self, "close_flag", False):
+            # Finish button triggered — just close window, do not exit program
+            event.accept()
+        else:
+            # User clicked X — fully exit program
+            print("Window closed — exiting program.")
+            QtWidgets.QApplication.quit()
+            sys.exit(0)
 
     # === Image Navigation ===
     def show_current_image(self):
@@ -393,6 +410,23 @@ You will have a chance to edit these annotations later. This should be a .pt fil
         folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Select Output Folder")
         if folder:
             self.output_path_edit.setText(folder)
+            
+    def get_yolo_model_type(self, model_path):
+        try:
+            from ultralytics import YOLO
+            model = YOLO(model_path)
+
+            model_type = getattr(model.model, 'model_type', None)
+            if model_type is None:
+                if hasattr(model.model, 'masks') or 'Seg' in type(model.model).__name__:
+                    model_type = 'segmentation'
+                else:
+                    model_type = 'bounding_box'
+
+            return model_type
+
+        except Exception as e:
+            return None
 
     # === Button Enable Logic ===
     def update_run_button_state(self):
@@ -416,6 +450,24 @@ You will have a chance to edit these annotations later. This should be a .pt fil
         if bootstrapping_model:
             if not os.path.isfile(bootstrapping_model) or not bootstrapping_model.lower().endswith(('.pt', '.pth', '.onnx')):
                 errors.append("Bootstrapping model path is invalid.")
+                
+        if bootstrapping_model and mode_selected:
+            model_type = self.get_yolo_model_type(bootstrapping_model)
+
+            if model_type is None:
+                errors.append("Failed to load bootstrapping model.")
+            else:
+                selected_mode = (
+                    "bounding_box" if self.bbox_radio.isChecked()
+                    else "segmentation"
+                )
+
+                if model_type != selected_mode:
+                    errors.append(
+                        f"Bootstrapping model type mismatch:\n"
+                        f"• Model is '{model_type.replace('_', ' ')}'\n"
+                        f"• Annotation mode is '{selected_mode.replace('_', ' ')}'"
+                    )
 
         if errors:
             self.run_button.setEnabled(False)
@@ -424,6 +476,8 @@ You will have a chance to edit these annotations later. This should be a .pt fil
         else:
             self.run_button.setEnabled(True)
             self.status_label.hide()
+            
+        
 
     # === Misc ===
     def keyPressEvent(self, event: QtGui.QKeyEvent):

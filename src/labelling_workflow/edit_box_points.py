@@ -7,6 +7,7 @@ import numpy as np
 from PyQt5 import QtCore, QtGui, QtWidgets
 import cv2
 from utils import show_error_window
+from PyQt5.QtCore import Qt
 
 class BoundingBoxEditorView(QtWidgets.QGraphicsView):
     """
@@ -30,6 +31,7 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
         self.rect_item = None
         self.v_guide = None
         self.h_guide = None
+        self.undo_stack = []
 
         self.current_mode = "Selection"
         self.line_thickness = line_thickness
@@ -38,7 +40,8 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
         self.scene = QtWidgets.QGraphicsScene(self)
         self.pixmap_item = QtWidgets.QGraphicsPixmapItem()
         self.scene.addItem(self.pixmap_item)
-        self.scene.setSceneRect(-10000, -10000, 20000, 20000)
+        PADDING = 5000
+        self.scene.setSceneRect(-PADDING, -PADDING, 2 * PADDING, 2 * PADDING)
         self.setScene(self.scene)
 
         # Rendering / interaction
@@ -48,31 +51,13 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
         self.zoom = 0.001
         self.pan_active = False
         self.last_mouse_pos = None
-        self.undo_stack = []
         self.horizontalScrollBar().valueChanged.connect(self.viewport().update)
         self.verticalScrollBar().valueChanged.connect(self.viewport().update)
 
         # initial render
         self.initial_fit_done = False
         self.update_display()
-        QtCore.QTimer.singleShot(0, self._initial_center_and_fit)
 
-    def _initial_center_and_fit(self):
-        if not self.pixmap_item.pixmap() or self.initial_fit_done:
-            return
-        self.resetTransform()
-        self.fitInView(self.pixmap_item, QtCore.Qt.KeepAspectRatio)
-        self.centerOn(self.pixmap_item)
-        self.initial_fit_done = True
-
-    def showEvent(self, event):
-        super().showEvent(event)
-        if not self.initial_fit_done:
-            self.resetTransform()
-            self.fitInView(self.pixmap_item, QtCore.Qt.KeepAspectRatio)
-            self.centerOn(self.pixmap_item)
-            self.initial_fit_done = True
-            
     def _create_guides(self):
         pen = QtGui.QPen(QtGui.QColor(180, 180, 180))  # light gray
         pen.setStyle(QtCore.Qt.DashLine)
@@ -134,9 +119,19 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
         self.pixmap_item.setPixmap(QtGui.QPixmap.fromImage(qimage))
 
         # Adjust scene rect
+        PADDING = 5000
         scene_rect = self.pixmap_item.boundingRect()
-        scene_rect = scene_rect.adjusted(-10000, -10000, 10000, 10000)
+        scene_rect = scene_rect.adjusted(-PADDING, -PADDING, PADDING, PADDING)
         self.scene.setSceneRect(scene_rect)
+        
+        if not self.initial_fit_done and not self.pixmap_item.pixmap().isNull():
+            if self.viewport().width() > 1 and self.viewport().height() > 1:
+                self.resetTransform()
+                image_rect = self.pixmap_item.boundingRect()
+                self.fitInView(image_rect, QtCore.Qt.KeepAspectRatio)
+                self.centerOn(image_rect.center())
+                self.initial_fit_done = True
+
 
     def paintEvent(self, event):
         super().paintEvent(event)
@@ -150,8 +145,10 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
         painter.end()
 
     def keyPressEvent(self, event):
+        k = event.key()
+        ctrl = event.modifiers() & Qt.ControlModifier
         # Undo
-        if event.key() == QtCore.Qt.Key_U:
+        if ctrl and k == QtCore.Qt.Key_Z:
             if self.undo_stack:
                 self.boxes = self.undo_stack.pop()
                 self.selected_points.clear()
@@ -159,18 +156,52 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
             return
 
         # Delete selected boxes (if any corner of a box is selected, delete whole box)
-        if event.key() == QtCore.Qt.Key_D:
+        if k == QtCore.Qt.Key_D:
             if not self.creating_box:
                 self.delete_selected_boxes()
                 self.update_display()
             return
 
-        # Quit (same behavior as before)
-        if event.key() == QtCore.Qt.Key_Escape:
-            sys.exit(0)
+        elif k == QtCore.Qt.Key_Escape:
+
+            if self.creating_box:
+                self.creating_box = False
+                self.first_corner = None
+                self.currently_creating_box = False
+                self.current_mode = "Selection"
+
+                if self.rect_item:
+                    self.scene.removeItem(self.rect_item)
+                    self.rect_item = None
+
+                self._remove_guides()
+                self.viewport().update()
+                self.update_display()
+                return
+
+            # 2. Cancel move operation
+            if getattr(self, "moving_active", False):
+                self.moving_active = False
+                self.current_mode = "Selection"
+                self.boxes = [b.copy() for b in self.boxes_original_for_move]
+                self.selected_points.clear()
+                self.update_display()
+                return
+
+            # 3. Cancel lasso drawing
+            if getattr(self, "drawing", False):
+                self.drawing = False
+                self.lasso_points = []
+                if hasattr(self, "lasso_item") and self.lasso_item:
+                    self.scene.removeItem(self.lasso_item)
+                    self.lasso_item = None
+                self.viewport().update()
+                return
+            
+            return
 
         # Toggle creation mode 'C'
-        if event.key() == QtCore.Qt.Key_C:
+        if k == QtCore.Qt.Key_C:
             if self.creating_box:
                 # Cancel creation mode if entered but not used
                 self.creating_box = False
@@ -186,7 +217,6 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
                 # Enter creation mode
                 self.creating_box = True
                 self.current_mode = "Box Creation"
-                self.undo_stack.append([b.copy() for b in self.boxes])
                 self._create_guides()
                 cursor_pos = QtGui.QCursor.pos()
                 local_pos = self.mapFromGlobal(cursor_pos)
@@ -197,7 +227,7 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
             return
 
         # Toggle movement mode 'M'
-        if event.key() == QtCore.Qt.Key_M:
+        if k == QtCore.Qt.Key_M:
             # Movement mode toggles on/off. When on, user can drag selected points / boxes.
             # We use the same M semantics as contour editor: start movement snapshot.
             if self.creating_box:
@@ -283,8 +313,8 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
                                     [[br[0], br[1]]],
                                     [[bl[0], bl[1]]]], dtype=np.int32)
                     # Only add if box is big enough
-                    self.undo_stack.append([b.copy() for b in self.boxes])
-                    if abs(x2 - x1) >= 4 and abs(y2 - y1) >= 4:
+                    if abs(x2 - x1) >= 1 and abs(y2 - y1) >= 1:
+                        self.undo_stack.append([b.copy() for b in self.boxes])
                         self.boxes.append(box)
                     # self.creating_box = False
                     self.first_corner = None
@@ -371,6 +401,34 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
             return
 
         super().mouseMoveEvent(event)
+        
+    def set_image(self, image, boxes=None, center=True, refocus=True):
+        """
+        Reuse the same view with a new image and boxes.
+        """
+        self.image = image
+        self.boxes = [b.copy() for b in boxes] if boxes else []
+        self.selected_points.clear()
+        self.undo_stack.clear()
+
+        # reset creation / movement state
+        self.creating_box = False
+        self.first_corner = None
+        self.currently_creating_box = False
+        self.moving_active = False
+        self.current_mode = "Selection"
+
+        self.update_display()
+
+        if self.initial_fit_done:
+            self.resetTransform()
+            image_rect = self.pixmap_item.boundingRect()
+            self.fitInView(image_rect, QtCore.Qt.KeepAspectRatio)
+            self.centerOn(image_rect.center())
+
+        if refocus:
+            self.setFocus(QtCore.Qt.ActiveWindowFocusReason)
+
 
     def mouseReleaseEvent(self, event):
         scene_pos = self.mapToScene(event.pos())
@@ -657,13 +715,17 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
         return self.get_edited_boxes()
 
 class MultiImageBoxEditor(QtWidgets.QWidget):
-    def __init__(self, image_dict, line_thickness=2, initial_boxes=None):
+    def __init__(self, image_dict, loop, line_thickness=2, initial_boxes=None):
         super().__init__()
         self.image_dict = image_dict
+        self.close_flag = False
+        self.loop = loop
         self.image_keys = list(image_dict.keys())
         self.line_thickness = line_thickness
         self.index = 0
-        self.results = {key: initial_boxes.get(key, []) if initial_boxes else [] for key in self.image_keys}
+        self.initial_boxes = initial_boxes or {}
+        self.results = {}  # user edits only
+        self.undo_stacks = {key: [] for key in self.image_keys}
 
         # Layouts
         self.layout = QtWidgets.QVBoxLayout(self)
@@ -676,6 +738,23 @@ class MultiImageBoxEditor(QtWidgets.QWidget):
         self.next_btn.clicked.connect(lambda: self.change_image(1))
         self.button_layout.addWidget(self.prev_btn)
         self.button_layout.addWidget(self.next_btn)
+        
+        self.finish_btn = QtWidgets.QPushButton("Finish")
+        self.finish_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #0078d7;
+                color: white;
+                border-radius: 6px;
+                padding: 8px 16px;
+                font-size: 14pt;
+            }
+            QPushButton:hover { background-color: #005a9e; }
+            QPushButton:pressed { background-color: #004578; }
+        """)
+        self.finish_btn.clicked.connect(self.finish_editing)
+
+        finish_layout = QtWidgets.QHBoxLayout()
+        finish_layout.addWidget(self.finish_btn, stretch=1)
 
         # Status label
         self.status_label = QtWidgets.QLabel("")
@@ -684,59 +763,93 @@ class MultiImageBoxEditor(QtWidgets.QWidget):
         # Add button layout and status label to main layout
         self.layout.addWidget(self.status_label)
         self.layout.addLayout(self.button_layout)
+        self.layout.addLayout(finish_layout)
 
-        # Editor view placeholder
-        self.editor_view = None
+        first_key = self.image_keys[0]
+        self.editor_view = BoundingBoxEditorView(
+            self.image_dict[first_key],
+            boxes=[b.copy() for b in self.initial_boxes.get(first_key, [])],
+            line_thickness=self.line_thickness
+        )
+        self.layout.insertWidget(0, self.editor_view, stretch=1)
+
+        self.load_image(self.index)
 
         self.showMaximized()
-        QtCore.QTimer.singleShot(
-            0,
-            lambda: self.activateWindow()
-        )
+
+        def focus_window():
+            self.raise_()                 # bring window to top
+            self.activateWindow()         # make it the active window
+            self.setFocus(QtCore.Qt.ActiveWindowFocusReason)
+
+        QtCore.QTimer.singleShot(0, focus_window)
         
-        QtCore.QTimer.singleShot(0, lambda: self.change_image(0, force=True))
+        QtCore.QTimer.singleShot(10, lambda: self.change_image(0, force=True))
         
     def update_navigation_buttons(self):
         self.prev_btn.setEnabled(self.index > 0)
         self.next_btn.setEnabled(self.index < len(self.image_keys) - 1)
+        
+        
+    def finish_editing(self):
+        # Save current image boxes before exiting
+        key = self.image_keys[self.index]
+        self.results[key] = self.editor_view.get_edited_boxes()
+        self.undo_stacks[key] = list(self.editor_view.undo_stack)
 
+        self.loop.quit()
+        self.close_flag = True
+        self.close()
+        
+    def closeEvent(self, event):
+        """Called when the window is closed"""
+        if getattr(self, "close_flag", False):
+            # Finish button triggered — just close window, do not exit program
+            event.accept()
+        else:
+            # User clicked X — fully exit program
+            print("Window closed — exiting program.")
+            QtWidgets.QApplication.quit()
+            sys.exit(0)  
 
     def load_image(self, idx):
         key = self.image_keys[idx]
         img = self.image_dict[key]
+
         if img is None:
             show_error_window(f"Error: Image at key '{key}' is None.")
             return
 
-        # Save current boxes
-        if self.editor_view is not None:
+        # Save current image edits
+        if hasattr(self, "_has_loaded_once") and self._has_loaded_once:
             prev_key = self.image_keys[self.index]
             self.results[prev_key] = self.editor_view.get_edited_boxes()
-            self.layout.removeWidget(self.editor_view)
-            self.editor_view.deleteLater()
+            self.undo_stacks[prev_key] = list(self.editor_view.undo_stack)
 
-        saved_boxes = self.results.get(key, [])
-        boxes_copy = [b.copy() for b in saved_boxes] if saved_boxes else []
-        self.editor_view = BoundingBoxEditorView(
+        # Decide what boxes to show
+        if key in self.results and len(self.results[key]) > 0:
+            boxes = self.results[key]               # user-edited
+        else:
+            boxes = self.initial_boxes.get(key, []) # YOLO fallback
+
+        boxes_copy = [b.copy() for b in boxes]
+
+        self.editor_view.set_image(
             img,
             boxes=boxes_copy,
-            line_thickness=self.line_thickness
+            center=True,
+            refocus=True
         )
 
-        
-        self.layout.insertWidget(0, self.editor_view, stretch=1)
+        # Restore undo stack
+        self.editor_view.undo_stack = list(self.undo_stacks.get(key, []))
+
         self.index = idx
         self.update_status()
-        QtCore.QTimer.singleShot(0, lambda: self.editor_view.viewport().setFocus(QtCore.Qt.ActiveWindowFocusReason))
-
-        # fix centering after layout
-        def center_when_ready():
-            if self.editor_view.viewport().width() > 0 and self.editor_view.viewport().height() > 0:
-                self.editor_view._initial_center_and_fit()
-            else:
-                QtCore.QTimer.singleShot(10, center_when_ready)
-        QtCore.QTimer.singleShot(0, center_when_ready)
         self.update_navigation_buttons()
+        
+        self._has_loaded_once = True
+
 
     def change_image(self, delta, force=False):
         new_index = max(0, min(len(self.image_keys) - 1, self.index + delta))
@@ -753,31 +866,6 @@ class MultiImageBoxEditor(QtWidgets.QWidget):
             self.results[key] = self.editor_view.get_edited_boxes()
         return self.results
 
-def extract_images_and_boxes(results_dict):
-    """
-    Converts results_dict to the format expected by MultiImageBoxEditor:
-    - images: {img_path: cropped_img}
-    - initial_boxes: {img_path: list of np.array boxes}
-    """
-    images = {}
-    initial_boxes = {}
-    for img_path, (img, det) in results_dict.items():
-        images[img_path] = img
-        boxes = []
-        # YOLO result.boxes is iterable; convert to (4,1,2) numpy arrays if needed
-        for b in det["boxes"]:
-            # assuming b.xyxy exists and is (x1,y1,x2,y2)
-            x1, y1, x2, y2 = b.xyxy[0]  # shape (4,)
-            box = np.array([
-                [[x1, y1]],
-                [[x2, y1]],
-                [[x2, y2]],
-                [[x1, y2]],
-            ], dtype=np.int32)
-            boxes.append(box)
-        initial_boxes[img_path] = boxes
-    return images, initial_boxes
-
 def run_box_editor(cropped_images, line_thickness=2, initial_boxes=None):
     
     app = QtWidgets.QApplication.instance()
@@ -786,13 +874,12 @@ def run_box_editor(cropped_images, line_thickness=2, initial_boxes=None):
         app = QtWidgets.QApplication(sys.argv)
         created_app = True
 
-    editor_widget = MultiImageBoxEditor(cropped_images, line_thickness=line_thickness, initial_boxes=initial_boxes)
-    editor_widget.setWindowTitle("Multi-Image Bounding Box Editor (C=Create Box, D=Delete, U=Undo, M=Move)")
+    loop = QtCore.QEventLoop()
+
+    editor_widget = MultiImageBoxEditor(cropped_images, loop, line_thickness=line_thickness, initial_boxes=initial_boxes)
+    editor_widget.setWindowTitle("Multi-Image Bounding Box Editor (C=Create Box, D=Delete, ctrl+Z=Undo, M=Move, esc=Return to Selection)")
     editor_widget.showMaximized()
 
-    if created_app:
-        app.exec_()
-    else:
-        app.exec_()
+    loop.exec_()
 
     return editor_widget.get_results()

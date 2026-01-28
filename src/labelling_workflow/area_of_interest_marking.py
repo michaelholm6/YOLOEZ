@@ -2,123 +2,18 @@
 # Copyright (C) 2026 Michael Holm
 # Developed at Purdue University
 
-import sys
-import os
-from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QSlider
-from PyQt5.QtGui import QPixmap, QPainter, QPen, QColor, QKeyEvent, QImage
-from PyQt5.QtCore import Qt, QPoint, QTimer, QEventLoop
-import cv2
 from utils import show_error_window
-
-
-def get_polygon_from_user(image, app):
-    class PolygonDrawer(QWidget):
-        def __init__(self, image):
-            super().__init__()
-            self.orig_image = image
-            self.orig_height, self.orig_width = image.shape[:2]
-            self.polygon_points = []
-            self.polygon_closed = False
-            self.setWindowTitle("Draw Polygon - C: close, R: reset, S: skip")
-            self.showMaximized()
-            self.setMouseTracking(True)
-
-        def resizeEvent(self, event):
-            self.update_scaled_pixmap()
-
-        def update_scaled_pixmap(self):
-            window_size = self.size()
-            qimg = self.numpy_to_qpixmap(self.orig_image)
-            self.scaled_pixmap = qimg.scaled(window_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-            self.offset_x = (self.width() - self.scaled_pixmap.width()) // 2
-            self.offset_y = (self.height() - self.scaled_pixmap.height()) // 2
-            self.scale_x = self.scaled_pixmap.width() / self.orig_width
-            self.scale_y = self.scaled_pixmap.height() / self.orig_height
-            self.update()
-
-        def numpy_to_qpixmap(self, img):
-            if len(img.shape) == 2:
-                qimg = QPixmap(QImage(img.data, img.shape[1], img.shape[0], img.strides[0], QImage.Format_Grayscale8))
-            else:
-                img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-                qimg = QPixmap(QImage(img_rgb.data, img_rgb.shape[1], img_rgb.shape[0], img_rgb.strides[0], QImage.Format_RGB888))
-            return qimg
-
-        def paintEvent(self, event):
-            painter = QPainter(self)
-            painter.fillRect(self.rect(), QColor(255, 255, 255))
-            painter.drawPixmap(self.offset_x, self.offset_y, self.scaled_pixmap)
-
-            if len(self.polygon_points) > 0:
-                pen = QPen(QColor(0, 255, 0), 5)
-                painter.setPen(pen)
-                for i in range(len(self.polygon_points) - 1):
-                    painter.drawLine(self.polygon_points[i], self.polygon_points[i + 1])
-                if self.polygon_closed:
-                    painter.drawLine(self.polygon_points[-1], self.polygon_points[0])
-
-                pen = QPen(QColor(255, 0, 0))
-                painter.setPen(pen)
-                painter.setBrush(QColor(255, 0, 0))
-                for pt in self.polygon_points:
-                    painter.drawEllipse(pt, 6, 6)
-
-        def mousePressEvent(self, event):
-            if event.button() == Qt.LeftButton:
-                pos = event.pos()
-                if (
-                    self.offset_x <= pos.x() <= self.offset_x + self.scaled_pixmap.width()
-                    and self.offset_y <= pos.y() <= self.offset_y + self.scaled_pixmap.height()
-                ):
-                    self.polygon_points.append(QPoint(pos.x(), pos.y()))
-                    self.polygon_closed = False
-                    self.update()
-
-        def keyPressEvent(self, event: QKeyEvent):
-            key = event.key()
-            if key == Qt.Key_C:
-                if len(self.polygon_points) > 2:
-                    self.polygon_closed = True
-                    self.update()
-                    QTimer.singleShot(300, self.close)
-                else:
-                    print("Need at least 3 points to form a polygon.")
-            elif key == Qt.Key_R:
-                self.polygon_points = []
-                self.polygon_closed = False
-                self.update()
-            elif key == Qt.Key_S:
-                self.polygon_points = []
-                self.polygon_closed = False
-                self.close()
-
-    drawer = PolygonDrawer(image)
-    drawer.update_scaled_pixmap()
-    drawer.show()
-    app.exec_()
-
-    if drawer.polygon_closed and len(drawer.polygon_points) > 2:
-        scaled_points = []
-        for pt in drawer.polygon_points:
-            x = int((pt.x() - drawer.offset_x) / drawer.scale_x)
-            y = int((pt.y() - drawer.offset_y) / drawer.scale_y)
-            scaled_points.append([x, y])
-        return scaled_points
-    else:
-        # fallback: full image rectangle
-        h, w = image.shape[:2]
-        return [[0, 0], [w - 1, 0], [w - 1, h - 1], [0, h - 1]]
 
 import sys
 import os
 import cv2
 from PyQt5.QtWidgets import (
-    QApplication, QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QLabel
+    QApplication, QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QLabel, QSlider
 )
 from PyQt5.QtGui import (
     QPixmap, QPainter, QPen, QColor, QImage, QKeyEvent
 )
-from PyQt5.QtCore import Qt, QPoint
+from PyQt5.QtCore import Qt, QPoint, QEventLoop
 
 
 class PolygonCanvas(QWidget):
@@ -137,32 +32,45 @@ class PolygonCanvas(QWidget):
         self.scale = 1.0  # uniform scale (scaled_width / orig_width)
         self.orig_w = 1
         self.orig_h = 1
+        self.polygons = []  # list of {"points": [QPoint,...], "closed": bool}
+        self.current_polygon = {"points": [], "closed": False}
+        self.undo_stack = []
 
         self.polygon_pts_widget = []  # list of QPoint in widget coordinates
         self.polygon_closed = False
         self.line_thickness = 2
+        
+        self.hover_first = False
 
         self.setMouseTracking(True)
         self.setMinimumSize(400, 300)
 
     # --- image loading / scaling helpers ---
     def load_image(self, image_bgr, saved_polygon_image_coords=None):
-        """image_bgr: numpy BGR image. saved_polygon_image_coords: list of [x,y] in image coords"""
         self.orig_image = image_bgr
         self.orig_h, self.orig_w = image_bgr.shape[:2]
         self.update_scaled_image()
 
-        # If there's a saved polygon in image coords, convert to widget coords now
-        self.polygon_pts_widget = []
-        self.polygon_closed = False
+        # FULL reset per image
+        self.polygons = []
+        self.current_polygon = {"points": [], "closed": False}
+        self.undo_stack = []
+        self.hover_first = False
+
+        # Restore saved polygons (image → widget coords)
         if saved_polygon_image_coords:
-            for (ix, iy) in saved_polygon_image_coords:
-                wx = int(ix * self.scale + self.offset_x)
-                wy = int(iy * self.scale + self.offset_y)
-                self.polygon_pts_widget.append(QPoint(wx, wy))
-            if len(self.polygon_pts_widget) > 2:
-                self.polygon_closed = True
+            for poly_img in saved_polygon_image_coords:
+                poly_widget = {
+                    "points": [
+                        self.image_to_widget_coords(ix, iy)
+                        for (ix, iy) in poly_img
+                    ],
+                    "closed": True
+                }
+                self.polygons.append(poly_widget)
+
         self.update()
+
 
     def update_scaled_image(self):
         """Compute scaled_pixmap, offsets and scale factor based on current widget size."""
@@ -190,6 +98,18 @@ class PolygonCanvas(QWidget):
 
         # uniform scale from image -> widget
         self.scale = scaled.width() / max(1, self.orig_w)
+        
+    def mouseMoveEvent(self, event):
+        pts = self.current_polygon["points"]
+        if len(pts) > 0 and not self.current_polygon["closed"]:
+            first_pt = pts[0]
+            dist_sq = (first_pt.x() - event.pos().x())**2 + (first_pt.y() - event.pos().y())**2
+            self.hover_first = dist_sq <= 100
+            self.update()
+        else:
+            if self.hover_first:
+                self.hover_first = False
+                self.update()
 
     # --- coordinate conversions ---
     def widget_to_image_coords(self, qpoint):
@@ -201,6 +121,11 @@ class PolygonCanvas(QWidget):
         ix = max(0, min(self.orig_w - 1, ix))
         iy = max(0, min(self.orig_h - 1, iy))
         return ix, iy
+    
+    def add_point(self, pos):
+            if not self.polygon_closed:
+                self.polygon_pts_widget.append(pos)
+                self.update()
 
     def image_to_widget_coords(self, ix, iy):
         """Convert image coords to widget QPoint."""
@@ -211,35 +136,76 @@ class PolygonCanvas(QWidget):
     # --- painting / interaction ---
     def paintEvent(self, event):
         painter = QPainter(self)
-        painter.fillRect(self.rect(), QColor(255, 255, 255))  # white background
+        painter.fillRect(self.rect(), QColor(255, 255, 255))
 
         if self.scaled_pixmap:
             painter.drawPixmap(self.offset_x, self.offset_y, self.scaled_pixmap)
 
-        if len(self.polygon_pts_widget) > 0:
-            pen = QPen(QColor(0, 200, 0), self.line_thickness)
-            painter.setPen(pen)
-            for i in range(len(self.polygon_pts_widget) - 1):
-                painter.drawLine(self.polygon_pts_widget[i], self.polygon_pts_widget[i + 1])
-            if self.polygon_closed:
-                painter.drawLine(self.polygon_pts_widget[-1], self.polygon_pts_widget[0])
+        # --- Draw completed polygons ---
+        for poly in self.polygons:
+            pts = poly["points"]
 
-            # draw nodes
-            pen = QPen(QColor(200, 0, 0))
-            painter.setPen(pen)
+            # draw lines in green
+            pen_lines = QPen(QColor(0, 200, 0), self.line_thickness)
+            painter.setPen(pen_lines)
+            for i in range(len(pts) - 1):
+                painter.drawLine(pts[i], pts[i + 1])
+            if poly["closed"] and len(pts) > 2:
+                painter.drawLine(pts[-1], pts[0])
+
+            # draw points in red
+            pen_points = QPen(QColor(200, 0, 0))
+            painter.setPen(pen_points)
             painter.setBrush(QColor(200, 0, 0))
-            for pt in self.polygon_pts_widget:
+            for pt in pts:
                 painter.drawEllipse(pt, 5, 5)
 
+        # --- Draw current polygon ---
+        pts = self.current_polygon["points"]
+
+        # draw lines in green
+        pen_lines = QPen(QColor(0, 200, 0), self.line_thickness)
+        painter.setPen(pen_lines)
+        for i in range(len(pts) - 1):
+            painter.drawLine(pts[i], pts[i + 1])
+
+        # draw points
+        for i, pt in enumerate(pts):
+            if i == 0 and self.hover_first:
+                color = QColor(0, 0, 255)  # first point hovered -> blue
+            else:
+                color = QColor(200, 0, 0)
+            painter.setPen(QPen(color))
+            painter.setBrush(color)
+            painter.drawEllipse(pt, 5, 5)
+
+
+
     def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton and self.scaled_pixmap:
-            pos = event.pos()
-            # ensure click is on the displayed image area
-            if (self.offset_x <= pos.x() <= self.offset_x + self.scaled_pixmap.width() and
-                    self.offset_y <= pos.y() <= self.offset_y + self.scaled_pixmap.height()):
-                self.polygon_pts_widget.append(pos)
-                self.polygon_closed = False
-                self.update()
+        if event.button() != Qt.LeftButton or not self.scaled_pixmap:
+            return
+
+        pos = event.pos()
+
+        # Only accept clicks inside the image
+        if not (self.offset_x <= pos.x() <= self.offset_x + self.scaled_pixmap.width() and
+                self.offset_y <= pos.y() <= self.offset_y + self.scaled_pixmap.height()):
+            return
+
+        pts = self.current_polygon["points"]
+
+        # If first point clicked (and polygon has ≥3 points), close polygon
+        if len(pts) >= 3:
+            first_pt = pts[0]
+            dist_sq = (first_pt.x() - pos.x())**2 + (first_pt.y() - pos.y())**2
+            if dist_sq <= 100:  # within 10px
+                self.close_polygon()
+                return
+
+        # Otherwise, add point to current polygon
+        pts.append(pos)
+        self.update()
+
 
     def resizeEvent(self, event):
         # Recompute scaled image and convert any existing polygon in image coords back
@@ -256,22 +222,42 @@ class PolygonCanvas(QWidget):
 
     # --- utility to get polygon in image coords ---
     def get_polygon_image_coords(self):
-        if len(self.polygon_pts_widget) == 0:
-            return []
-        pts_img = [self.widget_to_image_coords(pt) for pt in self.polygon_pts_widget]
-        return pts_img
+        all_polys = []
+        for poly in self.polygons:
+            pts_img = [self.widget_to_image_coords(pt) for pt in poly["points"]]
+            all_polys.append(pts_img)
+        return all_polys
+
 
     def reset_polygon(self):
-        self.polygon_pts_widget = []
-        self.polygon_closed = False
+        """Reset only the current in-progress polygon, allow multiple AOIs."""
+        self.current_polygon = {"points": [], "closed": False}
+        self.hover_first = False
         self.update()
 
     def close_polygon(self):
-        if len(self.polygon_pts_widget) > 2:
-            self.polygon_closed = True
+        """Close the current polygon and store it in polygons list."""
+        if len(self.current_polygon["points"]) > 2:
+            self.current_polygon["closed"] = True
+            self.polygons.append(self.current_polygon)
+            self.undo_stack.append({"action": "add", "polygon": self.current_polygon})
+            self.current_polygon = {"points": [], "closed": False}  # ready for next polygon
             self.update()
             return True
         return False
+    
+    def undo(self):
+        """Undo last action: either cancel current polygon or remove last completed polygon."""
+        if self.current_polygon["points"]:
+            # cancel in-progress polygon
+            self.undo_stack.append({"action": "cancel_current", "polygon": self.current_polygon})
+            self.current_polygon = {"points": [], "closed": False}
+            self.hover_first = False
+        elif self.polygons:
+            # remove last completed polygon
+            last = self.polygons.pop()
+            self.undo_stack.append({"action": "remove", "polygon": last})
+        self.update()
 
 
 class PolygonAnnotatorWindow(QWidget):
@@ -347,7 +333,7 @@ class PolygonAnnotatorWindow(QWidget):
         main_layout.addLayout(finish_layout)
 
         self.setLayout(main_layout)
-        self.setWindowTitle("AOI Annotator (C=close polygon, R=reset)")
+        self.setWindowTitle("AOI Annotator (ctrl+Z = undo)")
         self.showMaximized()
         self.showMaximized()  # show first
         self.raise_()
@@ -407,12 +393,11 @@ class PolygonAnnotatorWindow(QWidget):
 
     def keyPressEvent(self, event: QKeyEvent):
         k = event.key()
-        if k == Qt.Key_C:
-            closed = self.canvas.close_polygon()
-            if closed:
-                self.save_current_polygon()
-        elif k == Qt.Key_R:
-            self.canvas.reset_polygon()
+        ctrl = event.modifiers() & Qt.ControlModifier
+
+        if ctrl and k == Qt.Key_Z:
+            self.canvas.undo()
+            self.save_current_polygon()  # save immediately
         elif k == Qt.Key_Right:
             self.change_image(1)
         elif k == Qt.Key_Left:
