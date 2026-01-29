@@ -5,6 +5,7 @@
 import sys
 import os
 from PyQt5 import QtWidgets, QtGui, QtCore
+from utils import make_label_with_tooltip
 
 
 class InputDialogInference(QtWidgets.QDialog):
@@ -19,21 +20,6 @@ class InputDialogInference(QtWidgets.QDialog):
         self._resize_timer.setSingleShot(True)
         self._resize_timer.timeout.connect(self.show_current_image)
         self.close_flag = False
-
-        def make_label_with_tooltip(text, tooltip):
-            container = QtWidgets.QWidget()
-            layout = QtWidgets.QHBoxLayout(container)
-            layout.setContentsMargins(0, 0, 0, 0)
-            layout.setSpacing(4)
-            label = QtWidgets.QLabel(text)
-            icon_label = QtWidgets.QLabel()
-            icon_pix = self.style().standardIcon(QtWidgets.QStyle.SP_MessageBoxQuestion)
-            icon_label.setPixmap(icon_pix.pixmap(20, 20))
-            icon_label.setToolTip(tooltip)
-            layout.addWidget(label)
-            layout.addWidget(icon_label)
-            layout.addStretch()
-            return container
 
         # === Controls ===
         self.image_path_edit = QtWidgets.QLineEdit()

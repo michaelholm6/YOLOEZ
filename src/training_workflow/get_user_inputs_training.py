@@ -6,6 +6,7 @@ import sys, os
 from PyQt5 import QtWidgets, QtGui, QtCore
 import cv2
 import numpy as np
+from utils import make_label_with_tooltip
 
 
 class YOLOTrainingDialog(QtWidgets.QDialog):
@@ -17,22 +18,6 @@ class YOLOTrainingDialog(QtWidgets.QDialog):
         self.setFont(font)
         self.task = "segmentation"
         self.close_flag = False
-
-        # --- Helper function for tooltips ---
-        def make_label_with_tooltip(text, tooltip):
-            container = QtWidgets.QWidget()
-            layout = QtWidgets.QHBoxLayout(container)
-            layout.setContentsMargins(0, 0, 0, 0)
-            layout.setSpacing(4)
-            label = QtWidgets.QLabel(text)
-            icon_label = QtWidgets.QLabel()
-            icon_pix = self.style().standardIcon(QtWidgets.QStyle.SP_MessageBoxQuestion)
-            icon_label.setPixmap(icon_pix.pixmap(20, 20))
-            icon_label.setToolTip(tooltip)
-            layout.addWidget(label)
-            layout.addWidget(icon_label)
-            layout.addStretch()
-            return container
 
         # --- Left pane: controls ---
         left_layout = QtWidgets.QVBoxLayout()

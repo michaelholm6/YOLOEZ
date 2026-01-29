@@ -106,15 +106,6 @@ class ContourEditorView(QtWidgets.QGraphicsView):
         y_c = int(min(max(0, round(y)), h - 1))
         return x_c, y_c
 
-    # def showEvent(self, event):
-    #     super().showEvent(event)
-    #     # Only fit once
-    #     if not self.initial_fit_done:
-    #         self.resetTransform()
-    #         self.fitInView(self.pixmap_item, QtCore.Qt.KeepAspectRatio)
-    #         self.centerOn(self.pixmap_item)
-    #         self.initial_fit_done = True
-
     def update_display(self):
         """Draw the image and all contours."""
         img = self.image.copy()

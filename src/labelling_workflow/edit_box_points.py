@@ -775,11 +775,6 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
                     xi, yi = clamp_point(nx, ny)
                     self.boxes[b_idx][i][0] = [xi, yi]
 
-    # backward-compat helpers (MultiImageXXX depends on these names earlier)
-    def get_edited_contours(self):
-        # return same method name as earlier but now returns boxes
-        return self.get_edited_boxes()
-
 
 class MultiImageBoxEditor(QtWidgets.QWidget):
     def __init__(self, image_dict, loop, line_thickness=2, initial_boxes=None):

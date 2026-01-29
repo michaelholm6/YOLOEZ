@@ -2,16 +2,11 @@
 # Copyright (C) 2026 Michael Holm
 # Developed at Purdue University
 
-from labelling_workflow.area_of_interest_marking import *
-from labelling_workflow.clip_cracks_to_area_of_interest import *
-from labelling_workflow.save_segmentation_results import *
-from labelling_workflow.edit_contour_points import *
-from labelling_workflow.get_user_inputs_labelling import *
 from labelling_workflow.main_labelling import run_labeling_workflow
 from training_workflow.main_training import run_training_workflow
 from inference_workflow.main_inference import run_inference_workflow
 from utils import make_label_with_tooltip
-from PyQt5 import QtWidgets
+from PyQt5 import QtWidgets, QtCore, QtGui
 import sys
 
 

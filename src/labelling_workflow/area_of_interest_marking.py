@@ -137,11 +137,6 @@ class PolygonCanvas(QWidget):
         iy = max(0, min(self.orig_h - 1, iy))
         return ix, iy
 
-    def add_point(self, pos):
-        if not self.polygon_closed:
-            self.polygon_pts_widget.append(pos)
-            self.update()
-
     def image_to_widget_coords(self, ix, iy):
         """Convert image coords to widget QPoint."""
         wx = int(round(ix * self.scale + self.offset_x))
@@ -245,12 +240,6 @@ class PolygonCanvas(QWidget):
             pts_img = [self.widget_to_image_coords(pt) for pt in poly["points"]]
             all_polys.append(pts_img)
         return all_polys
-
-    def reset_polygon(self):
-        """Reset only the current in-progress polygon, allow multiple AOIs."""
-        self.current_polygon = {"points": [], "closed": False}
-        self.hover_first = False
-        self.update()
 
     def close_polygon(self):
         """Close the current polygon and store it in polygons list."""
