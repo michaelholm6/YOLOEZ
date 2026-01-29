@@ -6,6 +6,7 @@ import os
 import cv2
 import albumentations as A
 
+
 # ---------------------------
 # Transform builder
 # ---------------------------
@@ -55,6 +56,7 @@ def build_transform(aug_dict, task):
             keypoint_params=A.KeypointParams(format="xy", remove_invisible=False),
         )
 
+
 # ---------------------------
 # Label format detection
 # ---------------------------
@@ -68,10 +70,13 @@ def detect_label_format(lbl_path):
                 return "detection"
     return None
 
+
 # ---------------------------
 # Dataset augmentation
 # ---------------------------
-def augment_yolo_dataset(dataset_dir, aug_dict, output_dir, num_augments=1, task="segmentation"):
+def augment_yolo_dataset(
+    dataset_dir, aug_dict, output_dir, num_augments=1, task="segmentation"
+):
     exts = {".jpg", ".jpeg", ".png", ".bmp"}
 
     for split in ["train", "val"]:
@@ -105,16 +110,22 @@ def augment_yolo_dataset(dataset_dir, aug_dict, output_dir, num_augments=1, task
             with open(lbl_path) as f:
                 for line in f:
                     parts = line.strip().split()
-                    labels.append({
-                        "label": int(parts[0]),
-                        "coords": [float(x) for x in parts[1:]],
-                    })
+                    labels.append(
+                        {
+                            "label": int(parts[0]),
+                            "coords": [float(x) for x in parts[1:]],
+                        }
+                    )
 
             # Save original
             cv2.imwrite(os.path.join(img_out, fname), img)
             with open(os.path.join(lbl_out, name + ".txt"), "w") as f:
                 for l in labels:
-                    f.write(f"{l['label']} " + " ".join(f"{c:.6f}" for c in l["coords"]) + "\n")
+                    f.write(
+                        f"{l['label']} "
+                        + " ".join(f"{c:.6f}" for c in l["coords"])
+                        + "\n"
+                    )
 
             transform = build_transform(aug_dict, task)
 
@@ -136,7 +147,9 @@ def augment_yolo_dataset(dataset_dir, aug_dict, output_dir, num_augments=1, task
                     aug_h, aug_w = aug_img.shape[:2]
 
                     aug_labels = []
-                    for (x1, y1, x2, y2), cls in zip(out["bboxes"], out["class_labels"]):
+                    for (x1, y1, x2, y2), cls in zip(
+                        out["bboxes"], out["class_labels"]
+                    ):
                         xc = ((x1 + x2) / 2) / aug_w
                         yc = ((y1 + y2) / 2) / aug_h
                         bw = (x2 - x1) / aug_w
@@ -146,8 +159,10 @@ def augment_yolo_dataset(dataset_dir, aug_dict, output_dir, num_augments=1, task
                 else:  # segmentation
                     polygons = []
                     for l in labels:
-                        pts = [(l["coords"][i] * w, l["coords"][i + 1] * h)
-                               for i in range(0, len(l["coords"]), 2)]
+                        pts = [
+                            (l["coords"][i] * w, l["coords"][i + 1] * h)
+                            for i in range(0, len(l["coords"]), 2)
+                        ]
                         polygons.append(pts)
 
                     flat_pts = [pt for poly in polygons for pt in poly]
@@ -159,7 +174,7 @@ def augment_yolo_dataset(dataset_dir, aug_dict, output_dir, num_augments=1, task
                     idx = 0
                     for l, poly in zip(labels, polygons):
                         n = len(poly)
-                        pts = out["keypoints"][idx:idx + n]
+                        pts = out["keypoints"][idx : idx + n]
                         idx += n
 
                         coords = []
@@ -174,4 +189,8 @@ def augment_yolo_dataset(dataset_dir, aug_dict, output_dir, num_augments=1, task
 
                 with open(os.path.join(lbl_out, f"{name}_aug{k}.txt"), "w") as f:
                     for l in aug_labels:
-                        f.write(f"{l['label']} " + " ".join(f"{c:.6f}" for c in l["coords"]) + "\n")
+                        f.write(
+                            f"{l['label']} "
+                            + " ".join(f"{c:.6f}" for c in l["coords"])
+                            + "\n"
+                        )

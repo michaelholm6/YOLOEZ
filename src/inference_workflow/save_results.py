@@ -9,10 +9,10 @@ from PyQt5 import QtWidgets
 def get_save_path(default_name="inference_results"):
     """
     Prompt the user to select a directory for saving inference results.
-    
+
     Args:
         default_name (str): Default suggested directory name.
-    
+
     Returns:
         str or None: The chosen directory path, or None if cancelled.
     """

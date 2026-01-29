@@ -18,7 +18,6 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
-
 import sys
 import traceback
 
@@ -26,6 +25,7 @@ from PyQt5.QtWidgets import QApplication
 
 from YOLO_EZ import main as YOLO_EZ_main
 from utils import show_error_window
+
 
 def main(test_mode: bool = False) -> int:
     if test_mode:
@@ -51,6 +51,6 @@ if __name__ == "__main__":
 
         show_error_window(
             f"An unhandled exception occurred:\n\n{error_msg}",
-            title="Unhandled Exception"
+            title="Unhandled Exception",
         )
         sys.exit(1)

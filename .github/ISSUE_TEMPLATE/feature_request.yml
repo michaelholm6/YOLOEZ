@@ -1,0 +1,56 @@
+name: Feature Proposal
+description: Propose a new feature or workflow improvement
+title: "[Feature]: "
+labels: ["enhancement"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Feature proposals should be discussed before implementation.
+        Please provide enough detail for evaluation.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: What problem does this feature solve?
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe the feature or change
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+    validations:
+      required: false
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Expected Scope of Changes
+      description: |
+        Indicate affected areas:
+        - GUI
+        - Training pipeline
+        - Inference
+        - Dataset handling
+        - Documentation
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: willingness
+    attributes:
+      label: Contribution Intent
+      options:
+        - label: I am willing to implement this feature and submit a pull request

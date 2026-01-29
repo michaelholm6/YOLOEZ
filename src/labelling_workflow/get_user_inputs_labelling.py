@@ -6,6 +6,7 @@ import sys
 import os
 from PyQt5 import QtWidgets, QtGui, QtCore
 
+
 class InputDialogLabelling(QtWidgets.QDialog):
     def __init__(self):
         super().__init__()
@@ -17,7 +18,7 @@ class InputDialogLabelling(QtWidgets.QDialog):
         self._resize_timer = QtCore.QTimer(self)
         self._resize_timer.setSingleShot(True)
         self._resize_timer.timeout.connect(self.show_current_image)
-        
+
         def make_label_with_tooltip(text, tooltip):
             container = QtWidgets.QWidget()
             layout = QtWidgets.QHBoxLayout(container)
@@ -41,22 +42,23 @@ class InputDialogLabelling(QtWidgets.QDialog):
 
         self.output_path_edit = QtWidgets.QLineEdit()
         self.browse_output_button = QtWidgets.QPushButton("Browse Output Folder...")
-        
-        
+
         # === Bootstrapping Model Selection ===
         self.model_path_edit = QtWidgets.QLineEdit()
-        self.browse_model_button = QtWidgets.QPushButton("Select Bootstrapping Model...")
+        self.browse_model_button = QtWidgets.QPushButton(
+            "Select Bootstrapping Model..."
+        )
 
         model_label = make_label_with_tooltip(
             "Bootstrapping Model:",
             "Optional: Select a pre-trained bootstrapping model to use. This will automatically generate initial annotations for your images. \
 You will have a chance to edit these annotations later. This should be a .pt file, and can be a model you have previously trained using this tool. \
-The idea here is that you can incrementally improve your model by labelling some images, training a model, and then using that model to bootstrap annotations on more images."
+The idea here is that you can incrementally improve your model by labelling some images, training a model, and then using that model to bootstrap annotations on more images.",
         )
-        
+
         self.confidence_slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
         self.confidence_slider.setRange(0, 100)  # slider values 0–100
-        self.confidence_slider.setValue(50)      # default 0.5
+        self.confidence_slider.setValue(50)  # default 0.5
         self.confidence_slider.setSingleStep(1)
 
         self.confidence_spinbox = QtWidgets.QDoubleSpinBox()
@@ -117,14 +119,15 @@ The idea here is that you can incrementally improve your model by labelling some
         conf_container.setVisible(False)
         self.confidence_container = conf_container
 
-
         # === Mode Selection (Bounding Box vs Segmentation) ===
-        
+
         mode_label = make_label_with_tooltip(
             "Annotation Mode:",
-            "Choose how you want to annotate images: Bounding Boxes or Segmentation Masks. Segmentations masks are many sided polygons that can better fit irregular shapes, while bounding boxes are simple rectangles."
+            "Choose how you want to annotate images: Bounding Boxes or Segmentation Masks. Segmentations masks are many sided polygons that can better fit irregular shapes, while bounding boxes are simple rectangles.",
         )
-        mode_label.setToolTip("Choose how you want to annotate images: Bounding Boxes or Segmentation Masks.")
+        mode_label.setToolTip(
+            "Choose how you want to annotate images: Bounding Boxes or Segmentation Masks."
+        )
 
         self.bbox_radio = QtWidgets.QRadioButton("Bounding Boxes")
         self.segmentation_radio = QtWidgets.QRadioButton("Segmentation")
@@ -162,18 +165,22 @@ The idea here is that you can incrementally improve your model by labelling some
         self.status_label.setPalette(palette)
         self.status_label.setWordWrap(True)
         font = self.status_label.font()
-        font.setPointSize(16)   # choose whatever size you want
+        font.setPointSize(16)  # choose whatever size you want
         self.status_label.setFont(font)
         self.status_label.show()
 
         # === Image Preview and Navigation ===
         self.image_preview = QtWidgets.QLabel()
-        self.image_preview.setStyleSheet("border: 1px solid black; background-color: #eee;")
+        self.image_preview.setStyleSheet(
+            "border: 1px solid black; background-color: #eee;"
+        )
         self.image_preview.setAlignment(QtCore.Qt.AlignCenter)
         self.image_preview.setStyleSheet("font-size: 16pt;")
         self.image_preview.setText("No Folder Selected")
         self.image_preview.setScaledContents(False)
-        self.image_preview.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        self.image_preview.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
+        )
 
         # Keep track of folder images
         self.image_files = []
@@ -198,10 +205,12 @@ The idea here is that you can incrementally improve your model by labelling some
         # === Helper to create label + tooltip ===
 
         image_path_label = make_label_with_tooltip(
-            "Image Folder:", "Select a folder containing input images to label for future training."
+            "Image Folder:",
+            "Select a folder containing input images to label for future training.",
         )
         output_path_label = make_label_with_tooltip(
-            "Output Folder:", "Select a folder where any generated outputs will be saved."
+            "Output Folder:",
+            "Select a folder where any generated outputs will be saved.",
         )
 
         # === YOLO Save Checkbox ===
@@ -216,11 +225,13 @@ The idea here is that you can incrementally improve your model by labelling some
         yolo_icon = QtWidgets.QLabel()
         icon_pix = self.style().standardIcon(QtWidgets.QStyle.SP_MessageBoxQuestion)
         yolo_icon.setPixmap(icon_pix.pixmap(20, 20))
-        yolo_icon.setToolTip("Check to save a YOLO training samples for future model training based on your annotations.")
+        yolo_icon.setToolTip(
+            "Check to save a YOLO training samples for future model training based on your annotations."
+        )
         yolo_layout.addWidget(yolo_icon)
         yolo_layout.addStretch()
-        
-        #Save unlabeled images checkbox
+
+        # Save unlabeled images checkbox
         self.save_unlabeled_checkbox = QtWidgets.QCheckBox()
         unlabeled_container = QtWidgets.QWidget()
         unlabeled_layout = QtWidgets.QHBoxLayout(unlabeled_container)
@@ -232,12 +243,13 @@ The idea here is that you can incrementally improve your model by labelling some
         unlabeled_icon = QtWidgets.QLabel()
         icon_pix = self.style().standardIcon(QtWidgets.QStyle.SP_MessageBoxQuestion)
         unlabeled_icon.setPixmap(icon_pix.pixmap(20, 20))
-        unlabeled_icon.setToolTip("Check to save images that do not contain any labeled objects to the YOLO training sample. This is off by default, because\
+        unlabeled_icon.setToolTip(
+            "Check to save images that do not contain any labeled objects to the YOLO training sample. This is off by default, because\
  the default behavior is to assume that unlabeled images are unlabeled because you ran out of time trying to label everything. However, it is important to train\
- your model with images that do not contain objects of interest, so you may want to enable this option.")
+ your model with images that do not contain objects of interest, so you may want to enable this option."
+        )
         unlabeled_layout.addWidget(unlabeled_icon)
         unlabeled_layout.addStretch()
-        
 
         # === Controls Layout ===
         controls_layout = QtWidgets.QVBoxLayout()
@@ -294,38 +306,40 @@ The idea here is that you can incrementally improve your model by labelling some
         self.update_run_button_state()
 
         # Show dialog
-        
+
         self.showMaximized()
         self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowStaysOnTopHint)
         self.show()
-        
+
     def browse_model(self):
         file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
             self,
             "Select Bootstrapping Model",
             "",
-            "Model Files (*.pt *.pth *.onnx);;All Files (*)"
+            "Model Files (*.pt *.pth *.onnx);;All Files (*)",
         )
         if file_path:
             self.model_path_edit.setText(file_path)
-            
+
         if self.model_path_edit.text().strip():
             self.confidence_container.setVisible(True)
         else:
             self.confidence_container.setVisible(False)
-    
+
     def on_run_clicked(self):
         self.close_flag = True
         self.accept()
 
     # === Folder Browse ===
     def browse_image(self):
-        folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Select Folder of Images")
+        folder = QtWidgets.QFileDialog.getExistingDirectory(
+            self, "Select Folder of Images"
+        )
         if not folder:
             return
 
         self.image_path_edit.setText(folder)
-        valid_exts = ('.jpg', '.jpeg', '.png', '.tif', '.tiff', '.bmp')
+        valid_exts = (".jpg", ".jpeg", ".png", ".tif", ".tiff", ".bmp")
         self.image_files = [
             os.path.join(folder, f)
             for f in sorted(os.listdir(folder))
@@ -341,7 +355,7 @@ The idea here is that you can incrementally improve your model by labelling some
         self.current_image_index = 0
         self.show_current_image()
         self.update_navigation_buttons()
-        
+
     def closeEvent(self, event):
         """Called when the window is closed"""
         if getattr(self, "close_flag", False):
@@ -372,16 +386,14 @@ The idea here is that you can incrementally improve your model by labelling some
 
         label_size = self.image_preview.size()
         w, h = label_size.width(), label_size.height()
-        rounded_size = (w//10*10, h//10*10)
+        rounded_size = (w // 10 * 10, h // 10 * 10)
 
         if getattr(self, "_last_scaled_size", None) == rounded_size:
             return
         self._last_scaled_size = rounded_size
 
         scaled_pixmap = self._original_pixmap.scaled(
-            label_size,
-            QtCore.Qt.KeepAspectRatio,
-            QtCore.Qt.SmoothTransformation
+            label_size, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation
         )
         self.image_preview.setPixmap(scaled_pixmap)
 
@@ -403,25 +415,30 @@ The idea here is that you can incrementally improve your model by labelling some
 
     def update_navigation_buttons(self):
         self.prev_button.setEnabled(self.current_image_index > 0)
-        self.next_button.setEnabled(self.current_image_index < len(self.image_files) - 1)
+        self.next_button.setEnabled(
+            self.current_image_index < len(self.image_files) - 1
+        )
 
     # === Output Folder ===
     def browse_output(self):
-        folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Select Output Folder")
+        folder = QtWidgets.QFileDialog.getExistingDirectory(
+            self, "Select Output Folder"
+        )
         if folder:
             self.output_path_edit.setText(folder)
-            
+
     def get_yolo_model_type(self, model_path):
         try:
             from ultralytics import YOLO
+
             model = YOLO(model_path)
 
-            model_type = getattr(model.model, 'model_type', None)
+            model_type = getattr(model.model, "model_type", None)
             if model_type is None:
-                if hasattr(model.model, 'masks') or 'Seg' in type(model.model).__name__:
-                    model_type = 'segmentation'
+                if hasattr(model.model, "masks") or "Seg" in type(model.model).__name__:
+                    model_type = "segmentation"
                 else:
-                    model_type = 'bounding_box'
+                    model_type = "bounding_box"
 
             return model_type
 
@@ -432,7 +449,9 @@ The idea here is that you can incrementally improve your model by labelling some
     def update_run_button_state(self):
         image_path = self.image_path_edit.text().strip()
         output_path = self.output_path_edit.text().strip()
-        mode_selected = self.bbox_radio.isChecked() or self.segmentation_radio.isChecked()
+        mode_selected = (
+            self.bbox_radio.isChecked() or self.segmentation_radio.isChecked()
+        )
         bootstrapping_model = self.model_path_edit.text().strip()
 
         errors = []
@@ -446,11 +465,13 @@ The idea here is that you can incrementally improve your model by labelling some
 
         if not mode_selected:
             errors.append("Please select either Bounding Boxes or Segmentation.")
-            
+
         if bootstrapping_model:
-            if not os.path.isfile(bootstrapping_model) or not bootstrapping_model.lower().endswith(('.pt', '.pth', '.onnx')):
+            if not os.path.isfile(
+                bootstrapping_model
+            ) or not bootstrapping_model.lower().endswith((".pt", ".pth", ".onnx")):
                 errors.append("Bootstrapping model path is invalid.")
-                
+
         if bootstrapping_model and mode_selected:
             model_type = self.get_yolo_model_type(bootstrapping_model)
 
@@ -458,8 +479,7 @@ The idea here is that you can incrementally improve your model by labelling some
                 errors.append("Failed to load bootstrapping model.")
             else:
                 selected_mode = (
-                    "bounding_box" if self.bbox_radio.isChecked()
-                    else "segmentation"
+                    "bounding_box" if self.bbox_radio.isChecked() else "segmentation"
                 )
 
                 if model_type != selected_mode:
@@ -476,8 +496,6 @@ The idea here is that you can incrementally improve your model by labelling some
         else:
             self.run_button.setEnabled(True)
             self.status_label.hide()
-            
-        
 
     # === Misc ===
     def keyPressEvent(self, event: QtGui.QKeyEvent):
@@ -499,8 +517,12 @@ The idea here is that you can incrementally improve your model by labelling some
             "YOLO_true": self.save_yolo_checkbox.isChecked(),
             "annotation_mode": mode,
             "bootstrapping_model": self.model_path_edit.text().strip() or None,
-            "bootstrapping_confidence": self.confidence_spinbox.value() if self.model_path_edit.text().strip() else None,
-            "save_unlabeled_images": self.save_unlabeled_checkbox.isChecked()
+            "bootstrapping_confidence": (
+                self.confidence_spinbox.value()
+                if self.model_path_edit.text().strip()
+                else None
+            ),
+            "save_unlabeled_images": self.save_unlabeled_checkbox.isChecked(),
         }
 
 

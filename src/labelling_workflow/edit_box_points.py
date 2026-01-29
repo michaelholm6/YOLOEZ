@@ -9,6 +9,7 @@ import cv2
 from utils import show_error_window
 from PyQt5.QtCore import Qt
 
+
 class BoundingBoxEditorView(QtWidgets.QGraphicsView):
     """
     Axis-aligned bounding box editor.
@@ -19,10 +20,13 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
       2: bottom-right
       3: bottom-left
     """
+
     def __init__(self, image, boxes=None, line_thickness=2, parent=None):
         super().__init__(parent)
         self.image = image
-        self.boxes = [b.copy() for b in boxes] if boxes else []  # list of numpy arrays (4,1,2)
+        self.boxes = (
+            [b.copy() for b in boxes] if boxes else []
+        )  # list of numpy arrays (4,1,2)
         self.selected_points = set()  # set of (box_idx, corner_idx)
         self.creating_box = False
         self.first_corner = None  # store first click
@@ -74,7 +78,6 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
         self.scene.addItem(self.v_guide)
         self.scene.addItem(self.h_guide)
 
-
     def _remove_guides(self):
         if self.v_guide:
             self.scene.removeItem(self.v_guide)
@@ -82,7 +85,6 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
         if self.h_guide:
             self.scene.removeItem(self.h_guide)
             self.h_guide = None
-
 
     def _update_guides(self, scene_pos):
         if not self.v_guide or not self.h_guide:
@@ -101,21 +103,36 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
         # Draw boxes
         for b_idx, box in enumerate(self.boxes):
             # box: np array shape (4,1,2) or (4,2)
-            pts = [tuple(pt[0]) if pt.ndim == 2 else tuple(pt) for pt in box.reshape((-1,2))]
+            pts = [
+                tuple(pt[0]) if pt.ndim == 2 else tuple(pt)
+                for pt in box.reshape((-1, 2))
+            ]
             # Ensure int coords
             pts_i = [(int(x), int(y)) for (x, y) in pts]
             # Draw rectangle (closed polyline)
             if len(pts_i) == 4:
-                cv2.polylines(img, [np.array(pts_i)], isClosed=True, color=(0, 0, 255), thickness=self.line_thickness)
+                cv2.polylines(
+                    img,
+                    [np.array(pts_i)],
+                    isClosed=True,
+                    color=(0, 0, 255),
+                    thickness=self.line_thickness,
+                )
             # Draw corner handles
             for corner_idx, pt in enumerate(pts_i):
                 if (b_idx, corner_idx) in self.selected_points:
-                    cv2.circle(img, pt, self.line_thickness+2, (255, 0, 0), -1)  # selected -> blueish
+                    cv2.circle(
+                        img, pt, self.line_thickness + 2, (255, 0, 0), -1
+                    )  # selected -> blueish
                 else:
-                    cv2.circle(img, pt, max(2, int(self.line_thickness/2)), (0, 255, 0), -1)
+                    cv2.circle(
+                        img, pt, max(2, int(self.line_thickness / 2)), (0, 255, 0), -1
+                    )
 
         height, width, _ = img.shape
-        qimage = QtGui.QImage(img.data, width, height, 3 * width, QtGui.QImage.Format_BGR888)
+        qimage = QtGui.QImage(
+            img.data, width, height, 3 * width, QtGui.QImage.Format_BGR888
+        )
         self.pixmap_item.setPixmap(QtGui.QPixmap.fromImage(qimage))
 
         # Adjust scene rect
@@ -123,7 +140,7 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
         scene_rect = self.pixmap_item.boundingRect()
         scene_rect = scene_rect.adjusted(-PADDING, -PADDING, PADDING, PADDING)
         self.scene.setSceneRect(scene_rect)
-        
+
         if not self.initial_fit_done and not self.pixmap_item.pixmap().isNull():
             if self.viewport().width() > 1 and self.viewport().height() > 1:
                 self.resetTransform()
@@ -131,7 +148,6 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
                 self.fitInView(image_rect, QtCore.Qt.KeepAspectRatio)
                 self.centerOn(image_rect.center())
                 self.initial_fit_done = True
-
 
     def paintEvent(self, event):
         super().paintEvent(event)
@@ -197,7 +213,7 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
                     self.lasso_item = None
                 self.viewport().update()
                 return
-            
+
             return
 
         # Toggle creation mode 'C'
@@ -207,7 +223,7 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
                 self.creating_box = False
                 self.currently_creating_box = False
                 self.current_mode = "Selection"
-                self._remove_guides()  
+                self._remove_guides()
                 self.viewport().update()
                 # Remove temp rect if exists
                 if self.rect_item:
@@ -255,7 +271,10 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
 
     def mousePressEvent(self, event):
         scene_pos = self.mapToScene(event.pos())
-        if getattr(self, "moving_active", False) and event.button() == QtCore.Qt.LeftButton:
+        if (
+            getattr(self, "moving_active", False)
+            and event.button() == QtCore.Qt.LeftButton
+        ):
             self.moving_active = False
             self.current_mode = "Selection"
             self.move_start_mouse_pos = None
@@ -270,7 +289,7 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
 
                 # --- Reject clicks outside image bounds ---
                 if not (0 <= x < self.image.shape[1] and 0 <= y < self.image.shape[0]):
-                    return 
+                    return
                 if self.first_corner is None:
                     # First click: set starting corner
                     self.first_corner = scene_pos
@@ -291,7 +310,9 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
 
                     # --- If either corner is outside image, skip box creation ---
                     h, w = self.image.shape[:2]
-                    if not (0 <= x1 < w and 0 <= y1 < h and 0 <= x2 < w and 0 <= y2 < h):
+                    if not (
+                        0 <= x1 < w and 0 <= y1 < h and 0 <= x2 < w and 0 <= y2 < h
+                    ):
                         self.scene.removeItem(self.rect_item)
                         self.rect_item = None
                         self.creating_box = False
@@ -308,10 +329,15 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
                     tr = [x2, y1]
                     br = [x2, y2]
                     bl = [x1, y2]
-                    box = np.array([[[tl[0], tl[1]]],
-                                    [[tr[0], tr[1]]],
-                                    [[br[0], br[1]]],
-                                    [[bl[0], bl[1]]]], dtype=np.int32)
+                    box = np.array(
+                        [
+                            [[tl[0], tl[1]]],
+                            [[tr[0], tr[1]]],
+                            [[br[0], br[1]]],
+                            [[bl[0], bl[1]]],
+                        ],
+                        dtype=np.int32,
+                    )
                     # Only add if box is big enough
                     if abs(x2 - x1) >= 1 and abs(y2 - y1) >= 1:
                         self.undo_stack.append([b.copy() for b in self.boxes])
@@ -372,7 +398,7 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
         # Lasso drawing
         if getattr(self, "drawing", False):
             self.lasso_points.append(scene_pos)
-            if hasattr(self, 'lasso_item') and self.lasso_item:
+            if hasattr(self, "lasso_item") and self.lasso_item:
                 self.scene.removeItem(self.lasso_item)
             polygon = QtGui.QPolygonF(self.lasso_points)
             pen = QtGui.QPen(QtGui.QColor("red"))
@@ -384,24 +410,33 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
         if self.pan_active:
             delta = event.pos() - self.last_mouse_pos
             self.last_mouse_pos = event.pos()
-            self.horizontalScrollBar().setValue(self.horizontalScrollBar().value() - delta.x())
-            self.verticalScrollBar().setValue(self.verticalScrollBar().value() - delta.y())
+            self.horizontalScrollBar().setValue(
+                self.horizontalScrollBar().value() - delta.x()
+            )
+            self.verticalScrollBar().setValue(
+                self.verticalScrollBar().value() - delta.y()
+            )
             self.viewport().update()
             return
 
         # Moving active (dragging selected corners / edges / boxes)
-        if getattr(self, "moving_active", False) and getattr(self, "move_start_mouse_pos", None) is not None:
+        if (
+            getattr(self, "moving_active", False)
+            and getattr(self, "move_start_mouse_pos", None) is not None
+        ):
             # compute delta
             dx = scene_pos.x() - self.move_start_mouse_pos.x()
             dy = scene_pos.y() - self.move_start_mouse_pos.y()
             # apply movement logic based on selection
-            self.boxes = [b.copy() for b in self.boxes_original_for_move]  # reset snapshot
+            self.boxes = [
+                b.copy() for b in self.boxes_original_for_move
+            ]  # reset snapshot
             self._apply_move_delta(dx, dy)
             self.update_display()
             return
 
         super().mouseMoveEvent(event)
-        
+
     def set_image(self, image, boxes=None, center=True, refocus=True):
         """
         Reuse the same view with a new image and boxes.
@@ -429,10 +464,13 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
         if refocus:
             self.setFocus(QtCore.Qt.ActiveWindowFocusReason)
 
-
     def mouseReleaseEvent(self, event):
         scene_pos = self.mapToScene(event.pos())
-        if self.creating_box and self.currently_creating_box and event.button() == QtCore.Qt.LeftButton:
+        if (
+            self.creating_box
+            and self.currently_creating_box
+            and event.button() == QtCore.Qt.LeftButton
+        ):
             # Finish creating box from start -> release
             self.currently_creating_box = False
             self.creating_box = False
@@ -453,33 +491,41 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
                     tr = [x2, y1]
                     br = [x2, y2]
                     bl = [x1, y2]
-                    box = np.array([[[tl[0], tl[1]]],
-                                    [[tr[0], tr[1]]],
-                                    [[br[0], br[1]]],
-                                    [[bl[0], bl[1]]]], dtype=np.int32)
+                    box = np.array(
+                        [
+                            [[tl[0], tl[1]]],
+                            [[tr[0], tr[1]]],
+                            [[br[0], br[1]]],
+                            [[bl[0], bl[1]]],
+                        ],
+                        dtype=np.int32,
+                    )
                     self.boxes.append(box)
                 # done creation
             self.current_mode = "Selection"
             self.viewport().update()
             self.update_display()
             return
-        
+
         if event.button() == QtCore.Qt.LeftButton and self.current_mode == "Selection":
-                if self.selected_points:
-                    self.selected_points.clear()
-                    self.update_display()
+            if self.selected_points:
+                self.selected_points.clear()
+                self.update_display()
 
         # Finish lasso selection on left release
-        if hasattr(self, 'drawing') and self.drawing and event.button() == QtCore.Qt.LeftButton:
+        if (
+            hasattr(self, "drawing")
+            and self.drawing
+            and event.button() == QtCore.Qt.LeftButton
+        ):
             self.drawing = False
-            if hasattr(self, 'lasso_item') and self.lasso_item:
+            if hasattr(self, "lasso_item") and self.lasso_item:
                 polygon = QtGui.QPolygonF(self.lasso_points)
                 self.select_points_in_polygon(polygon)
                 self.scene.removeItem(self.lasso_item)
                 self.lasso_item = None
             self.update_display()
             return
-        
 
         if event.button() == QtCore.Qt.RightButton:
             self.pan_active = False
@@ -497,7 +543,7 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
         """Select corner points that fall inside the polygon."""
         self.selected_points.clear()
         for b_idx, box in enumerate(self.boxes):
-            pts = box.reshape((-1,2))
+            pts = box.reshape((-1, 2))
             for corner_idx, (x, y) in enumerate(pts):
                 pointf = QtCore.QPointF(x, y)
                 if polygon.containsPoint(pointf, QtCore.Qt.OddEvenFill):
@@ -536,8 +582,8 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
         def clamp_point(x, y):
             # keep inside image boundaries
             h, w = self.image.shape[:2]
-            x_c = int(min(max(0, round(x)), w-1))
-            y_c = int(min(max(0, round(y)), h-1))
+            x_c = int(min(max(0, round(x)), w - 1))
+            y_c = int(min(max(0, round(y)), h - 1))
             return x_c, y_c
 
         # minimum box size in pixels (prevents flip by enforcing at least 1 px)
@@ -550,8 +596,10 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
 
         for b_idx, sel_corners in sel_map.items():
             box = self.boxes[b_idx]  # reference after we reset to original snapshot
-            pts = box.reshape((-1,2)).astype(float)  # use float for arithmetic
-            orig_pts = self.boxes_original_for_move[b_idx].reshape((-1,2)).astype(float)
+            pts = box.reshape((-1, 2)).astype(float)  # use float for arithmetic
+            orig_pts = (
+                self.boxes_original_for_move[b_idx].reshape((-1, 2)).astype(float)
+            )
 
             if len(sel_corners) == 1:
                 # Move one corner: that corner moves to new pos; adjacent corners adjust to keep axis-aligned
@@ -561,8 +609,8 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
                 opp = (corner + 2) % 4
 
                 # Move selected corner by dx/dy (proposed)
-                new_x = orig_pts[corner,0] + dx
-                new_y = orig_pts[corner,1] + dy
+                new_x = orig_pts[corner, 0] + dx
+                new_y = orig_pts[corner, 1] + dy
 
                 # Opposite corner stays fixed (orig_pts[opp])
                 ox, oy = orig_pts[opp]
@@ -572,14 +620,14 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
                 # For right-side corners (1,2) ensure new_x >= ox + min_size
                 if corner in (0, 3):  # left side
                     new_x = min(new_x, ox - min_size)
-                else:                 # right side
+                else:  # right side
                     new_x = max(new_x, ox + min_size)
 
                 # For top corners (0,1) ensure new_y <= oy - min_size
                 # For bottom corners (2,3) ensure new_y >= oy + min_size
                 if corner in (0, 1):  # top
                     new_y = min(new_y, oy - min_size)
-                else:                 # bottom
+                else:  # bottom
                     new_y = max(new_y, oy + min_size)
 
                 # Determine new rectangle bounds by combining moved corner and opposite corner
@@ -589,16 +637,13 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
                 y_max = max(new_y, oy)
 
                 # Update corners in standard order (tl,tr,br,bl)
-                new_pts = np.array([
-                    [x_min, y_min],
-                    [x_max, y_min],
-                    [x_max, y_max],
-                    [x_min, y_max]
-                ])
+                new_pts = np.array(
+                    [[x_min, y_min], [x_max, y_min], [x_max, y_max], [x_min, y_max]]
+                )
 
                 # Write back (clamped to ints and image bounds)
                 for i in range(4):
-                    xi, yi = clamp_point(new_pts[i,0], new_pts[i,1])
+                    xi, yi = clamp_point(new_pts[i, 0], new_pts[i, 1])
                     self.boxes[b_idx][i][0] = [xi, yi]
 
                 # keep the same logical corner selected (it cannot flip now)
@@ -611,44 +656,55 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
                     # adjacent corners => moving an edge
                     edge_indices = sorted([c0, c1])
                     # For top or bottom edge (indices 0&1 or 2&3) move vertically only
-                    if set(edge_indices) == {0,1} or set(edge_indices) == {2,3}:
+                    if set(edge_indices) == {0, 1} or set(edge_indices) == {2, 3}:
                         # vertical move only: compute dy from original average of those corners
-                        new_y0 = orig_pts[c0,1] + dy
-                        new_y1 = orig_pts[c1,1] + dy
+                        new_y0 = orig_pts[c0, 1] + dy
+                        new_y1 = orig_pts[c1, 1] + dy
                         # use the average proposed y for edge
                         proposed_y = 0.5 * (new_y0 + new_y1)
 
                         # Determine opposite edge y (if moving top edge opposite is bottom edge y)
-                        if set(edge_indices) == {0,1}:
-                            opposite_y = orig_pts[2,1]  # bottom edge y
+                        if set(edge_indices) == {0, 1}:
+                            opposite_y = orig_pts[2, 1]  # bottom edge y
                             # can't move below (opposite_y - min_size)
                             proposed_y = min(proposed_y, opposite_y - min_size)
                         else:
-                            opposite_y = orig_pts[0,1]  # top edge y
+                            opposite_y = orig_pts[0, 1]  # top edge y
                             # can't move above (opposite_y + min_size)
                             proposed_y = max(proposed_y, opposite_y + min_size)
 
                         # Build new corners using min/max logic with clamped proposed_y
-                        y_min = proposed_y if set(edge_indices) == {0,1} else orig_pts[0,1]
-                        y_max = proposed_y if set(edge_indices) == {2,3} else orig_pts[2,1]
+                        y_min = (
+                            proposed_y
+                            if set(edge_indices) == {0, 1}
+                            else orig_pts[0, 1]
+                        )
+                        y_max = (
+                            proposed_y
+                            if set(edge_indices) == {2, 3}
+                            else orig_pts[2, 1]
+                        )
                         # Simpler: recompute extents from moved edge & opposite edge
-                        if set(edge_indices) == {0,1}:
+                        if set(edge_indices) == {0, 1}:
                             y_min = proposed_y
-                            y_max = orig_pts[2,1]
+                            y_max = orig_pts[2, 1]
                         else:
-                            y_min = orig_pts[0,1]
+                            y_min = orig_pts[0, 1]
                             y_max = proposed_y
 
-                        x0 = orig_pts[c0,0]; x1 = orig_pts[c1,0]
-                        new_pts = np.array([
-                            [min(x0,x1), y_min],
-                            [max(x0,x1), y_min],
-                            [max(x0,x1), y_max],
-                            [min(x0,x1), y_max],
-                        ])
+                        x0 = orig_pts[c0, 0]
+                        x1 = orig_pts[c1, 0]
+                        new_pts = np.array(
+                            [
+                                [min(x0, x1), y_min],
+                                [max(x0, x1), y_min],
+                                [max(x0, x1), y_max],
+                                [min(x0, x1), y_max],
+                            ]
+                        )
 
                         for i in range(4):
-                            xi, yi = clamp_point(new_pts[i,0], new_pts[i,1])
+                            xi, yi = clamp_point(new_pts[i, 0], new_pts[i, 1])
                             self.boxes[b_idx][i][0] = [xi, yi]
 
                         # keep same two corners selected
@@ -656,63 +712,74 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
 
                     else:
                         # left/right edge: move horizontally only
-                        new_x0 = orig_pts[c0,0] + dx
-                        new_x1 = orig_pts[c1,0] + dx
+                        new_x0 = orig_pts[c0, 0] + dx
+                        new_x1 = orig_pts[c1, 0] + dx
                         proposed_x = 0.5 * (new_x0 + new_x1)
 
                         # Determine opposite edge x
-                        if set(edge_indices) == {1,2}:  # right edge moving
-                            opposite_x = orig_pts[3,0]  # left edge x
+                        if set(edge_indices) == {1, 2}:  # right edge moving
+                            opposite_x = orig_pts[3, 0]  # left edge x
                             # can't move left of (opposite_x + min_size)
                             proposed_x = max(proposed_x, opposite_x + min_size)
                         else:  # left edge moving (0,3)
-                            opposite_x = orig_pts[1,0]  # right edge x
+                            opposite_x = orig_pts[1, 0]  # right edge x
                             # can't move right of (opposite_x - min_size)
                             proposed_x = min(proposed_x, opposite_x - min_size)
 
-                        y0 = orig_pts[c0,1]; y1 = orig_pts[c1,1]
-                        x_min = proposed_x if set(edge_indices) == {0,3} else orig_pts[0,0]
-                        x_max = proposed_x if set(edge_indices) == {1,2} else orig_pts[1,0]
+                        y0 = orig_pts[c0, 1]
+                        y1 = orig_pts[c1, 1]
+                        x_min = (
+                            proposed_x
+                            if set(edge_indices) == {0, 3}
+                            else orig_pts[0, 0]
+                        )
+                        x_max = (
+                            proposed_x
+                            if set(edge_indices) == {1, 2}
+                            else orig_pts[1, 0]
+                        )
                         # Simpler: reconstruct with clamped proposed_x and original opposite edge x
-                        if set(edge_indices) == {1,2}:
-                            x_min = orig_pts[0,0]
+                        if set(edge_indices) == {1, 2}:
+                            x_min = orig_pts[0, 0]
                             x_max = proposed_x
                         else:
                             x_min = proposed_x
-                            x_max = orig_pts[1,0]
+                            x_max = orig_pts[1, 0]
 
-                        new_pts = np.array([
-                            [x_min, min(y0,y1)],
-                            [x_max, min(y0,y1)],
-                            [x_max, max(y0,y1)],
-                            [x_min, max(y0,y1)],
-                        ])
+                        new_pts = np.array(
+                            [
+                                [x_min, min(y0, y1)],
+                                [x_max, min(y0, y1)],
+                                [x_max, max(y0, y1)],
+                                [x_min, max(y0, y1)],
+                            ]
+                        )
 
                         for i in range(4):
-                            xi, yi = clamp_point(new_pts[i,0], new_pts[i,1])
+                            xi, yi = clamp_point(new_pts[i, 0], new_pts[i, 1])
                             self.boxes[b_idx][i][0] = [xi, yi]
 
                         self.selected_points = {(b_idx, c0), (b_idx, c1)}
                 else:
                     # Non-adjacent pair -> treat as whole box move
                     for i in range(4):
-                        nx = orig_pts[i,0] + dx
-                        ny = orig_pts[i,1] + dy
+                        nx = orig_pts[i, 0] + dx
+                        ny = orig_pts[i, 1] + dy
                         xi, yi = clamp_point(nx, ny)
                         self.boxes[b_idx][i][0] = [xi, yi]
             else:
                 # Any other selection (3 or 4 corners or corners across different boxes) -> translate entire box
                 for i in range(4):
-                    nx = orig_pts[i,0] + dx
-                    ny = orig_pts[i,1] + dy
+                    nx = orig_pts[i, 0] + dx
+                    ny = orig_pts[i, 1] + dy
                     xi, yi = clamp_point(nx, ny)
                     self.boxes[b_idx][i][0] = [xi, yi]
-
 
     # backward-compat helpers (MultiImageXXX depends on these names earlier)
     def get_edited_contours(self):
         # return same method name as earlier but now returns boxes
         return self.get_edited_boxes()
+
 
 class MultiImageBoxEditor(QtWidgets.QWidget):
     def __init__(self, image_dict, loop, line_thickness=2, initial_boxes=None):
@@ -738,7 +805,7 @@ class MultiImageBoxEditor(QtWidgets.QWidget):
         self.next_btn.clicked.connect(lambda: self.change_image(1))
         self.button_layout.addWidget(self.prev_btn)
         self.button_layout.addWidget(self.next_btn)
-        
+
         self.finish_btn = QtWidgets.QPushButton("Finish")
         self.finish_btn.setStyleSheet("""
             QPushButton {
@@ -769,7 +836,7 @@ class MultiImageBoxEditor(QtWidgets.QWidget):
         self.editor_view = BoundingBoxEditorView(
             self.image_dict[first_key],
             boxes=[b.copy() for b in self.initial_boxes.get(first_key, [])],
-            line_thickness=self.line_thickness
+            line_thickness=self.line_thickness,
         )
         self.layout.insertWidget(0, self.editor_view, stretch=1)
 
@@ -778,19 +845,18 @@ class MultiImageBoxEditor(QtWidgets.QWidget):
         self.showMaximized()
 
         def focus_window():
-            self.raise_()                 # bring window to top
-            self.activateWindow()         # make it the active window
+            self.raise_()  # bring window to top
+            self.activateWindow()  # make it the active window
             self.setFocus(QtCore.Qt.ActiveWindowFocusReason)
 
         QtCore.QTimer.singleShot(0, focus_window)
-        
+
         QtCore.QTimer.singleShot(10, lambda: self.change_image(0, force=True))
-        
+
     def update_navigation_buttons(self):
         self.prev_btn.setEnabled(self.index > 0)
         self.next_btn.setEnabled(self.index < len(self.image_keys) - 1)
-        
-        
+
     def finish_editing(self):
         # Save current image boxes before exiting
         key = self.image_keys[self.index]
@@ -800,7 +866,7 @@ class MultiImageBoxEditor(QtWidgets.QWidget):
         self.loop.quit()
         self.close_flag = True
         self.close()
-        
+
     def closeEvent(self, event):
         """Called when the window is closed"""
         if getattr(self, "close_flag", False):
@@ -810,7 +876,7 @@ class MultiImageBoxEditor(QtWidgets.QWidget):
             # User clicked X — fully exit program
             print("Window closed — exiting program.")
             QtWidgets.QApplication.quit()
-            sys.exit(0)  
+            sys.exit(0)
 
     def load_image(self, idx):
         key = self.image_keys[idx]
@@ -828,18 +894,13 @@ class MultiImageBoxEditor(QtWidgets.QWidget):
 
         # Decide what boxes to show
         if key in self.results and len(self.results[key]) > 0:
-            boxes = self.results[key]               # user-edited
+            boxes = self.results[key]  # user-edited
         else:
-            boxes = self.initial_boxes.get(key, []) # YOLO fallback
+            boxes = self.initial_boxes.get(key, [])  # YOLO fallback
 
         boxes_copy = [b.copy() for b in boxes]
 
-        self.editor_view.set_image(
-            img,
-            boxes=boxes_copy,
-            center=True,
-            refocus=True
-        )
+        self.editor_view.set_image(img, boxes=boxes_copy, center=True, refocus=True)
 
         # Restore undo stack
         self.editor_view.undo_stack = list(self.undo_stacks.get(key, []))
@@ -847,16 +908,14 @@ class MultiImageBoxEditor(QtWidgets.QWidget):
         self.index = idx
         self.update_status()
         self.update_navigation_buttons()
-        
-        self._has_loaded_once = True
 
+        self._has_loaded_once = True
 
     def change_image(self, delta, force=False):
         new_index = max(0, min(len(self.image_keys) - 1, self.index + delta))
         if force or new_index != self.index:
             self.load_image(new_index)
 
-   
     def update_status(self):
         self.status_label.setText(f"Image {self.index + 1} / {len(self.image_keys)}")
 
@@ -866,8 +925,9 @@ class MultiImageBoxEditor(QtWidgets.QWidget):
             self.results[key] = self.editor_view.get_edited_boxes()
         return self.results
 
+
 def run_box_editor(cropped_images, line_thickness=2, initial_boxes=None):
-    
+
     app = QtWidgets.QApplication.instance()
     created_app = False
     if app is None:
@@ -876,8 +936,12 @@ def run_box_editor(cropped_images, line_thickness=2, initial_boxes=None):
 
     loop = QtCore.QEventLoop()
 
-    editor_widget = MultiImageBoxEditor(cropped_images, loop, line_thickness=line_thickness, initial_boxes=initial_boxes)
-    editor_widget.setWindowTitle("Multi-Image Bounding Box Editor (C=Create Box, D=Delete, ctrl+Z=Undo, M=Move, esc=Return to Selection)")
+    editor_widget = MultiImageBoxEditor(
+        cropped_images, loop, line_thickness=line_thickness, initial_boxes=initial_boxes
+    )
+    editor_widget.setWindowTitle(
+        "Multi-Image Bounding Box Editor (C=Create Box, D=Delete, ctrl+Z=Undo, M=Move, esc=Return to Selection)"
+    )
     editor_widget.showMaximized()
 
     loop.exec_()

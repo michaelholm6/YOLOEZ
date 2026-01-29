@@ -5,15 +5,15 @@
 from PyQt5 import QtWidgets
 import sys, shutil, os
 
+
 def get_save_root(default_dir=None):
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
 
     root = QtWidgets.QFileDialog.getExistingDirectory(
-        None,
-        "Select Folder to Save Trained Model",
-        default_dir or ""
+        None, "Select Folder to Save Trained Model", default_dir or ""
     )
     return root
+
 
 def save_trained_model(source_path, dest_root, filename="best.pt"):
     if not dest_root:
@@ -25,6 +25,7 @@ def save_trained_model(source_path, dest_root, filename="best.pt"):
     shutil.copy(source_path, dest_path)
     return dest_path
 
+
 if __name__ == "__main__":
     # Example: copy YOLO best.pt
     save_root = get_save_root()
@@ -33,6 +34,6 @@ if __name__ == "__main__":
         saved_path = save_trained_model(
             source_path="runs/detect/train/weights/best.pt",
             dest_root=save_root,
-            filename="best.pt"
+            filename="best.pt",
         )
         print("✅ Model saved at:", saved_path)

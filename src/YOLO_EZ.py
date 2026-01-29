@@ -2,7 +2,6 @@
 # Copyright (C) 2026 Michael Holm
 # Developed at Purdue University
 
-from labelling_workflow.image_gatherer import *
 from labelling_workflow.area_of_interest_marking import *
 from labelling_workflow.clip_cracks_to_area_of_interest import *
 from labelling_workflow.save_segmentation_results import *
@@ -14,6 +13,7 @@ from inference_workflow.main_inference import run_inference_workflow
 from utils import make_label_with_tooltip
 from PyQt5 import QtWidgets
 import sys
+
 
 class ChoiceDialog(QtWidgets.QDialog):
     def __init__(self):
@@ -43,9 +43,11 @@ class ChoiceDialog(QtWidgets.QDialog):
 
             button = QtWidgets.QPushButton(text)
             icon = QtWidgets.QLabel()
-            pix = QtWidgets.QApplication.style().standardIcon(
-                QtWidgets.QStyle.SP_MessageBoxQuestion
-            ).pixmap(20, 20)
+            pix = (
+                QtWidgets.QApplication.style()
+                .standardIcon(QtWidgets.QStyle.SP_MessageBoxQuestion)
+                .pixmap(20, 20)
+            )
             icon.setPixmap(pix)
             icon.setToolTip(tooltip)
 
@@ -57,17 +59,17 @@ class ChoiceDialog(QtWidgets.QDialog):
 
         label_container, self.label_button = make_button_with_icon(
             "Label Images",
-            "Start the labeling workflow to label objects in your images. These labels can then be used to train a model."
+            "Start the labeling workflow to label objects in your images. These labels can then be used to train a model.",
         )
 
         train_container, self.train_button = make_button_with_icon(
             "Train Model",
-            "Start the training workflow to train an object detection model using images labeled with the labeling workflow."
+            "Start the training workflow to train an object detection model using images labeled with the labeling workflow.",
         )
 
         use_container, self.use_button = make_button_with_icon(
             "Use Model",
-            "Start the inference workflow to use a trained model for object detection."
+            "Start the inference workflow to use a trained model for object detection.",
         )
 
         button_layout.addWidget(label_container)
@@ -81,7 +83,7 @@ class ChoiceDialog(QtWidgets.QDialog):
         self.checkbox = QtWidgets.QCheckBox()
         self.checkbox_label = make_label_with_tooltip(
             "Suppress Instructional Popups",
-            "Check this box to skip instructional pop-ups in the workflows."
+            "Check this box to skip instructional pop-ups in the workflows.",
         )
 
         h_layout.addWidget(self.checkbox)
@@ -123,14 +125,13 @@ def main():
             "Screen Resolution Warning",
             f"Your current screen resolution is {width}×{height}, which is smaller than "
             f"the recommended {recommended_width}×{recommended_height}.\n\n"
-            "The application may not fit fully on the screen and some elements may appear clipped."
+            "The application may not fit fully on the screen and some elements may appear clipped.",
         )
 
     dialog = ChoiceDialog()
     dialog.exec_()
     chosen = dialog.chosen
     suppress_instructions = dialog.checkbox.isChecked()
-
 
     # Run the workflow without showing GUI
     if chosen == "label":
@@ -139,4 +140,3 @@ def main():
         run_training_workflow(suppress_instructions=suppress_instructions)
     elif chosen == "use":
         run_inference_workflow(suppress_instructions=suppress_instructions)
-

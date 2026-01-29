@@ -6,6 +6,7 @@ import os
 import cv2
 import numpy as np
 
+
 def save_segmentation_results(
     image_paths,
     contours_dict,
@@ -13,7 +14,7 @@ def save_segmentation_results(
     line_thickness,
     output_dir,
     save_yolo_dataset=True,
-    save_unlabeled_images=False
+    save_unlabeled_images=False,
 ):
     """
     Saves segmentation results for AOI-masked images (black outside AOI).
@@ -55,18 +56,9 @@ def save_segmentation_results(
         # --------------------------------------------------
         contour_vis = base_img.copy()
         for cnt in cnts:
-            cv2.drawContours(
-                contour_vis,
-                [cnt],
-                -1,
-                (0, 255, 0),
-                line_thickness
-            )
+            cv2.drawContours(contour_vis, [cnt], -1, (0, 255, 0), line_thickness)
 
-        contour_img_path = os.path.join(
-            contour_vis_dir,
-            f"{img_name}_contours.png"
-        )
+        contour_img_path = os.path.join(contour_vis_dir, f"{img_name}_contours.png")
         cv2.imwrite(contour_img_path, contour_vis)
 
         # --------------------------------------------------
@@ -101,10 +93,7 @@ def save_segmentation_results(
                     polygon = []
                     for pt in cnt:
                         px, py = pt[0]
-                        polygon.extend([
-                            px / w_img,
-                            py / h_img
-                        ])
+                        polygon.extend([px / w_img, py / h_img])
 
                     class_id = 0
                     poly_str = " ".join(f"{p:.6f}" for p in polygon)
