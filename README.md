@@ -1,9 +1,16 @@
 # YOLOEZ
 
-**Main Branch**
-[![CI main](https://github.com/michaelholm6/YOLOEZ/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/michaelholm6/YOLOEZ/actions/workflows/test.yml?query=branch:main)
- **Development Branch**
-[![CI dev](https://github.com/michaelholm6/YOLOEZ/actions/workflows/test.yml/badge.svg?branch=development)](https://github.com/michaelholm6/YOLOEZ/actions/workflows/test.yml?query=branch:development)
+**Main branch**  
+[![Tests main](https://github.com/michaelholm6/YOLOEZ/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/michaelholm6/YOLOEZ/actions/workflows/test.yml?query=branch:main)
+
+**Development branch**  
+[![Tests dev](https://github.com/michaelholm6/YOLOEZ/actions/workflows/test.yml/badge.svg?branch=development)](https://github.com/michaelholm6/YOLOEZ/actions/workflows/test.yml?query=branch:development)
+
+**Main branch test coverage**  
+![Coverage main](badges/coverage-main.svg)
+
+**Development branch test coverage**  
+![Coverage dev](badges/coverage-development.svg)
 
 A standalone, GUI based application for labeling data, training models, and running inference with Ultralytics powered YOLO11 models.  
 This tool supports both bounding box detection and segmentation workflows and is designed to be usable without writing any code.

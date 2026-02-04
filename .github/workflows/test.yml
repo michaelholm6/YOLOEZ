@@ -36,18 +36,37 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e .[dev]
+          pip install pytest-cov tj-actions/coverage-badge
 
       - name: Check formatting with Black
-        run: |
-          black --check .
+        run: black --check .
 
-      - name: Run tests
+      - name: Run tests with coverage
         shell: bash
         env:
           QT_QPA_PLATFORM: offscreen
         run: |
           if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
-              xvfb-run -a python -m pytest -q
+              xvfb-run -a python -m pytest --cov=YOLOEZ --cov-report=xml -q
           else
-              python -m pytest -q
+              python -m pytest --cov=YOLOEZ --cov-report=xml -q
           fi
+
+      - name: Generate coverage badge
+        if: matrix.os == 'ubuntu-latest'  # only generate once (avoid duplicate pushes)
+        uses: tj-actions/coverage-badge@v1
+        with:
+          path-to-coverage-file: coverage.xml
+          badge-title: Coverage
+          output-path: badges/coverage-${{ github.ref_name }}.svg
+
+      - name: Commit coverage badge
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add badges/coverage-${{ github.ref_name }}.svg
+          git commit -m "Update coverage badge for ${{ github.ref_name }}" || echo "No changes"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
