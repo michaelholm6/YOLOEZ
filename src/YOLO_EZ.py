@@ -124,7 +124,8 @@ def main():
         )
 
     dialog = ChoiceDialog()
-    dialog.exec_()
+    dialog.show()
+    app.exec_()
     chosen = dialog.chosen
     suppress_instructions = dialog.checkbox.isChecked()
 

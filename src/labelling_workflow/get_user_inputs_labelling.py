@@ -84,6 +84,8 @@ The idea here is that you can incrementally improve your model by labelling some
         icon_label.setToolTip(
             "Set the confidence threshold for objects to be detected by the YOLO model. "
             "Higher values mean the model must be more certain before it labels an object."
+            "If you're bootstrapping, it's recommended to set a relatively low threshold to get more initial annotations, and then you can remove false positives during the editing step."
+            "A good value to start with is around .2 to .4, but you can experiment with this based on the quality of the bootstrapping annotations you get."
         )
 
         top_row.addWidget(conf_label)

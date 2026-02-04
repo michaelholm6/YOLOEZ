@@ -1,3 +1,7 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Michael Holm
+# Developed at Purdue University
+
 import pytest
 from main import main as run_main
 import sys
@@ -77,7 +81,7 @@ def test_training_workflow_runs_without_gui(monkeypatch, tmp_path):
         "train_split": 0.8,
         "task": "segment",
         "dataset_folder": "assets/test_labels",
-        "transformations": [],
+        "transformations": {},
         "number_of_augs": 1,
         "save_folder": tmp_path,
         "model_size": "nano",
