@@ -46,9 +46,9 @@ jobs:
           QT_QPA_PLATFORM: offscreen
         run: |
           if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
-              xvfb-run -a python -m pytest --cov=YOLOEZ --cov-report=xml -q
+              xvfb-run -a python -m pytest --cov=src --cov-report=xml -q
           else
-              python -m pytest --cov=YOLOEZ --cov-report=xml -q
+              python -m pytest --cov=src --cov-report=xml -q
           fi
 
       - name: Generate coverage badge
