@@ -53,13 +53,11 @@ jobs:
           fi
 
       - name: Generate coverage badge
-        if: matrix.os == 'ubuntu-latest'  # only generate once (avoid duplicate pushes)
-        uses: tj-actions/coverage-badge@v1
+        if: matrix.os == 'ubuntu-latest'
+        uses: tj-actions/coverage-badge-py@v2
         with:
-          path-to-coverage-file: coverage.xml
-          badge-title: Coverage
-          output-path: badges/coverage-${{ github.ref_name }}.svg
-
+          output: "badges/coverage-${{ github.ref_name }}.svg"
+          
       - name: Commit coverage badge
         if: matrix.os == 'ubuntu-latest'
         run: |
