@@ -26,20 +26,16 @@ def crop_and_mask_images(image_paths, aois_dict):
 
         polygons = aois_dict.get(img_path, [])
         if not polygons:
-            # No AOIs: return original image
             masked_results[img_path] = img.copy()
             continue
 
-        # 1. Create full-size mask
         mask = np.zeros(img.shape[:2], dtype=np.uint8)
 
-        # 2. Draw each polygon
         for poly in polygons:
             if len(poly) >= 3:
                 poly_np = np.array(poly, dtype=np.int32)
                 cv2.fillPoly(mask, [poly_np], 255)
 
-        # 3. Apply mask (outside AOIs becomes black)
         masked_img = cv2.bitwise_and(img, img, mask=mask)
 
         masked_results[img_path] = masked_img

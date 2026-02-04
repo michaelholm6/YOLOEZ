@@ -75,6 +75,7 @@ def run_labeling_workflow(
                 "- Press 'S' to scale selected points (drag mouse relative to center).\n"
                 "- Press 'M' to move selected points (drag mouse).\n"
                 "- Press 'R' to rotate selected points (drag mouse relative to center).\n"
+                "- Press 'U' to union selected contours into a single contour (i.e. combine them into one contour).\n"
                 "- Use the mouse wheel to zoom in and out.\n"
                 "- Press the same key again or left click to exit a mode.\n\n"
                 "When you're done, simply close the window to continue."
@@ -144,5 +145,5 @@ def run_labeling_workflow(
         show_instructions(
             "Labelling complete!\n\n"
             f"Results saved to: {args['output_folder']}\n\n"
-            "TOLOEZ will now close."
+            "YOLOEZ will now close."
         )

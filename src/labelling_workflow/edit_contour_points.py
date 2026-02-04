@@ -106,15 +106,6 @@ class ContourEditorView(QtWidgets.QGraphicsView):
         y_c = int(min(max(0, round(y)), h - 1))
         return x_c, y_c
 
-    # def showEvent(self, event):
-    #     super().showEvent(event)
-    #     # Only fit once
-    #     if not self.initial_fit_done:
-    #         self.resetTransform()
-    #         self.fitInView(self.pixmap_item, QtCore.Qt.KeepAspectRatio)
-    #         self.centerOn(self.pixmap_item)
-    #         self.initial_fit_done = True
-
     def update_display(self):
         """Draw the image and all contours."""
         img = self.image.copy()
@@ -185,7 +176,7 @@ class ContourEditorView(QtWidgets.QGraphicsView):
         k = event.key()
         ctrl = event.modifiers() & Qt.ControlModifier
 
-        if ctrl and k == QtCore.Qt.Key_U:
+        if ctrl and k == QtCore.Qt.Key_Z:
             if (
                 not self.creating_contour
                 and not self.scaling_active
@@ -198,6 +189,18 @@ class ContourEditorView(QtWidgets.QGraphicsView):
                     self.selected_points.clear()
                     self.update_display()
 
+        elif k == QtCore.Qt.Key_U:
+            if (
+                not self.creating_contour
+                and not self.scaling_active
+                and not self.moving_active
+                and not self.rotating_active
+                and len({c for c, _ in self.selected_points}) >= 2
+            ):
+                self.union_selected_contours()
+                self.remove_small_contours()
+                self.update_display()
+
         elif k == QtCore.Qt.Key_D:
             if (
                 not self.creating_contour
@@ -206,6 +209,7 @@ class ContourEditorView(QtWidgets.QGraphicsView):
                 and not self.rotating_active
             ):
                 self.delete_selected_points()
+                self.remove_small_contours()
                 self.update_display()
 
         elif k == QtCore.Qt.Key_Escape:
@@ -222,6 +226,7 @@ class ContourEditorView(QtWidgets.QGraphicsView):
 
                 self.current_mode = "Selection"
                 self.viewport().update()
+                self.remove_small_contours()
                 self.update_display()
                 return
 
@@ -402,6 +407,7 @@ class ContourEditorView(QtWidgets.QGraphicsView):
 
                 self.current_mode = "Selection"
                 self.viewport().update()
+                self.remove_small_contours()
                 self.update_display()
             else:
                 # ENTER contour creation
@@ -414,7 +420,6 @@ class ContourEditorView(QtWidgets.QGraphicsView):
                 self.new_contour_points = []
 
                 self.contours.append(np.empty((0, 1, 2), dtype=np.int32))
-
                 self.update_display()
 
         else:
@@ -625,6 +630,16 @@ class ContourEditorView(QtWidgets.QGraphicsView):
         self.contours = new_contours
         self.selected_points.clear()
 
+    def remove_small_contours(self):
+        """
+        Automatically remove any contour with fewer than 3 points.
+        Only runs when NOT creating a contour.
+        """
+        if self.creating_contour or self.currently_creating_contour:
+            return
+
+        self.contours = [cnt for cnt in self.contours if len(cnt) >= 3]
+
     def rotate_selected_points(self):
         if (
             not self.rotation_reference
@@ -662,6 +677,45 @@ class ContourEditorView(QtWidgets.QGraphicsView):
             new_x, new_y = self.clamp_to_image(new_x, new_y)
 
             self.contours[c_idx][pt_idx][0] = [int(new_x), int(new_y)]
+
+    def union_selected_contours(self):
+        # Find which contours are involved
+        selected_contour_indices = {c_idx for (c_idx, _) in self.selected_points}
+
+        if len(selected_contour_indices) < 2:
+            return  # need at least two contours
+
+        # Save undo state
+        self.undo_stack.append([c.copy() for c in self.contours])
+
+        h, w = self.image.shape[:2]
+        mask = np.zeros((h, w), dtype=np.uint8)
+
+        # Draw filled selected contours onto mask
+        for c_idx in selected_contour_indices:
+            cv2.drawContours(mask, self.contours, c_idx, 255, thickness=cv2.FILLED)
+
+        # Extract outer contour of union
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        if not contours:
+            return
+
+        union_contour = max(contours, key=cv2.contourArea)
+
+        # Build new contour list:
+        # - remove old selected contours
+        # - add union contour
+        new_contours = []
+        for i, cnt in enumerate(self.contours):
+            if i not in selected_contour_indices:
+                new_contours.append(cnt)
+
+        new_contours.append(union_contour)
+
+        self.contours = new_contours
+        self.selected_points.clear()
+        self.update_display()
 
     def scale_selected_points(self):
         if (
@@ -720,7 +774,7 @@ class MultiImageContourEditor(QtWidgets.QWidget):
         self.image_keys = list(image_dict.keys())
         self.line_thickness = line_thickness
         self.index = 0
-        self.results = {k: [] for k in self.image_keys}  # stores contours per image
+        self.results = {k: None for k in self.image_keys}  # stores contours per image
         self.detected_contours = detected_contours or {}
 
         # Layouts
@@ -822,9 +876,12 @@ class MultiImageContourEditor(QtWidgets.QWidget):
             # Reset editor state for new image
             self.editor_view.image = img.copy()
             saved_contours = self.results.get(key)
-            if saved_contours:
+
+            if saved_contours is not None:
+                # User has visited this image before (even if they deleted everything)
                 self.editor_view.contours = [c.copy() for c in saved_contours]
             else:
+                # First visit → initialize from detector
                 self.editor_view.contours = [c.copy() for c in detected]
 
             self.editor_view.original_contours = [
@@ -910,7 +967,7 @@ def run_contour_editor(image_dict, line_thickness=2, detected_contours=None):
         detected_contours=detected_contours,
     )
     editor_widget.setWindowTitle(
-        "Multi-Image Contour Editor (C=Create Contour, D=Delete, ctrl+Z=Undo, S=Scale, M=Move, R=Rotate, esc = Return to Selection Mode)"
+        "Multi-Image Contour Editor (C=Create Contour, D=Delete, ctrl+Z=Undo, S=Scale, M=Move, R=Rotate, U = Union of selected contours, esc = Return to Selection Mode)"
     )
     editor_widget.setWindowFlags(
         editor_widget.windowFlags() | QtCore.Qt.WindowStaysOnTopHint

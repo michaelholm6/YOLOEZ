@@ -107,6 +107,7 @@ def run_training(
 
             # ===== Metrics Plot =====
             self.metrics_plot = pg.PlotWidget(title="Metrics")
+            self.metrics_plot.showGrid(x=True, y=True, alpha=0.3)
             self.metrics_plot.setBackground("w")  # ← white background
             self.metrics_plot.getAxis("left").setPen("k")  # ← black axes
             self.metrics_plot.getAxis("bottom").setPen("k")
@@ -149,7 +150,8 @@ def run_training(
 
             # ===== Loss Plot =====
             self.loss_plot = pg.PlotWidget(title="Validation Losses")
-            self.loss_plot.setBackground("w")  # ← white background
+            self.loss_plot.showGrid(x=True, y=True, alpha=0.3)
+            self.loss_plot.setBackground("w")
             self.loss_plot.getAxis("left").setPen("k")
             self.loss_plot.getAxis("bottom").setPen("k")
             self.loss_plot.addLegend()

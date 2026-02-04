@@ -5,6 +5,7 @@
 import sys
 import os
 from PyQt5 import QtWidgets, QtGui, QtCore
+from utils import make_label_with_tooltip
 
 
 class InputDialogLabelling(QtWidgets.QDialog):
@@ -18,21 +19,6 @@ class InputDialogLabelling(QtWidgets.QDialog):
         self._resize_timer = QtCore.QTimer(self)
         self._resize_timer.setSingleShot(True)
         self._resize_timer.timeout.connect(self.show_current_image)
-
-        def make_label_with_tooltip(text, tooltip):
-            container = QtWidgets.QWidget()
-            layout = QtWidgets.QHBoxLayout(container)
-            layout.setContentsMargins(0, 0, 0, 0)
-            layout.setSpacing(4)
-            label = QtWidgets.QLabel(text)
-            icon_label = QtWidgets.QLabel()
-            icon_pix = self.style().standardIcon(QtWidgets.QStyle.SP_MessageBoxQuestion)
-            icon_label.setPixmap(icon_pix.pixmap(20, 20))
-            icon_label.setToolTip(tooltip)
-            layout.addWidget(label)
-            layout.addWidget(icon_label)
-            layout.addStretch()
-            return container
 
         # === Controls ===
         self.image_path_edit = QtWidgets.QLineEdit()
@@ -98,6 +84,8 @@ The idea here is that you can incrementally improve your model by labelling some
         icon_label.setToolTip(
             "Set the confidence threshold for objects to be detected by the YOLO model. "
             "Higher values mean the model must be more certain before it labels an object."
+            "If you're bootstrapping, it's recommended to set a relatively low threshold to get more initial annotations, and then you can remove false positives during the editing step."
+            "A good value to start with is around .2 to .4, but you can experiment with this based on the quality of the bootstrapping annotations you get."
         )
 
         top_row.addWidget(conf_label)
