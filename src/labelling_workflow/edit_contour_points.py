@@ -26,6 +26,7 @@ class ContourEditorView(QtWidgets.QGraphicsView):
         self.image = image
         self.selected_points = set()
         self.scaling_active = False
+        self.contour_creation_undo_stack = None
         self.mouse_pos = None
         self.scaling_initial_distance = None
         self.contours_original_for_scaling = None
@@ -35,6 +36,9 @@ class ContourEditorView(QtWidgets.QGraphicsView):
         self.scaling_reference = {}
         self.contour_scale_factors = {}
         self.rotating_active = False
+        self.freehand_drawing = False
+        self.last_freehand_point = None
+        self.freehand_min_dist = 10
         self.rotation_reference = {}
         self.rotation_start_mouse_pos = None
         self.contours_original_for_rotation = None
@@ -177,13 +181,47 @@ class ContourEditorView(QtWidgets.QGraphicsView):
         ctrl = event.modifiers() & Qt.ControlModifier
 
         if ctrl and k == QtCore.Qt.Key_Z:
+            if self.creating_contour and self.contour_creation_undo_stack:
+                # Work backwards through undo stacks
+                while self.contour_creation_undo_stack:
+                    current_stack = self.contour_creation_undo_stack[-1]
+
+                    if current_stack:
+                        # Pop the last saved state of this contour
+                        self.new_contour_points = current_stack.pop()
+
+                        # If undoing a completed polygon (not the current one), remove it first
+                        if self.contours and len(self.contours[-1]) > 0:
+                            self.contours.pop()
+
+                        if self.new_contour_points:
+                            # Set undone points as the current contour
+                            self.contours.append(
+                                np.array(self.new_contour_points, dtype=np.int32).reshape((-1,1,2))
+                            )
+                        else:
+                            # Fully undone → start empty contour
+                            self.new_contour_points = []
+                            self.contours.append(np.empty((0,1,2), dtype=np.int32))
+
+                        self.update_display()
+                        return
+
+                    else:
+                        # Current stack is empty → remove it
+                        self.contour_creation_undo_stack.pop()
+                        if self.contours:
+                            self.contours.pop()
+
+
+
+            # --- normal undo stack ---
             if (
                 not self.creating_contour
                 and not self.scaling_active
                 and not self.moving_active
                 and not self.rotating_active
             ):
-
                 if self.undo_stack:
                     self.contours = self.undo_stack.pop()
                     self.selected_points.clear()
@@ -218,6 +256,7 @@ class ContourEditorView(QtWidgets.QGraphicsView):
                 self.creating_contour = False
                 self.currently_creating_contour = False
                 self.new_contour_points.clear()
+                self.contour_creation_undo_stack = None
                 self.hovering_start_point = False
 
                 # Remove empty trailing contour
@@ -400,6 +439,7 @@ class ContourEditorView(QtWidgets.QGraphicsView):
                 self.creating_contour = False
                 self.currently_creating_contour = False
                 self.new_contour_points.clear()
+                self.contour_creation_undo_stack = None
 
                 # Remove empty trailing contour if it exists
                 if self.contours and len(self.contours[-1]) == 0:
@@ -418,6 +458,7 @@ class ContourEditorView(QtWidgets.QGraphicsView):
                 self.creating_contour = True
                 self.currently_creating_contour = False
                 self.new_contour_points = []
+                self.contour_creation_undo_stack = [[]]
 
                 self.contours.append(np.empty((0, 1, 2), dtype=np.int32))
                 self.update_display()
@@ -442,7 +483,7 @@ class ContourEditorView(QtWidgets.QGraphicsView):
                 self.current_mode = "Selection"
                 self.viewport().update()
 
-            # Start lasso drawing
+            # Start lasso drawing if not creating contour
             if (
                 not self.creating_contour
                 and not self.scaling_active
@@ -452,6 +493,7 @@ class ContourEditorView(QtWidgets.QGraphicsView):
                 self.drawing = True
                 self.lasso_points = [self.mapToScene(event.pos())]
 
+            # Remove any temporary items
             if self.rect_item:
                 self.scene.removeItem(self.rect_item)
                 self.rect_item = None
@@ -461,13 +503,29 @@ class ContourEditorView(QtWidgets.QGraphicsView):
 
             # --- Handle contour creation ---
             if self.creating_contour:
-                if not self.currently_creating_contour:
-                    self.currently_creating_contour = True
-
                 scene_pos = self.mapToScene(event.pos())
                 x, y = int(scene_pos.x()), int(scene_pos.y())
+                x, y = self.clamp_to_image(x, y)
+                self.freehand_drawing = True
+                self.last_freehand_point = (x, y)
 
+                # Start creating contour if not already
+                if not self.currently_creating_contour:
+                    self.currently_creating_contour = True
+                    self.freehand_drawing = True
+                    self.last_freehand_point = (x, y)
+
+                # --- Check for polygon closure ---
                 if self.hovering_start_point and len(self.new_contour_points) >= 3:
+                    if self.contour_creation_undo_stack is not None:
+                        if not self.contour_creation_undo_stack:  # <-- add this
+                            self.contour_creation_undo_stack.append([])
+                        self.contour_creation_undo_stack[-1].append(self.new_contour_points.copy())
+
+                    if not self.contours:
+                        self.contours.append(np.empty((0, 1, 2), dtype=np.int32))
+
+                    # Now safely update
                     self.contours[-1] = np.array(
                         self.new_contour_points, dtype=np.int32
                     ).reshape((-1, 1, 2))
@@ -476,11 +534,8 @@ class ContourEditorView(QtWidgets.QGraphicsView):
                     self.currently_creating_contour = False
                     self.hovering_start_point = False
 
-                    # 🔑 mark contour as finished
-                    self.currently_creating_contour = False
-
-                    self.new_contour_points = []
                     self.contours.append(np.empty((0, 1, 2), dtype=np.int32))
+                    self.contour_creation_undo_stack.append([])
 
                     self.update_display()
                     return
@@ -492,19 +547,27 @@ class ContourEditorView(QtWidgets.QGraphicsView):
                 else:
                     aoi_polygon = None
 
-                # Only add point if inside AOI or no AOI defined
-                if aoi_polygon is None or aoi_polygon.containsPoint(
-                    QPointF(x, y), QtCore.Qt.OddEvenFill
-                ):
-                    x, y = self.clamp_to_image(x, y)
+                if aoi_polygon is None or aoi_polygon.containsPoint(QPointF(x, y), QtCore.Qt.OddEvenFill):
+                    # --- Push undo state exactly once ---
+                    if self.contour_creation_undo_stack is not None:
+                        if not self.contour_creation_undo_stack:  # <-- add this
+                            self.contour_creation_undo_stack.append([])
+                        self.contour_creation_undo_stack[-1].append(self.new_contour_points.copy())
+
+                    # --- Add point for freehand or click ---
                     self.new_contour_points.append((x, y))
+                    if not self.contours:
+                        self.contours.append(np.empty((0, 1, 2), dtype=np.int32))
+
+                    # Now safely update
                     self.contours[-1] = np.array(
                         self.new_contour_points, dtype=np.int32
                     ).reshape((-1, 1, 2))
                 else:
                     print("Contour point outside AOI; ignoring")
 
-            self.update_display()
+                # Update display
+                self.update_display()
 
         elif event.button() == QtCore.Qt.RightButton:
             self.pan_active = True
@@ -536,16 +599,49 @@ class ContourEditorView(QtWidgets.QGraphicsView):
                     cnt[pt_idx][0] = [new_x, new_y]
 
     def mouseMoveEvent(self, event):
-        self.mouse_pos = self.mapToScene(event.pos())
         self.hovering_start_point = False
-
+        self.mouse_pos = self.mapToScene(event.pos())
+        
         if self.creating_contour and self.new_contour_points:
+            scene_pos = self.mapToScene(event.pos())
+            mx, my = int(scene_pos.x()), int(scene_pos.y())
+            mx, my = self.clamp_to_image(mx, my)
+
             sx, sy = self.new_contour_points[0]
-            mx, my = int(self.mouse_pos.x()), int(self.mouse_pos.y())
             dist = np.hypot(mx - sx, my - sy)
 
             if dist <= self.start_point_radius and len(self.new_contour_points) >= 3:
                 self.hovering_start_point = True
+        
+        if self.creating_contour and self.freehand_drawing:
+            scene_pos = self.mapToScene(event.pos())
+            x, y = int(scene_pos.x()), int(scene_pos.y())
+            x, y = self.clamp_to_image(x, y)
+
+            if self.last_freehand_point is not None:
+                lx, ly = self.last_freehand_point
+                dist = np.hypot(x - lx, y - ly)
+
+                if dist >= self.freehand_min_dist:
+                    self.last_freehand_point = (x, y)
+
+                    if self.contour_creation_undo_stack is not None:
+                        self.contour_creation_undo_stack[-1].append(
+                            self.new_contour_points.copy()
+                        )
+
+                    self.new_contour_points.append((x, y))
+                    if not self.contours:
+                        self.contours.append(np.empty((0, 1, 2), dtype=np.int32))
+
+                    # Now safely update
+                    self.contours[-1] = np.array(
+                        self.new_contour_points, dtype=np.int32
+                    ).reshape((-1, 1, 2))
+
+                    self.update_display()
+            return
+                
         if self.drawing:
             point = self.mouse_pos
             self.lasso_points.append(point)
@@ -575,6 +671,55 @@ class ContourEditorView(QtWidgets.QGraphicsView):
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
+        
+        if self.creating_contour and self.freehand_drawing and event.button() == QtCore.Qt.LeftButton:
+            self.freehand_drawing = False
+
+            scene_pos = self.mapToScene(event.pos())
+            x, y = int(scene_pos.x()), int(scene_pos.y())
+            x, y = self.clamp_to_image(x, y)
+
+            # Add final release point if different
+            # if self.last_freehand_point != (x, y):
+            #     if self.contour_creation_undo_stack is not None:
+            #         if not self.contour_creation_undo_stack:  # <-- add this
+            #             self.contour_creation_undo_stack.append([])
+            #         self.contour_creation_undo_stack[-1].append(self.new_contour_points.copy())
+
+            #     self.new_contour_points.append((x, y))
+            #     if not self.contours:
+            #         self.contours.append(np.empty((0, 1, 2), dtype=np.int32))
+
+            #     # Now safely update
+            #     self.contours[-1] = np.array(
+            #         self.new_contour_points, dtype=np.int32
+            #     ).reshape((-1, 1, 2))
+
+            # --- Close polygon if hovering over start point ---
+            if self.hovering_start_point and len(self.new_contour_points) >= 3:
+                if self.contour_creation_undo_stack is not None:
+                    if not self.contour_creation_undo_stack:  # <-- add this
+                        self.contour_creation_undo_stack.append([])
+                    self.contour_creation_undo_stack[-1].append(self.new_contour_points.copy())
+
+                if not self.contours:
+                    self.contours.append(np.empty((0, 1, 2), dtype=np.int32))
+
+                # Now safely update
+                self.contours[-1] = np.array(
+                    self.new_contour_points, dtype=np.int32
+                ).reshape((-1, 1, 2))
+                self.new_contour_points.clear()
+                self.currently_creating_contour = False
+                self.hovering_start_point = False
+
+                self.contours.append(np.empty((0, 1, 2), dtype=np.int32))
+                self.contour_creation_undo_stack.append([])
+
+            self.last_freehand_point = None
+            self.update_display()
+            return
+        
         if self.drawing and event.button() == QtCore.Qt.LeftButton:
             self.drawing = False
 

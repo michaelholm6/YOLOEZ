@@ -169,6 +169,9 @@ The idea here is that you can incrementally improve your model by labelling some
         self.image_preview.setSizePolicy(
             QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
         )
+        self.image_index_label = QtWidgets.QLabel("Image 0/0")
+        self.image_index_label.setAlignment(QtCore.Qt.AlignCenter)
+        self.image_index_label.setVisible(False)
 
         # Keep track of folder images
         self.image_files = []
@@ -186,6 +189,7 @@ The idea here is that you can incrementally improve your model by labelling some
 
         preview_layout = QtWidgets.QVBoxLayout()
         preview_layout.addWidget(self.image_preview)
+        preview_layout.addWidget(self.image_index_label)
         preview_layout.addLayout(nav_layout)
         preview_widget = QtWidgets.QWidget()
         preview_widget.setLayout(preview_layout)
@@ -317,6 +321,24 @@ The idea here is that you can incrementally improve your model by labelling some
     def on_run_clicked(self):
         self.close_flag = True
         self.accept()
+        
+    def warn_if_high_res_images(self, image_files, threshold_mp=8_000_000):
+        for path in image_files:
+            reader = QtGui.QImageReader(path)
+            size = reader.size()
+            if not size.isValid():
+                continue
+
+            pixels = size.width() * size.height()
+            if pixels > threshold_mp:
+                QtWidgets.QMessageBox.warning(
+                    self,
+                    "High Resolution Images Detected",
+                    "Warning: At least one of your images is very high resolution.\n\n"
+                    "This might start to slow down YOLOEZ, depending on your hardware.\n"
+                    "Consider reducing the resolution of your images before continuing."
+                )
+                return  # show once only
 
     # === Folder Browse ===
     def browse_image(self):
@@ -333,14 +355,18 @@ The idea here is that you can incrementally improve your model by labelling some
             for f in sorted(os.listdir(folder))
             if f.lower().endswith(valid_exts)
         ]
+        
+        self.warn_if_high_res_images(self.image_files)
 
         if not self.image_files:
             self.image_preview.setText("No image files found in folder.")
             self.prev_button.setEnabled(False)
             self.next_button.setEnabled(False)
+            self.image_index_label.setVisible(False)
             return
 
         self.current_image_index = 0
+        self.image_index_label.setVisible(True)
         self.show_current_image()
         self.update_navigation_buttons()
 
@@ -384,6 +410,10 @@ The idea here is that you can incrementally improve your model by labelling some
             label_size, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation
         )
         self.image_preview.setPixmap(scaled_pixmap)
+        
+        self.image_index_label.setText(
+        f"Image {self.current_image_index + 1}/{len(self.image_files)}"
+        )
 
     def show_next_image(self):
         if not self.image_files:
@@ -406,6 +436,12 @@ The idea here is that you can incrementally improve your model by labelling some
         self.next_button.setEnabled(
             self.current_image_index < len(self.image_files) - 1
         )
+        if self.image_files:
+            self.image_index_label.setText(
+                f"Image {self.current_image_index + 1}/{len(self.image_files)}"
+                )
+        else:
+            self.image_index_label.setText("Image 0/0")
 
     # === Output Folder ===
     def browse_output(self):
