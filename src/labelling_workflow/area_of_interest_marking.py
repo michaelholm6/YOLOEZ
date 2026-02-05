@@ -39,6 +39,8 @@ class PolygonCanvas(QWidget):
         self.polygons = []  # list of {"points": [QPoint,...], "closed": bool}
         self.current_polygon = {"points": [], "closed": False}
         self.undo_stack = []
+        self.dragging = False
+        self.last_drag_point = None
 
         self.polygon_pts_widget = []  # list of QPoint in widget coordinates
         self.polygon_closed = False
@@ -113,18 +115,28 @@ class PolygonCanvas(QWidget):
         self.scale = scaled.width() / max(1, self.orig_w)
 
     def mouseMoveEvent(self, event):
+        pos = event.pos()
         pts = self.current_polygon["points"]
+
+        # Handle hover near first point
         if len(pts) > 0 and not self.current_polygon["closed"]:
             first_pt = pts[0]
-            dist_sq = (first_pt.x() - event.pos().x()) ** 2 + (
-                first_pt.y() - event.pos().y()
-            ) ** 2
+            dist_sq = (first_pt.x() - pos.x()) ** 2 + (first_pt.y() - pos.y()) ** 2
             self.hover_first = dist_sq <= 100
-            self.update()
         else:
             if self.hover_first:
                 self.hover_first = False
-                self.update()
+
+        # If dragging, add points as we move
+        if self.dragging:
+            if (
+                self.last_drag_point is None
+                or (pos - self.last_drag_point).manhattanLength() > 15
+            ):
+                pts.append(pos)
+                self.last_drag_point = pos
+
+        self.update()
 
     # --- coordinate conversions ---
     def widget_to_image_coords(self, qpoint):
@@ -189,6 +201,31 @@ class PolygonCanvas(QWidget):
             painter.setBrush(color)
             painter.drawEllipse(pt, 5, 5)
 
+    def mouseReleaseEvent(self, event):
+        if event.button() != Qt.LeftButton or not self.scaled_pixmap:
+            return
+
+        pos = event.pos()
+        self.dragging = False
+        self.last_drag_point = None
+
+        pts = self.current_polygon["points"]
+        if not pts:
+            return
+
+        # If released near first point, close polygon
+        if len(pts) >= 3:
+            first_pt = pts[0]
+            dist_sq = (first_pt.x() - pos.x()) ** 2 + (first_pt.y() - pos.y()) ** 2
+            if len(pts) >= 3 and dist_sq <= 100:
+                self.close_polygon()
+                return
+            else:
+                # Add final point on release
+                pts.append(pos)
+
+        self.update()
+
     def mousePressEvent(self, event):
         if event.button() != Qt.LeftButton or not self.scaled_pixmap:
             return
@@ -203,6 +240,8 @@ class PolygonCanvas(QWidget):
             return
 
         pts = self.current_polygon["points"]
+        self.dragging = True
+        self.last_drag_point = pos
 
         # If first point clicked (and polygon has ≥3 points), close polygon
         if len(pts) >= 3:
