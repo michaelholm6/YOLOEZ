@@ -321,7 +321,7 @@ The idea here is that you can incrementally improve your model by labelling some
     def on_run_clicked(self):
         self.close_flag = True
         self.accept()
-        
+
     def warn_if_high_res_images(self, image_files, threshold_mp=8_000_000):
         for path in image_files:
             reader = QtGui.QImageReader(path)
@@ -336,7 +336,7 @@ The idea here is that you can incrementally improve your model by labelling some
                     "High Resolution Images Detected",
                     "Warning: At least one of your images is very high resolution.\n\n"
                     "This might start to slow down YOLOEZ, depending on your hardware.\n"
-                    "Consider reducing the resolution of your images before continuing."
+                    "Consider reducing the resolution of your images before continuing.",
                 )
                 return  # show once only
 
@@ -355,7 +355,7 @@ The idea here is that you can incrementally improve your model by labelling some
             for f in sorted(os.listdir(folder))
             if f.lower().endswith(valid_exts)
         ]
-        
+
         self.warn_if_high_res_images(self.image_files)
 
         if not self.image_files:
@@ -410,9 +410,9 @@ The idea here is that you can incrementally improve your model by labelling some
             label_size, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation
         )
         self.image_preview.setPixmap(scaled_pixmap)
-        
+
         self.image_index_label.setText(
-        f"Image {self.current_image_index + 1}/{len(self.image_files)}"
+            f"Image {self.current_image_index + 1}/{len(self.image_files)}"
         )
 
     def show_next_image(self):
@@ -439,7 +439,7 @@ The idea here is that you can incrementally improve your model by labelling some
         if self.image_files:
             self.image_index_label.setText(
                 f"Image {self.current_image_index + 1}/{len(self.image_files)}"
-                )
+            )
         else:
             self.image_index_label.setText("Image 0/0")
 

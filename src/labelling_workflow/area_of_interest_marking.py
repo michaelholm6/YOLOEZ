@@ -129,7 +129,10 @@ class PolygonCanvas(QWidget):
 
         # If dragging, add points as we move
         if self.dragging:
-            if self.last_drag_point is None or (pos - self.last_drag_point).manhattanLength() > 15:
+            if (
+                self.last_drag_point is None
+                or (pos - self.last_drag_point).manhattanLength() > 15
+            ):
                 pts.append(pos)
                 self.last_drag_point = pos
 
@@ -197,7 +200,7 @@ class PolygonCanvas(QWidget):
             painter.setPen(QPen(color))
             painter.setBrush(color)
             painter.drawEllipse(pt, 5, 5)
-            
+
     def mouseReleaseEvent(self, event):
         if event.button() != Qt.LeftButton or not self.scaled_pixmap:
             return
