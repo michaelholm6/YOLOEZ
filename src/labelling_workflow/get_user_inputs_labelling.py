@@ -338,9 +338,8 @@ The idea here is that you can incrementally improve your model by labelling some
                     "This might start to slow down YOLOEZ, depending on your hardware.\n"
                     "Consider reducing the resolution of your images before continuing.",
                 )
-                return  # show once only
+                return
 
-    # === Folder Browse ===
     def browse_image(self):
         folder = QtWidgets.QFileDialog.getExistingDirectory(
             self, "Select Folder of Images"
