@@ -47,6 +47,8 @@ class ContourEditorView(QtWidgets.QGraphicsView):
         self.start_point_radius = 10
         self.new_contour_points = []
         self.currently_creating_contour = False
+        self.contour_items = []  # QGraphicsPathItem
+        self.point_items = []
         self.current_mode = "Selection"
         self.line_thickness = line_thickness
         self.current_image_path = current_image_path
@@ -110,54 +112,78 @@ class ContourEditorView(QtWidgets.QGraphicsView):
         y_c = int(min(max(0, round(y)), h - 1))
         return x_c, y_c
 
-    def update_display(self):
-        """Draw the image and all contours."""
-        img = self.image.copy()
-        # Draw contours
-        for c_idx, cnt in enumerate(self.contours):
-            points = [tuple(pt[0]) for pt in cnt]
-            color = (0, 0, 255)
-            is_closed = not (self.creating_contour and c_idx == len(self.contours) - 1)
-            if len(points) > 1:
-                cv2.polylines(
-                    img,
-                    [np.array(points)],
-                    isClosed=is_closed,
-                    color=color,
-                    thickness=self.line_thickness,
-                )
-            for pt_idx, point in enumerate(points):
-                color = (0, 255, 0)  # green default
+    def _rebuild_contour_items(self):
+        # Remove old items
+        for item in self.contour_items + self.point_items:
+            self.scene.removeItem(item)
 
-                # Highlight first point during contour creation
+        self.contour_items.clear()
+        self.point_items.clear()
+
+        for c_idx, cnt in enumerate(self.contours):
+            if len(cnt) == 0:
+                continue
+
+            # ---- build contour path ----
+            path = QtGui.QPainterPath()
+            pts = [QtCore.QPointF(x, y) for x, y in cnt.reshape(-1, 2)]
+            path.moveTo(pts[0])
+            for p in pts[1:]:
+                path.lineTo(p)
+
+            if not (self.creating_contour and c_idx == len(self.contours) - 1):
+                path.closeSubpath()
+
+            pen = QtGui.QPen(QtGui.QColor(255, 0, 0))
+            pen.setWidth(self.line_thickness)
+            pen.setCosmetic(True)
+
+            path_item = QtWidgets.QGraphicsPathItem(path)
+            path_item.setPen(pen)
+            path_item.setZValue(10)
+
+            self.scene.addItem(path_item)
+            self.contour_items.append(path_item)
+
+            # ---- build points ----
+            for pt_idx, (x, y) in enumerate(cnt.reshape(-1, 2)):
+                color = QtGui.QColor(0, 255, 0)  # green
+
+                # hovering start point
                 if (
                     self.creating_contour
                     and c_idx == len(self.contours) - 1
                     and pt_idx == 0
                     and self.hovering_start_point
-                    and len(points) >= 3
+                    and len(cnt) >= 3
                 ):
-                    color = (255, 0, 0)  # BLUE (BGR)
+                    color = QtGui.QColor(0, 0, 255)  # blue
 
                 if (c_idx, pt_idx) in self.selected_points:
-                    color = (255, 0, 0)  # red for selected
+                    color = QtGui.QColor(255, 0, 0)  # red
 
-                cv2.circle(img, point, self.line_thickness, color, -1)
+                r = self.line_thickness * 2  # SCREEN pixels
 
-        # Scaling/rotation guide
-        if (self.scaling_active or self.rotating_active) and self.mouse_pos:
-            img_center = QtCore.QPointF(
-                self.image.shape[1] / 2, self.image.shape[0] / 2
-            )
-            x1, y1 = int(self.mouse_pos.x()), int(self.mouse_pos.y())
-            x2, y2 = int(img_center.x()), int(img_center.y())
-            cv2.line(img, (x1, y1), (x2, y2), (0, 0, 255), self.line_thickness)
+                item = QtWidgets.QGraphicsEllipseItem(-r, -r, 2 * r, 2 * r)
+                item.setPos(x, y)
 
-        height, width, _ = img.shape
-        qimage = QtGui.QImage(
-            img.data, width, height, 3 * width, QtGui.QImage.Format_BGR888
-        )
+                item.setBrush(QtGui.QBrush(color))
+                item.setPen(QtGui.QPen(Qt.NoPen))
+
+                # 🔥 THIS is the missing line
+                item.setFlag(QtWidgets.QGraphicsItem.ItemIgnoresTransformations)
+
+                item.setZValue(20)
+
+                self.scene.addItem(item)
+                self.point_items.append(item)
+
+    def update_display(self):
+        h, w = self.image.shape[:2]
+        qimage = QtGui.QImage(self.image.data, w, h, 3 * w, QtGui.QImage.Format_BGR888)
         self.pixmap_item.setPixmap(QtGui.QPixmap.fromImage(qimage))
+
+        self._rebuild_contour_items()
 
     def paintEvent(self, event):
         super().paintEvent(event)  # Draw scene normally
@@ -655,7 +681,8 @@ class ContourEditorView(QtWidgets.QGraphicsView):
                 self.scene.removeItem(self.lasso_item)
             polygon = QtGui.QPolygonF(self.lasso_points)
             pen = QtGui.QPen(QtGui.QColor("red"))
-            pen.setWidth(self.line_thickness)  # use the slider value
+            pen.setWidth(self.line_thickness)
+            pen.setCosmetic(True)
             self.lasso_item = self.scene.addPolygon(polygon, pen)
         elif self.pan_active:
             delta = event.pos() - self.last_mouse_pos
@@ -688,22 +715,6 @@ class ContourEditorView(QtWidgets.QGraphicsView):
             scene_pos = self.mapToScene(event.pos())
             x, y = int(scene_pos.x()), int(scene_pos.y())
             x, y = self.clamp_to_image(x, y)
-
-            # Add final release point if different
-            # if self.last_freehand_point != (x, y):
-            #     if self.contour_creation_undo_stack is not None:
-            #         if not self.contour_creation_undo_stack:  # <-- add this
-            #             self.contour_creation_undo_stack.append([])
-            #         self.contour_creation_undo_stack[-1].append(self.new_contour_points.copy())
-
-            #     self.new_contour_points.append((x, y))
-            #     if not self.contours:
-            #         self.contours.append(np.empty((0, 1, 2), dtype=np.int32))
-
-            #     # Now safely update
-            #     self.contours[-1] = np.array(
-            #         self.new_contour_points, dtype=np.int32
-            #     ).reshape((-1, 1, 2))
 
             # --- Close polygon if hovering over start point ---
             if self.hovering_start_point and len(self.new_contour_points) >= 3:

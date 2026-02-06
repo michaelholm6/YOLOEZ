@@ -180,7 +180,9 @@ class PolygonCanvas(QWidget):
             painter.setPen(pen_points)
             painter.setBrush(QColor(200, 0, 0))
             for pt in pts:
-                painter.drawEllipse(pt, 5, 5)
+                painter.drawEllipse(
+                    pt, 2 * self.line_thickness, 2 * self.line_thickness
+                )
 
         # --- Draw current polygon ---
         pts = self.current_polygon["points"]
@@ -199,7 +201,7 @@ class PolygonCanvas(QWidget):
                 color = QColor(200, 0, 0)
             painter.setPen(QPen(color))
             painter.setBrush(color)
-            painter.drawEllipse(pt, 5, 5)
+            painter.drawEllipse(pt, 2 * self.line_thickness, 2 * self.line_thickness)
 
     def mouseReleaseEvent(self, event):
         if event.button() != Qt.LeftButton or not self.scaled_pixmap:

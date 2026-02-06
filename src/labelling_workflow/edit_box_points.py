@@ -36,6 +36,8 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
         self.v_guide = None
         self.h_guide = None
         self.undo_stack = []
+        self.box_items = []  # QGraphicsPathItem
+        self.corner_items = []
 
         self.current_mode = "Selection"
         self.line_thickness = line_thickness
@@ -62,10 +64,26 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
         self.initial_fit_done = False
         self.update_display()
 
+    def _reset_creation_visuals(self):
+        # remove guides
+        self._remove_guides()
+
+        # remove temp rectangle
+        if self.rect_item:
+            self.scene.removeItem(self.rect_item)
+            self.rect_item = None
+
+        # reset creation state
+        self.creating_box = False
+        self.first_corner = None
+        self.currently_creating_box = False
+        self.current_mode = "Selection"
+
     def _create_guides(self):
-        pen = QtGui.QPen(QtGui.QColor(180, 180, 180))  # light gray
+        pen = QtGui.QPen(QtGui.QColor(110, 110, 110))
         pen.setStyle(QtCore.Qt.DashLine)
-        pen.setWidth(1)
+        pen.setWidth(2)
+        pen.setCosmetic(True)
 
         self.v_guide = QtWidgets.QGraphicsLineItem()
         self.v_guide.setPen(pen)
@@ -97,37 +115,63 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
         self.v_guide.setLine(x, rect.top(), x, rect.bottom())
         self.h_guide.setLine(rect.left(), y, rect.right(), y)
 
+    def _rebuild_box_items(self):
+        # Remove old items
+        for item in self.box_items + self.corner_items:
+            self.scene.removeItem(item)
+
+        self.box_items.clear()
+        self.corner_items.clear()
+
+        for b_idx, box in enumerate(self.boxes):
+            pts = box.reshape((-1, 2))
+            if len(pts) != 4:
+                continue
+
+            # ---- box outline ----
+            path = QtGui.QPainterPath()
+            path.moveTo(pts[0][0], pts[0][1])
+            for i in range(1, 4):
+                path.lineTo(pts[i][0], pts[i][1])
+            path.closeSubpath()
+
+            pen = QtGui.QPen(QtGui.QColor(255, 0, 0))
+            pen.setWidth(self.line_thickness)
+            pen.setCosmetic(True)  # 🔥 screen-space thickness
+
+            path_item = QtWidgets.QGraphicsPathItem(path)
+            path_item.setPen(pen)
+            path_item.setZValue(10)
+
+            self.scene.addItem(path_item)
+            self.box_items.append(path_item)
+
+            # ---- corner points ----
+            for corner_idx, (x, y) in enumerate(pts):
+                # --- coloring logic preserved ---
+                if (b_idx, corner_idx) in self.selected_points:
+                    color = QtGui.QColor(255, 0, 0)  # selected
+                else:
+                    color = QtGui.QColor(0, 255, 0)  # normal
+
+                r = self.line_thickness * 2  # screen pixels
+
+                item = QtWidgets.QGraphicsEllipseItem(-r, -r, 2 * r, 2 * r)
+                item.setPos(x, y)
+                item.setBrush(QtGui.QBrush(color))
+                item.setPen(QtGui.QPen(Qt.NoPen))
+
+                # 🔥 critical line
+                item.setFlag(QtWidgets.QGraphicsItem.ItemIgnoresTransformations)
+
+                item.setZValue(20)
+
+                self.scene.addItem(item)
+                self.corner_items.append(item)
+
     def update_display(self):
         """Draw image and bounding boxes (with corner handles)."""
         img = self.image.copy()
-        # Draw boxes
-        for b_idx, box in enumerate(self.boxes):
-            # box: np array shape (4,1,2) or (4,2)
-            pts = [
-                tuple(pt[0]) if pt.ndim == 2 else tuple(pt)
-                for pt in box.reshape((-1, 2))
-            ]
-            # Ensure int coords
-            pts_i = [(int(x), int(y)) for (x, y) in pts]
-            # Draw rectangle (closed polyline)
-            if len(pts_i) == 4:
-                cv2.polylines(
-                    img,
-                    [np.array(pts_i)],
-                    isClosed=True,
-                    color=(0, 0, 255),
-                    thickness=self.line_thickness,
-                )
-            # Draw corner handles
-            for corner_idx, pt in enumerate(pts_i):
-                if (b_idx, corner_idx) in self.selected_points:
-                    cv2.circle(
-                        img, pt, self.line_thickness + 2, (255, 0, 0), -1
-                    )  # selected -> blueish
-                else:
-                    cv2.circle(
-                        img, pt, max(2, int(self.line_thickness / 2)), (0, 255, 0), -1
-                    )
 
         height, width, _ = img.shape
         qimage = QtGui.QImage(
@@ -148,6 +192,8 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
                 self.fitInView(image_rect, QtCore.Qt.KeepAspectRatio)
                 self.centerOn(image_rect.center())
                 self.initial_fit_done = True
+
+        self._rebuild_box_items()
 
     def paintEvent(self, event):
         super().paintEvent(event)
@@ -300,6 +346,7 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
                     rect = QtCore.QRectF(self.first_corner, self.first_corner)
                     pen = QtGui.QPen(QtGui.QColor("red"))
                     pen.setWidth(self.line_thickness)
+                    pen.setCosmetic(True)
                     self.rect_item = self.scene.addRect(rect, pen)
                     self.current_mode = "Box Creation"
                 else:
@@ -403,6 +450,7 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
             polygon = QtGui.QPolygonF(self.lasso_points)
             pen = QtGui.QPen(QtGui.QColor("red"))
             pen.setWidth(self.line_thickness)
+            pen.setCosmetic(True)
             self.lasso_item = self.scene.addPolygon(polygon, pen)
             return
 
@@ -441,6 +489,7 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
         """
         Reuse the same view with a new image and boxes.
         """
+        self._reset_creation_visuals()
         self.image = image
         self.boxes = [b.copy() for b in boxes] if boxes else []
         self.selected_points.clear()
