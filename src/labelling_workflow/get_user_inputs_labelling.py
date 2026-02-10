@@ -131,6 +131,33 @@ The idea here is that you can incrementally improve your model by labelling some
         mode_container = QtWidgets.QWidget()
         mode_container.setLayout(mode_layout)
         self.close_flag = False
+        
+        self.remove_image_button = QtWidgets.QPushButton("Remove Image")
+        self.remove_image_button.setStyleSheet("""
+            QPushButton {
+                background-color: #d32f2f;
+                color: white;
+                border-radius: 6px;
+                padding: 8px 16px;
+                font-size: 14pt;
+            }
+            QPushButton:hover { background-color: #b71c1c; }
+            QPushButton:pressed { background-color: #8e0000; }
+            QPushButton:disabled { background-color: #cccccc; color: #666666; }
+        """)
+
+        # --- Placeholder container ---
+        self.remove_image_container = QtWidgets.QWidget()
+        container_layout = QtWidgets.QHBoxLayout(self.remove_image_container)
+        container_layout.setContentsMargins(0, 0, 0, 0)
+        container_layout.addWidget(self.remove_image_button)
+
+        # Lock container height so layout never changes
+        self.remove_image_container.setFixedHeight(
+            self.remove_image_button.sizeHint().height()
+        )
+
+        self.remove_image_button.setVisible(False)
 
         # === Run Button ===
         self.run_button = QtWidgets.QPushButton("Run")
@@ -188,6 +215,7 @@ The idea here is that you can incrementally improve your model by labelling some
         nav_layout.addWidget(self.next_button)
 
         preview_layout = QtWidgets.QVBoxLayout()
+        preview_layout.addWidget(self.remove_image_container)
         preview_layout.addWidget(self.image_preview)
         preview_layout.addWidget(self.image_index_label)
         preview_layout.addLayout(nav_layout)
@@ -286,6 +314,7 @@ The idea here is that you can incrementally improve your model by labelling some
         self.browse_model_button.clicked.connect(self.browse_model)
         self.browse_output_button.clicked.connect(self.browse_output)
         self.run_button.clicked.connect(self.on_run_clicked)
+        self.remove_image_button.clicked.connect(self.remove_current_image)
         self.prev_button.clicked.connect(self.show_previous_image)
         self.next_button.clicked.connect(self.show_next_image)
         self.image_path_edit.textChanged.connect(self.update_run_button_state)
@@ -302,6 +331,30 @@ The idea here is that you can incrementally improve your model by labelling some
         self.showMaximized()
         self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowStaysOnTopHint)
         self.show()
+        
+    def remove_current_image(self):
+        if not self.image_files or self.current_image_index < 0:
+            return
+
+        removed_path = self.image_files.pop(self.current_image_index)
+
+        # Adjust index
+        if self.current_image_index >= len(self.image_files):
+            self.current_image_index = len(self.image_files) - 1
+
+        if not self.image_files:
+            # No images left
+            self.image_preview.setText("No images loaded.")
+            self.image_index_label.setText("Image 0/0")
+            self.image_index_label.setVisible(False)
+            self.prev_button.setEnabled(False)
+            self.next_button.setEnabled(False)
+            self.remove_image_button.setVisible(False)
+            return
+
+        self.image_index_label.setVisible(True)
+        self.show_current_image()
+        self.update_navigation_buttons()
 
     def browse_model(self):
         file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
@@ -431,11 +484,15 @@ The idea here is that you can incrementally improve your model by labelling some
         self.update_navigation_buttons()
 
     def update_navigation_buttons(self):
-        self.prev_button.setEnabled(self.current_image_index > 0)
+        has_images = bool(self.image_files)
+
+        self.prev_button.setEnabled(has_images and self.current_image_index > 0)
         self.next_button.setEnabled(
-            self.current_image_index < len(self.image_files) - 1
+            has_images and self.current_image_index < len(self.image_files) - 1
         )
-        if self.image_files:
+        self.remove_image_button.setVisible(has_images)
+
+        if has_images:
             self.image_index_label.setText(
                 f"Image {self.current_image_index + 1}/{len(self.image_files)}"
             )
@@ -480,8 +537,11 @@ The idea here is that you can incrementally improve your model by labelling some
         errors = []
         if not image_path:
             errors.append("Please select an image folder.")
+        if image_path:
+            if not self.image_files:
+                errors.append("No valid image files found in selected image folder.")
         elif not os.path.isdir(image_path):
-            errors.append("Selected path must be a folder.")
+            errors.append("Selected path must be a folder.") 
 
         if not output_path:
             errors.append("Please select an output folder.")

@@ -43,6 +43,7 @@ def run_labeling_workflow(
             "- Left click to add points (or click, hold, and drag) and outline your polygon.\n"
             "- Close a polygon by clicking on the first point again.\n"
             "- Press 'Ctrl+Z' to undo the last action.\n"
+            "- Press 'Ctrl+Y' to redo the last undone action.\n"
             "- If you want the entire image as the area of interest, just don't draw a polygon on that image.\n"
             "- When finished, click the 'Finish' button.\n"
         )
