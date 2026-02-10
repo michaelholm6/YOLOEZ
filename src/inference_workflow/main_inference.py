@@ -9,6 +9,7 @@ from labelling_workflow.area_of_interest_marking import annotate_images
 from labelling_workflow.crop_and_mask import crop_and_mask_images
 from inference_workflow.get_user_inputs_inference import get_user_inference_inputs
 from inference_workflow.run_inference import run_yolo_inference
+from inference_workflow.inference_viewer import view_images
 
 
 def run_inference_workflow(
@@ -63,11 +64,21 @@ def run_inference_workflow(
 
     os.makedirs(save_path, exist_ok=True)
 
-    run_yolo_inference(model, cropped_images, save_path, inputs["YOLO_confidence"])
+    result_images = run_yolo_inference(
+        model, cropped_images, save_path, inputs["YOLO_confidence"]
+    )
+
+    if not suppress_instructions:
+        show_instructions(
+            "The inference process is complete! You will now be shown the results.\n\n"
+        )
+
+    if test_inputs is None:
+        view_images(result_images)
 
     if not suppress_instructions:
         show_instructions(
             "Inference complete!\n\n"
             f"Results saved to: {save_path}\n\n"
-            "TOLOEZ will now close."
+            "YOLOEZ will now close."
         )

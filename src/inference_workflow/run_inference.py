@@ -11,6 +11,7 @@ from PyQt5 import QtWidgets, QtCore
 
 
 def run_yolo_inference(model, cropped_images, save_path, conf, parent=None):
+    saved_images = []
     num_images = len(cropped_images)
     progress = QtWidgets.QProgressDialog(
         "Running inference...", "Cancel", 0, num_images, parent
@@ -47,6 +48,8 @@ def run_yolo_inference(model, cropped_images, save_path, conf, parent=None):
         boxes = result[0].boxes
         names = result[0].names
         masks = getattr(result[0], "masks", None)
+
+        saved_images.append(img_path)
 
         for j, box in enumerate(boxes):
             cls_id = int(box.cls[0].item())
@@ -86,3 +89,5 @@ def run_yolo_inference(model, cropped_images, save_path, conf, parent=None):
         progress.setValue(i)
 
     progress.close()
+
+    return saved_images

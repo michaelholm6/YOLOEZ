@@ -137,6 +137,31 @@ class InputDialogInference(QtWidgets.QDialog):
             QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
         )
 
+        self.image_index_label = QtWidgets.QLabel("Image 0/0")
+        self.image_index_label.setAlignment(QtCore.Qt.AlignCenter)
+
+        font = self.image_index_label.font()
+        font.setPointSize(14)
+        self.image_index_label.setFont(font)
+
+        self.image_index_label.setSizePolicy(
+            QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed
+        )
+
+        # Container that always occupies space
+        self.image_index_container = QtWidgets.QWidget()
+        index_layout = QtWidgets.QVBoxLayout(self.image_index_container)
+        index_layout.setContentsMargins(0, 0, 0, 0)
+        index_layout.addWidget(self.image_index_label)
+
+        # Fix height so layout never jumps
+        self.image_index_container.setFixedHeight(
+            self.image_index_label.sizeHint().height()
+        )
+
+        # Start hidden
+        self.image_index_label.setVisible(False)
+
         # Keep track of folder images
         self.image_files = []
         self.current_image_index = -1
@@ -147,12 +172,44 @@ class InputDialogInference(QtWidgets.QDialog):
         self.prev_button.setEnabled(False)
         self.next_button.setEnabled(False)
 
+        self.remove_image_button = QtWidgets.QPushButton("Remove Image")
+        self.remove_image_button.setStyleSheet("""
+            QPushButton {
+                background-color: #d32f2f;
+                color: white;
+                border-radius: 6px;
+                padding: 8px 16px;
+                font-size: 14pt;
+            }
+            QPushButton:hover { background-color: #b71c1c; }
+            QPushButton:pressed { background-color: #8e0000; }
+            QPushButton:disabled { background-color: #cccccc; color: #666666; }
+        """)
+        self.remove_image_button.setVisible(False)
+
+        # Wrap in container to reserve space
+        self.remove_image_container = QtWidgets.QWidget()
+        remove_layout = QtWidgets.QHBoxLayout(self.remove_image_container)
+        remove_layout.setContentsMargins(0, 0, 0, 0)
+        remove_layout.addWidget(self.remove_image_button)
+
+        self.remove_image_button.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed
+        )
+
+        # Fix container height so layout never jumps
+        self.remove_image_container.setFixedHeight(
+            self.remove_image_button.sizeHint().height()
+        )
+
         nav_layout = QtWidgets.QHBoxLayout()
         nav_layout.addWidget(self.prev_button)
         nav_layout.addWidget(self.next_button)
 
         preview_layout = QtWidgets.QVBoxLayout()
+        preview_layout.addWidget(self.remove_image_container)
         preview_layout.addWidget(self.image_preview)
+        preview_layout.addWidget(self.image_index_container)
         preview_layout.addLayout(nav_layout)
         preview_widget = QtWidgets.QWidget()
         preview_widget.setLayout(preview_layout)
@@ -204,6 +261,7 @@ class InputDialogInference(QtWidgets.QDialog):
         self.browse_model_button.clicked.connect(self.browse_model)
         self.browse_output_button.clicked.connect(self.browse_output)
         self.run_button.clicked.connect(self.on_run_clicked)
+        self.remove_image_button.clicked.connect(self.remove_current_image)
         self.prev_button.clicked.connect(self.show_previous_image)
         self.next_button.clicked.connect(self.show_next_image)
         self.image_path_edit.textChanged.connect(self.update_run_button_state)
@@ -217,6 +275,39 @@ class InputDialogInference(QtWidgets.QDialog):
         self.showMaximized()
         self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowStaysOnTopHint)
         self.show()
+
+    def remove_current_image(self):
+        self.update_image_index_label()
+        if not self.image_files or self.current_image_index < 0:
+            return
+
+        self.image_files.pop(self.current_image_index)
+
+        if self.current_image_index >= len(self.image_files):
+            self.current_image_index = len(self.image_files) - 1
+
+        if not self.image_files:
+            self.image_preview.setText("No images loaded.")
+            self.prev_button.setEnabled(False)
+            self.next_button.setEnabled(False)
+            self.remove_image_button.setVisible(False)
+            return
+
+        self.show_current_image()
+        self.update_navigation_buttons()
+
+        if len(self.image_files) == 0:
+            self.image_index_label.setVisible(False)
+
+    def update_image_index_label(self):
+        if not self.image_files or self.current_image_index < 0:
+            self.image_index_label.setVisible(False)
+            return
+
+        self.image_index_label.setText(
+            f"Image {self.current_image_index + 1}/{len(self.image_files)}"
+        )
+        self.image_index_label.setVisible(True)
 
     def browse_model(self):
         file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
@@ -255,7 +346,11 @@ class InputDialogInference(QtWidgets.QDialog):
             self.next_button.setEnabled(False)
             return
 
+        else:
+            self.remove_image_button.setVisible(True)
+
         self.current_image_index = 0
+        self.update_image_index_label()
         self.show_current_image()
         self.update_navigation_buttons()
 
@@ -288,6 +383,7 @@ class InputDialogInference(QtWidgets.QDialog):
             label_size, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation
         )
         self.image_preview.setPixmap(scaled_pixmap)
+        self.update_image_index_label()
 
     def show_next_image(self):
         if not self.image_files:

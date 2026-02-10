@@ -38,6 +38,7 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
         self.undo_stack = []
         self.box_items = []  # QGraphicsPathItem
         self.corner_items = []
+        self.redo_stack = []
 
         self.current_mode = "Selection"
         self.line_thickness = line_thickness
@@ -212,6 +213,7 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
         # Undo
         if ctrl and k == QtCore.Qt.Key_Z:
             if self.undo_stack:
+                self.redo_stack.append([b.copy() for b in self.boxes])
                 self.boxes = self.undo_stack.pop()
                 self.selected_points.clear()
                 self.update_display()
@@ -260,6 +262,16 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
                 self.viewport().update()
                 return
 
+            return
+
+        if ctrl and (k == QtCore.Qt.Key_Y):
+            if self.redo_stack:
+                self.undo_stack.append(
+                    [b.copy() for b in self.boxes]
+                )  # push current to undo
+                self.boxes = self.redo_stack.pop()
+                self.selected_points.clear()
+                self.update_display()
             return
 
         # Toggle creation mode 'C'
@@ -535,6 +547,7 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
                 self.rect_item = None
                 # Small boxes ignored
                 if w >= 4 and h >= 4:
+                    self.redo_stack.clear()
                     # Create box corners: tl, tr, br, bl
                     tl = [x1, y1]
                     tr = [x2, y1]
@@ -614,6 +627,7 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
                 boxes_to_keep.append(box)
         # save for undo
         self.undo_stack.append(self.boxes.copy())
+        self.redo_stack.clear()
         self.boxes = boxes_to_keep
         self.selected_points.clear()
 
@@ -823,6 +837,7 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
                     ny = orig_pts[i, 1] + dy
                     xi, yi = clamp_point(nx, ny)
                     self.boxes[b_idx][i][0] = [xi, yi]
+        self.redo_stack.clear()
 
 
 class MultiImageBoxEditor(QtWidgets.QWidget):
@@ -984,7 +999,7 @@ def run_box_editor(cropped_images, line_thickness=2, initial_boxes=None):
         cropped_images, loop, line_thickness=line_thickness, initial_boxes=initial_boxes
     )
     editor_widget.setWindowTitle(
-        "Multi-Image Bounding Box Editor (C=Create Box, D=Delete, ctrl+Z=Undo, M=Move, esc=Return to Selection)"
+        "Multi-Image Bounding Box Editor (C=Create Box, D=Delete, ctrl+Z=Undo, ctrl+Y=redo, M=Move, esc=Return to Selection)"
     )
     editor_widget.showMaximized()
 

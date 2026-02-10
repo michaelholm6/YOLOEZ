@@ -80,6 +80,35 @@ Baiscally this will create more images from your existing ones by applying these
             if text == "Rotate":
                 self.rotate_container = container
 
+        self.remove_image_button = QtWidgets.QPushButton("Remove Image")
+        self.remove_image_button.setStyleSheet("""
+            QPushButton {
+                background-color: #d32f2f;
+                color: white;
+                border-radius: 6px;
+                padding: 8px 16px;
+                font-size: 14pt;
+            }
+            QPushButton:hover { background-color: #b71c1c; }
+            QPushButton:pressed { background-color: #8e0000; }
+            QPushButton:disabled { background-color: #cccccc; color: #666666; }
+        """)
+        self.remove_image_button.setVisible(False)  # initially hidden
+
+        # Wrap in container to reserve space in layout
+        self.remove_image_container = QtWidgets.QWidget()
+        remove_layout = QtWidgets.QHBoxLayout(self.remove_image_container)
+        remove_layout.setContentsMargins(0, 0, 0, 0)
+        remove_layout.addWidget(self.remove_image_button)
+        self.remove_image_button.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed
+        )
+
+        # Fix container height so layout never jumps
+        self.remove_image_container.setFixedHeight(
+            self.remove_image_button.sizeHint().height()
+        )
+
         # --- Hide Rotate if detection ---
         if self.task == "detection":
             self.rotate_container.hide()
@@ -206,14 +235,40 @@ A typical split is 80% for training and 20% for validation.",
         right_layout = QtWidgets.QVBoxLayout()
         self.image_preview = QtWidgets.QLabel("No Dataset Selected")
         self.image_preview.setAlignment(QtCore.Qt.AlignCenter)
-        self.image_preview.setStyleSheet(
-            "border: 1px solid black; background-color: #eee; font-size: 16pt;"
-        )
+        self.image_preview.setStyleSheet("background-color: #eee; font-size: 16pt;")
         self.image_preview.setSizePolicy(
             QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored
         )
         self.image_preview.setScaledContents(False)
+        right_layout.addWidget(self.remove_image_container)  # fixed placeholder
         right_layout.addWidget(self.image_preview)
+
+        self.image_index_label = QtWidgets.QLabel("Image 0/0")
+        self.image_index_label.setAlignment(QtCore.Qt.AlignCenter)
+
+        font = self.image_index_label.font()
+        font.setPointSize(14)
+        self.image_index_label.setFont(font)
+
+        self.image_index_label.setSizePolicy(
+            QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed
+        )
+
+        # Container that always occupies space
+        self.image_index_container = QtWidgets.QWidget()
+        index_layout = QtWidgets.QVBoxLayout(self.image_index_container)
+        index_layout.setContentsMargins(0, 0, 0, 0)
+        index_layout.addWidget(self.image_index_label)
+
+        # Fix height so layout never jumps
+        self.image_index_container.setFixedHeight(
+            self.image_index_label.sizeHint().height()
+        )
+
+        # Start hidden (label only)
+        self.image_index_label.setVisible(False)
+
+        right_layout.addWidget(self.image_index_container)
 
         nav_layout = QtWidgets.QHBoxLayout()
         self.prev_button = QtWidgets.QPushButton("◀ Previous")
@@ -244,6 +299,7 @@ A typical split is 80% for training and 20% for validation.",
         self.browse_save_button.clicked.connect(self.browse_save)
         self.prev_button.clicked.connect(self.show_previous_image)
         self.next_button.clicked.connect(self.show_next_image)
+        self.remove_image_button.clicked.connect(self.remove_current_image)
         self.run_button.clicked.connect(self.on_run_clicked)
         for cb in self.transform_checkboxes:
             cb.stateChanged.connect(self.disable_rotation_if_detection)
@@ -279,6 +335,12 @@ A typical split is 80% for training and 20% for validation.",
             errors.append("Please select a dataset folder.")
         elif not os.path.isdir(dataset_folder):
             errors.append("Dataset folder does not exist.")
+
+        if dataset_folder:
+            if not self.image_files:
+                errors.append(
+                    "Selected dataset folder does not contain any valid images with corresponding YOLO label files."
+                )
 
         if not save_folder:
             errors.append("Please select a save directory.")
@@ -393,6 +455,31 @@ A typical split is 80% for training and 20% for validation.",
         self.current_image_index = 0
         self.show_current_image()
         self.update_navigation_buttons()
+        self.remove_image_button.setVisible(bool(self.image_files))
+
+    def remove_current_image(self):
+        if not self.image_files or self.current_image_index < 0:
+            return
+
+        removed_path = self.image_files.pop(self.current_image_index)
+
+        if len(self.image_files) == 0:
+            self.image_index_label.setVisible(False)
+
+        # Adjust index
+        if self.current_image_index >= len(self.image_files):
+            self.current_image_index = len(self.image_files) - 1
+
+        if not self.image_files:
+            self.image_preview.setText("No images loaded.")
+            self.prev_button.setEnabled(False)
+            self.next_button.setEnabled(False)
+            self.remove_image_button.setVisible(False)
+            return
+
+        self.show_current_image()
+        self.update_navigation_buttons()
+        self.update_image_index_label()
 
     def browse_save(self):
         folder = QtWidgets.QFileDialog.getExistingDirectory(
@@ -400,6 +487,16 @@ A typical split is 80% for training and 20% for validation.",
         )
         if folder:
             self.save_path_edit.setText(folder)
+
+    def update_image_index_label(self):
+        if self.image_files:
+            self.image_index_label.setText(
+                f"Image {self.current_image_index + 1}/{len(self.image_files)}"
+            )
+            self.image_index_label.setVisible(True)
+        else:
+            self.image_index_label.setText("Image 0/0")
+            self.image_index_label.setVisible(False)
 
     # --- Image navigation ---
     def show_current_image(self):
@@ -414,35 +511,8 @@ A typical split is 80% for training and 20% for validation.",
         if img is None:
             self.image_preview.setText("Failed to load image")
             return
-        h, w = img.shape[:2]
 
-        # Draw YOLO labels
-        if os.path.exists(lbl_path):
-            with open(lbl_path, "r") as f:
-                for line in f:
-                    parts = line.strip().split()
-                    class_id = int(parts[0])
-                    coords = [float(x) for x in parts[1:]]
-                    if len(coords) == 4:  # bbox
-                        xc, yc, bw, bh = coords
-                        x1 = int((xc - bw / 2) * w)
-                        y1 = int((yc - bh / 2) * h)
-                        x2 = int((xc + bw / 2) * w)
-                        y2 = int((yc + bh / 2) * h)
-                        cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                    else:
-                        pts = [
-                            (int(coords[i] * w), int(coords[i + 1] * h))
-                            for i in range(0, len(coords), 2)
-                        ]
-                        cv2.polylines(
-                            img,
-                            [np.array(pts)],
-                            isClosed=True,
-                            color=(0, 0, 255),
-                            thickness=2,
-                        )
-
+        # Convert BGR → RGB and then to QPixmap
         img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         qt_img = QtGui.QImage(
             img_rgb.data,
@@ -452,23 +522,69 @@ A typical split is 80% for training and 20% for validation.",
             QtGui.QImage.Format_RGB888,
         )
         pixmap = QtGui.QPixmap.fromImage(qt_img)
-        label_size = self.image_preview.size()
+
+        # Draw labels using QPainter
+        if os.path.exists(lbl_path):
+            painter = QtGui.QPainter(pixmap)
+            pen = QtGui.QPen(QtGui.QColor(0, 255, 0))  # green boxes
+            pen.setWidth(5)  # screen pixels
+            painter.setPen(pen)
+
+            h, w = img.shape[:2]
+            with open(lbl_path, "r") as f:
+                for line in f:
+                    parts = line.strip().split()
+                    coords = [float(x) for x in parts[1:]]
+                    if len(coords) == 4:  # bbox
+                        xc, yc, bw, bh = coords
+                        x1 = int((xc - bw / 2) * w)
+                        y1 = int((yc - bh / 2) * h)
+                        x2 = int((xc + bw / 2) * w)
+                        y2 = int((yc + bh / 2) * h)
+                        painter.drawRect(x1, y1, x2 - x1, y2 - y1)
+                    else:
+                        pts = [
+                            QtCore.QPointF(coords[i] * w, coords[i + 1] * h)
+                            for i in range(0, len(coords), 2)
+                        ]
+                        polygon = QtGui.QPolygonF(pts)
+                        pen.setColor(QtGui.QColor(255, 0, 0))  # red polygon
+                        painter.setPen(pen)
+                        painter.drawPolygon(polygon)
+
+            painter.end()
+
+        # Scale pixmap to fit the label
         scaled_pixmap = pixmap.scaled(
-            label_size, QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation
+            self.image_preview.size(),
+            QtCore.Qt.KeepAspectRatio,
+            QtCore.Qt.SmoothTransformation,
         )
         self.image_preview.setPixmap(scaled_pixmap)
+
+        # Update image index
+        if self.image_files:
+            self.image_index_label.setText(
+                f"Image {self.current_image_index + 1}/{len(self.image_files)}"
+            )
+            self.image_index_label.setVisible(True)
+        else:
+            self.image_index_label.setText("Image 0/0")
+            self.image_index_label.setVisible(False)
 
     def show_next_image(self):
         if self.current_image_index < len(self.image_files) - 1:
             self.current_image_index += 1
             self.show_current_image()
         self.update_navigation_buttons()
+        self.update_image_index_label()
 
     def show_previous_image(self):
         if self.current_image_index > 0:
             self.current_image_index -= 1
             self.show_current_image()
         self.update_navigation_buttons()
+        self.update_image_index_label()
 
     def update_navigation_buttons(self):
         self.prev_button.setEnabled(self.current_image_index > 0)

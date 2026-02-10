@@ -6,7 +6,8 @@
 **Development branch**  
 [![Tests dev](https://github.com/michaelholm6/YOLOEZ/actions/workflows/test.yml/badge.svg?branch=development)](https://github.com/michaelholm6/YOLOEZ/actions/workflows/test.yml?query=branch:development)
 
-A standalone, GUI based application for labeling data, training models, and running inference with Ultralytics powered YOLO11 models.  
+A standalone, GUI based application for labeling computer vision data, training models, and running inference with Ultralytics powered YOLO11 models.  
+
 This tool supports both bounding box detection and segmentation workflows and is designed to be usable without writing any code.
 
 The application guides users through every step with built-in tooltips, instructional popups, and clear workflow structure, making YOLO model training and usage accessible to users who may not be familiar with machine learning pipelines or Python development.
@@ -82,7 +83,9 @@ Exact requirements may vary depending on dataset size and model configuration.
 
 ## Getting Started
 
-No installation or environment setup is required. If you're trying to run this on a linux remote desktop, reference [this section](#linux-remote-desktop-setup).
+No installation or environment setup is required. 
+
+(NOTE: If you're trying to run this on a linux remote desktop, reference [this section](#linux-remote-desktop-setup).)
 
 1. Navigate to the [**Releases**](https://github.com/michaelholm6/YOLOEZ/releases) section of this repository, located on the right side of the GitHub page.
 2. Download the latest release for your operating system. If downloading for Linux, download all numbered zip files.
@@ -301,22 +304,10 @@ You should now see the XFCE desktop.
 
 ### 17. Managing VNC Sessions
 
-List sessions:
-
-```bash
-tightvncserver -list
-```
-
 Stop a session:
 
 ```bash
-tightvncserver -kill :1
-```
-
-Start a new session:
-
-```bash
-tightvncserver
+tightvncserver -kill :1 (or :2, :3, etc. depending on how many sessions you're running)
 ```
 
 
@@ -354,11 +345,15 @@ tightvncserver
 <pre>
 ├── src/                 # Application source code  
 ├── assets/              # Icons and UI assets  
-├── docs/                # Documentation resources  
-├── images/              # README images and screenshots  
-├── compiler.py          # Script to automatically compile executable  
-├── Various UV environment files  
-└── README.md
+├── test/                # Test cases for ensuring code quality
+├── images/              # README images and screenshots      
+├── AUTHORS.md           # File containing list of YOLOEZ authors
+├── CODE_OF_CONDUCT.md   # File explaining how people are expected to act in this repo
+├── CONTRIBUTING.md      # File explaining the process of contributing code to this project
+├── LICENSE              # License file explaining how this code may be used
+├── README.md            # File explaining this project
+└── Various UV environment files
+   
 </pre>
 
 ---

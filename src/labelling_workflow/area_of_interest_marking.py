@@ -39,6 +39,7 @@ class PolygonCanvas(QWidget):
         self.polygons = []  # list of {"points": [QPoint,...], "closed": bool}
         self.current_polygon = {"points": [], "closed": False}
         self.undo_stack = []
+        self.redo_stack = []
         self.dragging = False
         self.last_drag_point = None
 
@@ -195,7 +196,7 @@ class PolygonCanvas(QWidget):
 
         # draw points
         for i, pt in enumerate(pts):
-            if i == 0 and self.hover_first:
+            if i == 0 and self.hover_first and len(pts) >= 3:
                 color = QColor(0, 0, 255)  # first point hovered -> blue
             else:
                 color = QColor(200, 0, 0)
@@ -254,6 +255,7 @@ class PolygonCanvas(QWidget):
                 return
 
         # Otherwise, add point to current polygon
+        self.redo_stack.clear()
         pts.append(pos)
         self.update()
 
@@ -283,32 +285,59 @@ class PolygonCanvas(QWidget):
         return all_polys
 
     def close_polygon(self):
-        """Close the current polygon and store it in polygons list."""
         if len(self.current_polygon["points"]) > 2:
             self.current_polygon["closed"] = True
             self.polygons.append(self.current_polygon)
+
             self.undo_stack.append({"action": "add", "polygon": self.current_polygon})
-            self.current_polygon = {
-                "points": [],
-                "closed": False,
-            }  # ready for next polygon
+
+            self.redo_stack.clear()
+
+            self.current_polygon = {"points": [], "closed": False}
             self.update()
             return True
         return False
 
     def undo(self):
-        """Undo last action: either cancel current polygon or remove last completed polygon."""
         if self.current_polygon["points"]:
             # cancel in-progress polygon
-            self.undo_stack.append(
-                {"action": "cancel_current", "polygon": self.current_polygon}
-            )
+            action = {"action": "cancel_current", "polygon": self.current_polygon}
+            self.undo_stack.append(action)
+            self.redo_stack.append(action)
+
             self.current_polygon = {"points": [], "closed": False}
             self.hover_first = False
+
         elif self.polygons:
-            # remove last completed polygon
             last = self.polygons.pop()
-            self.undo_stack.append({"action": "remove", "polygon": last})
+            action = {"action": "remove", "polygon": last}
+            self.undo_stack.append(action)
+            self.redo_stack.append(action)
+
+        self.update()
+
+    def redo(self):
+        if not self.redo_stack:
+            return
+
+        action = self.redo_stack.pop()
+
+        if action["action"] == "remove":
+            # re-add removed polygon
+            self.polygons.append(action["polygon"])
+            self.undo_stack.append(action)
+
+        elif action["action"] == "add":
+            # remove polygon again
+            if self.polygons and self.polygons[-1] == action["polygon"]:
+                self.polygons.pop()
+            self.undo_stack.append(action)
+
+        elif action["action"] == "cancel_current":
+            # restore canceled polygon
+            self.current_polygon = action["polygon"]
+            self.undo_stack.append(action)
+
         self.update()
 
 
@@ -385,8 +414,7 @@ class PolygonAnnotatorWindow(QWidget):
         main_layout.addLayout(finish_layout)
 
         self.setLayout(main_layout)
-        self.setWindowTitle("AOI Annotator (ctrl+Z = undo)")
-        self.showMaximized()
+        self.setWindowTitle("AOI Annotator (ctrl+Z = undo, ctrl+Y = redo)")
         self.showMaximized()  # show first
         self.raise_()
         self.activateWindow()
@@ -450,6 +478,9 @@ class PolygonAnnotatorWindow(QWidget):
         if ctrl and k == Qt.Key_Z:
             self.canvas.undo()
             self.save_current_polygon()  # save immediately
+        elif ctrl and k == Qt.Key_Y:
+            self.canvas.redo()
+            self.save_current_polygon()
         elif k == Qt.Key_Right:
             self.change_image(1)
         elif k == Qt.Key_Left:
