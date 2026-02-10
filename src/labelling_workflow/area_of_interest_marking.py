@@ -415,7 +415,6 @@ class PolygonAnnotatorWindow(QWidget):
 
         self.setLayout(main_layout)
         self.setWindowTitle("AOI Annotator (ctrl+Z = undo, ctrl+Y = redo)")
-        self.showMaximized()
         self.showMaximized()  # show first
         self.raise_()
         self.activateWindow()
