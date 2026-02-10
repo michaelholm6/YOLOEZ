@@ -73,7 +73,8 @@ def run_inference_workflow(
             "The inference process is complete! You will now be shown the results.\n\n"
         )
 
-    view_images(result_images)
+    if test_inputs is None:
+        view_images(result_images)
 
     if not suppress_instructions:
         show_instructions(
