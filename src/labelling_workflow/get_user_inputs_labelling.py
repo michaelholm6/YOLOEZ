@@ -131,7 +131,7 @@ The idea here is that you can incrementally improve your model by labelling some
         mode_container = QtWidgets.QWidget()
         mode_container.setLayout(mode_layout)
         self.close_flag = False
-        
+
         self.remove_image_button = QtWidgets.QPushButton("Remove Image")
         self.remove_image_button.setStyleSheet("""
             QPushButton {
@@ -331,7 +331,7 @@ The idea here is that you can incrementally improve your model by labelling some
         self.showMaximized()
         self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowStaysOnTopHint)
         self.show()
-        
+
     def remove_current_image(self):
         if not self.image_files or self.current_image_index < 0:
             return
@@ -541,7 +541,7 @@ The idea here is that you can incrementally improve your model by labelling some
             if not self.image_files:
                 errors.append("No valid image files found in selected image folder.")
         elif not os.path.isdir(image_path):
-            errors.append("Selected path must be a folder.") 
+            errors.append("Selected path must be a folder.")
 
         if not output_path:
             errors.append("Please select an output folder.")

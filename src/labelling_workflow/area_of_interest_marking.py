@@ -289,10 +289,7 @@ class PolygonCanvas(QWidget):
             self.current_polygon["closed"] = True
             self.polygons.append(self.current_polygon)
 
-            self.undo_stack.append({
-                "action": "add",
-                "polygon": self.current_polygon
-            })
+            self.undo_stack.append({"action": "add", "polygon": self.current_polygon})
 
             self.redo_stack.clear()
 
@@ -304,10 +301,7 @@ class PolygonCanvas(QWidget):
     def undo(self):
         if self.current_polygon["points"]:
             # cancel in-progress polygon
-            action = {
-                "action": "cancel_current",
-                "polygon": self.current_polygon
-            }
+            action = {"action": "cancel_current", "polygon": self.current_polygon}
             self.undo_stack.append(action)
             self.redo_stack.append(action)
 
@@ -316,15 +310,12 @@ class PolygonCanvas(QWidget):
 
         elif self.polygons:
             last = self.polygons.pop()
-            action = {
-                "action": "remove",
-                "polygon": last
-            }
+            action = {"action": "remove", "polygon": last}
             self.undo_stack.append(action)
             self.redo_stack.append(action)
 
         self.update()
-        
+
     def redo(self):
         if not self.redo_stack:
             return

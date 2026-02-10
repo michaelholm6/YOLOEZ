@@ -79,7 +79,7 @@ Baiscally this will create more images from your existing ones by applying these
             # Keep reference to the container for showing/hiding
             if text == "Rotate":
                 self.rotate_container = container
-                
+
         self.remove_image_button = QtWidgets.QPushButton("Remove Image")
         self.remove_image_button.setStyleSheet("""
             QPushButton {
@@ -235,16 +235,14 @@ A typical split is 80% for training and 20% for validation.",
         right_layout = QtWidgets.QVBoxLayout()
         self.image_preview = QtWidgets.QLabel("No Dataset Selected")
         self.image_preview.setAlignment(QtCore.Qt.AlignCenter)
-        self.image_preview.setStyleSheet(
-            "background-color: #eee; font-size: 16pt;"
-        )
+        self.image_preview.setStyleSheet("background-color: #eee; font-size: 16pt;")
         self.image_preview.setSizePolicy(
             QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored
         )
         self.image_preview.setScaledContents(False)
         right_layout.addWidget(self.remove_image_container)  # fixed placeholder
         right_layout.addWidget(self.image_preview)
-        
+
         self.image_index_label = QtWidgets.QLabel("Image 0/0")
         self.image_index_label.setAlignment(QtCore.Qt.AlignCenter)
 
@@ -253,8 +251,7 @@ A typical split is 80% for training and 20% for validation.",
         self.image_index_label.setFont(font)
 
         self.image_index_label.setSizePolicy(
-            QtWidgets.QSizePolicy.Preferred,
-            QtWidgets.QSizePolicy.Fixed
+            QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed
         )
 
         # Container that always occupies space
@@ -338,10 +335,12 @@ A typical split is 80% for training and 20% for validation.",
             errors.append("Please select a dataset folder.")
         elif not os.path.isdir(dataset_folder):
             errors.append("Dataset folder does not exist.")
-            
+
         if dataset_folder:
             if not self.image_files:
-                errors.append("Selected dataset folder does not contain any valid images with corresponding YOLO label files.")
+                errors.append(
+                    "Selected dataset folder does not contain any valid images with corresponding YOLO label files."
+                )
 
         if not save_folder:
             errors.append("Please select a save directory.")
@@ -457,13 +456,13 @@ A typical split is 80% for training and 20% for validation.",
         self.show_current_image()
         self.update_navigation_buttons()
         self.remove_image_button.setVisible(bool(self.image_files))
-        
+
     def remove_current_image(self):
         if not self.image_files or self.current_image_index < 0:
             return
 
         removed_path = self.image_files.pop(self.current_image_index)
-        
+
         if len(self.image_files) == 0:
             self.image_index_label.setVisible(False)
 
@@ -488,7 +487,7 @@ A typical split is 80% for training and 20% for validation.",
         )
         if folder:
             self.save_path_edit.setText(folder)
-            
+
     def update_image_index_label(self):
         if self.image_files:
             self.image_index_label.setText(
@@ -544,8 +543,10 @@ A typical split is 80% for training and 20% for validation.",
                         y2 = int((yc + bh / 2) * h)
                         painter.drawRect(x1, y1, x2 - x1, y2 - y1)
                     else:
-                        pts = [QtCore.QPointF(coords[i] * w, coords[i + 1] * h) 
-                            for i in range(0, len(coords), 2)]
+                        pts = [
+                            QtCore.QPointF(coords[i] * w, coords[i + 1] * h)
+                            for i in range(0, len(coords), 2)
+                        ]
                         polygon = QtGui.QPolygonF(pts)
                         pen.setColor(QtGui.QColor(255, 0, 0))  # red polygon
                         painter.setPen(pen)
@@ -570,7 +571,6 @@ A typical split is 80% for training and 20% for validation.",
         else:
             self.image_index_label.setText("Image 0/0")
             self.image_index_label.setVisible(False)
-
 
     def show_next_image(self):
         if self.current_image_index < len(self.image_files) - 1:

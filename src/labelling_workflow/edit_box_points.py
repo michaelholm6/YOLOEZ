@@ -263,10 +263,12 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
                 return
 
             return
-        
+
         if ctrl and (k == QtCore.Qt.Key_Y):
             if self.redo_stack:
-                self.undo_stack.append([b.copy() for b in self.boxes])  # push current to undo
+                self.undo_stack.append(
+                    [b.copy() for b in self.boxes]
+                )  # push current to undo
                 self.boxes = self.redo_stack.pop()
                 self.selected_points.clear()
                 self.update_display()

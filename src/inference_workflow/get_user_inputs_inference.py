@@ -136,7 +136,7 @@ class InputDialogInference(QtWidgets.QDialog):
         self.image_preview.setSizePolicy(
             QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
         )
-        
+
         self.image_index_label = QtWidgets.QLabel("Image 0/0")
         self.image_index_label.setAlignment(QtCore.Qt.AlignCenter)
 
@@ -145,8 +145,7 @@ class InputDialogInference(QtWidgets.QDialog):
         self.image_index_label.setFont(font)
 
         self.image_index_label.setSizePolicy(
-            QtWidgets.QSizePolicy.Preferred,
-            QtWidgets.QSizePolicy.Fixed
+            QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed
         )
 
         # Container that always occupies space
@@ -172,7 +171,7 @@ class InputDialogInference(QtWidgets.QDialog):
         self.next_button = QtWidgets.QPushButton("Next ▶")
         self.prev_button.setEnabled(False)
         self.next_button.setEnabled(False)
-        
+
         self.remove_image_button = QtWidgets.QPushButton("Remove Image")
         self.remove_image_button.setStyleSheet("""
             QPushButton {
@@ -195,8 +194,7 @@ class InputDialogInference(QtWidgets.QDialog):
         remove_layout.addWidget(self.remove_image_button)
 
         self.remove_image_button.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding,
-            QtWidgets.QSizePolicy.Fixed
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed
         )
 
         # Fix container height so layout never jumps
@@ -277,7 +275,7 @@ class InputDialogInference(QtWidgets.QDialog):
         self.showMaximized()
         self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowStaysOnTopHint)
         self.show()
-        
+
     def remove_current_image(self):
         self.update_image_index_label()
         if not self.image_files or self.current_image_index < 0:
@@ -297,10 +295,10 @@ class InputDialogInference(QtWidgets.QDialog):
 
         self.show_current_image()
         self.update_navigation_buttons()
-        
+
         if len(self.image_files) == 0:
             self.image_index_label.setVisible(False)
-        
+
     def update_image_index_label(self):
         if not self.image_files or self.current_image_index < 0:
             self.image_index_label.setVisible(False)
@@ -347,7 +345,7 @@ class InputDialogInference(QtWidgets.QDialog):
             self.prev_button.setEnabled(False)
             self.next_button.setEnabled(False)
             return
-        
+
         else:
             self.remove_image_button.setVisible(True)
 

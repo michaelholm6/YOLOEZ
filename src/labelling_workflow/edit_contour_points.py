@@ -89,7 +89,7 @@ class ContourEditorView(QtWidgets.QGraphicsView):
         # Initial render (no centering yet!)
         self.update_display()
         QtCore.QTimer.singleShot(0, self._initial_center_and_fit)
-        
+
     def _clear_redo(self):
         self.redo_stack.clear()
 
@@ -229,13 +229,12 @@ class ContourEditorView(QtWidgets.QGraphicsView):
 
                     if self.new_contour_points:
                         self.contours.append(
-                            np.array(self.new_contour_points, dtype=np.int32)
-                            .reshape((-1, 1, 2))
+                            np.array(self.new_contour_points, dtype=np.int32).reshape(
+                                (-1, 1, 2)
+                            )
                         )
                     else:
-                        self.contours.append(
-                            np.empty((0, 1, 2), dtype=np.int32)
-                        )
+                        self.contours.append(np.empty((0, 1, 2), dtype=np.int32))
 
                     self.update_display()
 
@@ -247,11 +246,13 @@ class ContourEditorView(QtWidgets.QGraphicsView):
                     if self.contours:
                         self.contours.pop()
                     if self.contours:
-                        self.new_contour_points = self.contours[-1].reshape(-1, 2).tolist()
-                    self.contour_creation_redo_stack.append('close')
+                        self.new_contour_points = (
+                            self.contours[-1].reshape(-1, 2).tolist()
+                        )
+                    self.contour_creation_redo_stack.append("close")
                     self.undo_stack.pop()
                     self.update_display()
-                            
+
                 return
 
             # --- normal undo stack ---
@@ -271,9 +272,8 @@ class ContourEditorView(QtWidgets.QGraphicsView):
                         self.redo_stack.append(current)
 
                         # compare contours by value
-                        same = (
-                            len(prev) == len(current)
-                            and all(np.array_equal(a, b) for a, b in zip(prev, current))
+                        same = len(prev) == len(current) and all(
+                            np.array_equal(a, b) for a, b in zip(prev, current)
                         )
 
                         self.contours = prev
@@ -284,7 +284,6 @@ class ContourEditorView(QtWidgets.QGraphicsView):
                     self.selected_points.clear()
                     self.update_display()
 
-                    
         elif ctrl and k == QtCore.Qt.Key_Y:
             if self.creating_contour and self.contour_creation_redo_stack:
                 # Save current state back to undo
@@ -295,7 +294,7 @@ class ContourEditorView(QtWidgets.QGraphicsView):
                 # Restore redo state
                 redo_item = self.contour_creation_redo_stack.pop()
 
-                if redo_item == 'close':
+                if redo_item == "close":
                     # Close current polygon
                     if self.contours:
                         self.contours[-1] = np.array(
@@ -318,13 +317,15 @@ class ContourEditorView(QtWidgets.QGraphicsView):
                             self.new_contour_points, dtype=np.int32
                         ).reshape((-1, 1, 2))
                     else:
-                        self.contours.append(np.array(
-                            self.new_contour_points, dtype=np.int32
-                        ).reshape((-1, 1, 2)))
+                        self.contours.append(
+                            np.array(self.new_contour_points, dtype=np.int32).reshape(
+                                (-1, 1, 2)
+                            )
+                        )
 
                 self.update_display()
                 return
-            
+
             if (
                 not self.creating_contour
                 and not self.scaling_active
