@@ -710,8 +710,8 @@ class ContourEditorView(QtWidgets.QGraphicsView):
     def move_selected_points(self):
         if (
             not self.selected_points
-            or not self.move_start_mouse_pos
-            or not self.mouse_pos
+            or self.move_start_mouse_pos is None
+            or self.mouse_pos is None
         ):
             return
 
