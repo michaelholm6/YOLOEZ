@@ -833,6 +833,7 @@ class ContourEditorView(QtWidgets.QGraphicsView):
                 self.contours[-1] = np.array(
                     self.new_contour_points, dtype=np.int32
                 ).reshape((-1, 1, 2))
+                self.undo_stack.append([c.copy() for c in self.contours])
                 self.new_contour_points.clear()
                 self.currently_creating_contour = False
                 self.hovering_start_point = False
