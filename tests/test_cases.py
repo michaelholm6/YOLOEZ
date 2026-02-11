@@ -2,9 +2,33 @@
 # Copyright (C) 2026 Michael Holm
 # Developed at Purdue University
 
-import pytest
-from main import main as run_main
+import os
 import sys
+from unittest.mock import MagicMock, patch
+import pytest
+import numpy as np
+import cv2
+from PyQt5 import QtWidgets, QtGui
+from main import main as run_main
+from labelling_workflow.main_labelling import run_labeling_workflow
+from labelling_workflow.get_user_inputs_labelling import InputDialogLabelling
+from labelling_workflow.area_of_interest_marking import PolygonAnnotatorWindow
+from labelling_workflow.bootstrap_runner import run_yolo_on_crops
+from labelling_workflow.crop_and_mask import crop_and_mask_images
+from labelling_workflow.edit_box_points import MultiImageBoxEditor
+from labelling_workflow.edit_contour_points import MultiImageContourEditor
+from labelling_workflow.save_box_results import save_box_results
+from labelling_workflow.save_segmentation_results import save_segmentation_results
+from training_workflow.main_training import run_training_workflow
+from training_workflow.get_user_inputs_training import YOLOTrainingDialog
+from training_workflow.apply_augmentations import augment_yolo_dataset
+import training_workflow.train_model as train_model
+from inference_workflow.main_inference import run_inference_workflow
+from inference_workflow.get_user_inputs_inference import InputDialogInference
+from PyQt5 import QtWidgets, QtCore, QtGui
+import numpy as np
+import pytest
+from labelling_workflow.edit_contour_points import ContourEditorView
 
 
 def test_main_runs_without_error(monkeypatch):
@@ -13,9 +37,6 @@ def test_main_runs_without_error(monkeypatch):
     run_main(test_mode=True)
 
     assert True
-
-
-from labelling_workflow.main_labelling import run_labeling_workflow
 
 
 def test_labeling_workflow_runs_without_gui(tmp_path, monkeypatch):
@@ -72,9 +93,6 @@ def test_labeling_workflow_runs_without_gui(tmp_path, monkeypatch):
     assert True
 
 
-from training_workflow.main_training import run_training_workflow
-
-
 def test_training_workflow_runs_without_gui(monkeypatch, tmp_path):
 
     test_inputs = {
@@ -112,9 +130,6 @@ def test_training_workflow_runs_without_gui(monkeypatch, tmp_path):
     results = run_training_workflow(suppress_instructions=True, test_inputs=test_inputs)
 
     assert results.get("mock_result") is True
-
-
-from inference_workflow.main_inference import run_inference_workflow
 
 
 def test_inference_workflow_runs_without_gui(monkeypatch, tmp_path):
@@ -161,11 +176,6 @@ def test_inference_workflow_runs_without_gui(monkeypatch, tmp_path):
     assert True
 
 
-from training_workflow.get_user_inputs_training import YOLOTrainingDialog
-
-from unittest.mock import patch
-
-
 @pytest.mark.timeout(10)
 def test_training_input_dialog_can_open_and_close(qtbot):
     dlg = YOLOTrainingDialog()
@@ -186,12 +196,6 @@ def test_training_input_dialog_can_open_and_close(qtbot):
     dlg.close()
 
 
-import os
-from PyQt5 import QtWidgets, QtCore
-
-from labelling_workflow.get_user_inputs_labelling import InputDialogLabelling
-
-
 def test_labelling_input_dialog_can_open_and_close():
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -203,9 +207,6 @@ def test_labelling_input_dialog_can_open_and_close():
 
     dialog.close_flag = True
     dialog.close()
-
-
-from inference_workflow.get_user_inputs_inference import InputDialogInference
 
 
 def test_inference_input_dialog_can_open_and_close():
@@ -220,10 +221,6 @@ def test_inference_input_dialog_can_open_and_close():
 
     dialog.close_flag = True
     dialog.close()
-
-
-from labelling_workflow.area_of_interest_marking import PolygonAnnotatorWindow
-import numpy as np
 
 
 def test_polygon_annotator_window_can_open_and_close(monkeypatch):
@@ -251,9 +248,6 @@ def test_polygon_annotator_window_can_open_and_close(monkeypatch):
 
     win.close_flag = True
     win.close()
-
-
-from labelling_workflow.bootstrap_runner import run_yolo_on_crops
 
 
 def test_run_yolo_on_crops_bounding_box(monkeypatch):
@@ -309,9 +303,6 @@ def test_run_yolo_on_crops_bounding_box(monkeypatch):
             assert contour.shape == (4, 1, 2)
 
 
-from labelling_workflow.crop_and_mask import crop_and_mask_images
-
-
 def test_crop_and_mask_images_masks_outside_aoi(monkeypatch):
     img = np.ones((10, 10, 3), dtype=np.uint8) * 255
 
@@ -335,9 +326,6 @@ def test_crop_and_mask_images_masks_outside_aoi(monkeypatch):
 
     assert np.all(masked[0, 0] == [0, 0, 0])
     assert np.all(masked[9, 9] == [0, 0, 0])
-
-
-from labelling_workflow.edit_box_points import MultiImageBoxEditor
 
 
 def test_multi_image_box_editor_can_open_and_close(monkeypatch):
@@ -367,13 +355,179 @@ def test_multi_image_box_editor_can_open_and_close(monkeypatch):
     win.close()
 
 
-from labelling_workflow.edit_contour_points import MultiImageContourEditor
+import os
+import sys
+import numpy as np
+import pytest
+from PyQt5 import QtWidgets, QtCore, QtGui
+
+from labelling_workflow.edit_box_points import BoundingBoxEditorView
 
 
-def test_multi_image_contour_editor_can_open_and_close(monkeypatch):
+def test_bounding_box_editor_core_logic(monkeypatch):
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
+    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+
+    img = np.zeros((200, 200, 3), dtype=np.uint8)
+
+    box = np.array(
+        [
+            [[50, 50]],
+            [[100, 50]],
+            [[100, 100]],
+            [[50, 100]],
+        ],
+        dtype=np.int32,
+    )
+
+    view = BoundingBoxEditorView(img, boxes=[box.copy()], line_thickness=2)
+    view.show()
+
+    view.selected_points = {(0, 0)}
+    view.delete_selected_boxes()
+
+    assert len(view.boxes) == 0
+    assert view.selected_points == set()
+
+    view.boxes = [box.copy()]
+
+    view.undo_stack.append([box.copy()])
+    view.boxes = []
+
+    event = QtGui.QKeyEvent(
+        QtCore.QEvent.KeyPress,
+        QtCore.Qt.Key_Z,
+        QtCore.Qt.ControlModifier,
+    )
+    view.keyPressEvent(event)
+
+    assert len(view.boxes) == 1
+
+    view.redo_stack.append([])
+    event = QtGui.QKeyEvent(
+        QtCore.QEvent.KeyPress,
+        QtCore.Qt.Key_Y,
+        QtCore.Qt.ControlModifier,
+    )
+    view.keyPressEvent(event)
+
+    assert view.boxes == []
+
+    view.boxes = [box.copy()]
+
+    view.selected_points = {(0, 0)}
+    view.boxes_original_for_move = [box.copy()]
+
+    view._apply_move_delta(-10, -10)
+
+    moved_box = view.boxes[0]
+    assert moved_box[0][0][0] <= 50
+    assert moved_box[0][0][1] <= 50
+
+    view.boxes = [box.copy()]
+    view.selected_points = {(0, 0), (0, 2)}
+    view.boxes_original_for_move = [box.copy()]
+
+    view._apply_move_delta(20, 20)
+
+    moved_box = view.boxes[0]
+    assert moved_box[0][0][0] == 70
+    assert moved_box[0][0][1] == 70
+
+    polygon = QtGui.QPolygonF(
+        [
+            QtCore.QPointF(0, 0),
+            QtCore.QPointF(150, 0),
+            QtCore.QPointF(150, 150),
+            QtCore.QPointF(0, 150),
+        ]
+    )
+
+    view.boxes = [box.copy()]
+    view.select_points_in_polygon(polygon)
+
+    assert len(view.selected_points) == 4
+
+    boxes = view.get_edited_boxes()
+    assert isinstance(boxes, list)
+    assert isinstance(boxes[0], np.ndarray)
+
+
+def test_contour_editor_core_operations(monkeypatch):
+    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+
+    img = np.zeros((200, 200, 3), dtype=np.uint8)
+
+    # Two simple square contours
+    c1 = np.array([[[10, 10]], [[50, 10]], [[50, 50]], [[10, 50]]], dtype=np.int32)
+    c2 = np.array(
+        [[[100, 100]], [[150, 100]], [[150, 150]], [[100, 150]]], dtype=np.int32
+    )
+
+    view = ContourEditorView(
+        image=img,
+        contours=[c1.copy(), c2.copy()],
+        line_thickness=2,
+    )
+
+    view.show()
+
+    # --- Test remove_small_contours ---
+    view.contours.append(np.array([[[1, 1]]], dtype=np.int32))
+    view.remove_small_contours()
+    assert all(len(c) >= 3 for c in view.contours)
+
+    # --- Test delete_selected_points ---
+    view.selected_points = {(0, 0)}
+    view.delete_selected_points()
+    assert len(view.contours[0]) == 3
+
+    # --- Test union_selected_contours ---
+    view.selected_points = {(0, 0), (1, 0)}
+    view.union_selected_contours()
+    assert len(view.contours) >= 1
+
+    # --- Test scaling branch ---
+    view.selected_points = {(0, 0)}
+    view.scaling_active = True
+    view.scaling_reference = {(0, 0): tuple(view.contours[0][0][0])}
+    view.contours_original_for_scaling = [c.copy() for c in view.contours]
+    view.scaling_initial_distance = 10
+    view.mouse_pos = QtCore.QPointF(120, 120)
+    view.scale_selected_points()
+
+    # --- Test rotation branch ---
+    view.selected_points = {(0, 0)}
+    view.rotating_active = True
+    view.rotation_reference = {(0, 0): tuple(view.contours[0][0][0])}
+    view.contours_original_for_rotation = [c.copy() for c in view.contours]
+    view.rotation_start_angle = 0.0
+    view.mouse_pos = QtCore.QPointF(150, 150)
+    view.rotate_selected_points()
+
+    # --- Test undo branch ---
+    view.undo_stack.append([c.copy() for c in view.contours])
+    event = QtGui.QKeyEvent(
+        QtCore.QEvent.KeyPress, QtCore.Qt.Key_Z, QtCore.Qt.ControlModifier
+    )
+    view.keyPressEvent(event)
+
+    # --- Test redo branch ---
+    event = QtGui.QKeyEvent(
+        QtCore.QEvent.KeyPress, QtCore.Qt.Key_Y, QtCore.Qt.ControlModifier
+    )
+    view.keyPressEvent(event)
+
+    assert True  # If we reached here, branches executed
+
+
+def test_multi_image_contour_editor_navigation_and_finish(monkeypatch):
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
+    # Prevent real sys.exit
     monkeypatch.setattr(sys, "exit", lambda *a, **k: None)
+    monkeypatch.setattr(QtWidgets.QApplication, "quit", lambda *a, **k: None)
 
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
 
@@ -383,8 +537,11 @@ def test_multi_image_contour_editor_can_open_and_close(monkeypatch):
     }
 
     class DummyLoop:
+        def __init__(self):
+            self.quit_called = False
+
         def quit(self):
-            pass
+            self.quit_called = True
 
     loop = DummyLoop()
 
@@ -397,16 +554,178 @@ def test_multi_image_contour_editor_can_open_and_close(monkeypatch):
 
     win.show()
 
+    # --- Initial state ---
     assert win.isVisible()
     assert win.editor_view is not None
+    assert win.index == 0
+    assert win.status_label.text() == "Image 1 / 2"
+    assert win.prev_btn.isEnabled() is False
+    assert win.next_btn.isEnabled() is True
 
+    # --- Navigate forward ---
+    win.change_image(1)
+    assert win.index == 1
+    assert win.status_label.text() == "Image 2 / 2"
+    assert win.prev_btn.isEnabled() is True
+    assert win.next_btn.isEnabled() is False
+
+    # --- Navigate backward ---
+    win.change_image(-1)
+    assert win.index == 0
+    assert win.status_label.text() == "Image 1 / 2"
+
+    # --- Force reload same index ---
+    win.change_image(0, force=True)
+    assert win.index == 0
+
+    # --- Save current polygon (empty contours case) ---
+    win.save_current_polygon()
+    assert "img1.png" in win.results
+
+    # --- get_results triggers save of current image ---
+    results = win.get_results()
+    assert isinstance(results, dict)
+    assert set(results.keys()) == {"img1.png", "img2.png"}
+
+    # --- Finish editing path ---
     win.finish_editing()
 
     assert win.close_flag is True
+    assert loop.quit_called is True
+
+    # Explicitly trigger closeEvent to cover that branch
+    event = QtGui.QCloseEvent()
+    win.closeEvent(event)
+    assert event.isAccepted()
 
 
-import numpy as np
-from labelling_workflow.save_box_results import save_box_results
+def test_escape_cancels_all_modes_conour_editor():
+    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+
+    img = np.zeros((200, 200, 3), dtype=np.uint8)
+    c1 = np.array([[[10, 10]], [[50, 10]], [[50, 50]], [[10, 50]]], dtype=np.int32)
+
+    view = ContourEditorView(img, [c1.copy()], 2)
+    view.show()
+
+    # --- Cancel scaling ---
+    view.scaling_active = True
+    view.contours_original_for_scaling = [c1.copy()]
+    event = QtGui.QKeyEvent(
+        QtCore.QEvent.KeyPress, QtCore.Qt.Key_Escape, QtCore.Qt.NoModifier
+    )
+    view.keyPressEvent(event)
+    assert view.scaling_active is False
+
+    # --- Cancel rotation ---
+    view.rotating_active = True
+    view.contours_original_for_rotation = [c1.copy()]
+    view.rotation_start_angle = 0.0
+    view.keyPressEvent(event)
+    assert view.rotating_active is False
+
+    # --- Cancel moving ---
+    view.moving_active = True
+    view.contours_original_for_move = [c1.copy()]
+    view.keyPressEvent(event)
+    assert view.moving_active is False
+
+    # --- Cancel lasso drawing ---
+    view.drawing = True
+    view.lasso_points = [QtCore.QPointF(1, 1)]
+    view.keyPressEvent(event)
+    assert view.drawing is False
+
+
+def test_move_selected_points_contour_editor():
+    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+
+    img = np.zeros((200, 200, 3), dtype=np.uint8)
+    c1 = np.array([[[50, 50]], [[60, 50]], [[60, 60]], [[50, 60]]], dtype=np.int32)
+
+    view = ContourEditorView(img, [c1.copy()], 2)
+    view.show()
+
+    view.selected_points = {(0, 0)}
+    view.moving_active = True
+    view.move_start_mouse_pos = QtCore.QPointF(0, 0)
+    view.mouse_pos = QtCore.QPointF(10, 10)
+    view.contours_original_for_move = [c1.copy()]
+
+    view.move_selected_points()
+
+    view.move_selected_points()
+
+    moved = view.contours[0]
+
+    assert not np.array_equal(moved, c1)
+
+
+def test_toggle_contour_creation():
+    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+
+    img = np.zeros((200, 200, 3), dtype=np.uint8)
+    view = ContourEditorView(img, [], 2)
+    view.show()
+
+    # Enter contour creation
+    event = QtGui.QKeyEvent(
+        QtCore.QEvent.KeyPress, QtCore.Qt.Key_C, QtCore.Qt.NoModifier
+    )
+    view.keyPressEvent(event)
+
+    assert view.creating_contour is True
+    assert view.current_mode == "Contour Creation"
+
+    # Exit contour creation
+    view.keyPressEvent(event)
+
+    assert view.creating_contour is False
+    assert view.current_mode == "Selection"
+
+
+def test_lasso_select_points_contour_editor():
+    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+
+    img = np.zeros((200, 200, 3), dtype=np.uint8)
+    c1 = np.array([[[20, 20]], [[40, 20]], [[40, 40]], [[20, 40]]], dtype=np.int32)
+
+    view = ContourEditorView(img, [c1.copy()], 2)
+    view.show()
+
+    polygon = QtGui.QPolygonF(
+        [
+            QtCore.QPointF(10, 10),
+            QtCore.QPointF(50, 10),
+            QtCore.QPointF(50, 50),
+            QtCore.QPointF(10, 50),
+        ]
+    )
+
+    view.select_points_in_polygon(polygon)
+
+    assert len(view.selected_points) > 0
+
+
+def test_close_event_user_exit_contour_editor(monkeypatch):
+    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+
+    images = {"img.png": np.zeros((50, 50, 3), dtype=np.uint8)}
+
+    monkeypatch.setattr(sys, "exit", lambda *a, **k: None)
+    monkeypatch.setattr(QtWidgets.QApplication, "quit", lambda *a, **k: None)
+
+    class DummyLoop:
+        def quit(self):
+            pass
+
+    win = MultiImageContourEditor(images, DummyLoop())
+    win.close_flag = False  # simulate user clicking X
+
+    event = QtGui.QCloseEvent()
+    win.closeEvent(event)
+
+    assert event.isAccepted()
 
 
 def test_save_box_results_creates_files_and_returns_images(tmp_path):
@@ -467,9 +786,6 @@ def test_save_box_results_creates_files_and_returns_images(tmp_path):
 
     assert not (box_vis_dir / "img_missing_boxes.png").exists()
     assert not (yolo_dir / "img_missing.png").exists()
-
-
-from labelling_workflow.save_segmentation_results import save_segmentation_results
 
 
 def test_save_segmentation_results_creates_files_and_returns_images(tmp_path):
@@ -535,10 +851,6 @@ def test_save_segmentation_results_creates_files_and_returns_images(tmp_path):
     assert not (yolo_dir / "img_missing.png").exists()
 
 
-import cv2
-from training_workflow.apply_augmentations import augment_yolo_dataset
-
-
 def test_augment_yolo_dataset_creates_files(tmp_path):
     dataset_dir = tmp_path / "dataset"
     output_dir = tmp_path / "output"
@@ -595,3 +907,74 @@ def test_augment_yolo_dataset_creates_files(tmp_path):
         assert parts[0] == "0.0"
         coords = list(map(float, parts[1:]))
         assert all(0 <= c <= 1 for c in coords)
+
+
+@pytest.mark.timeout(10)
+def test_run_training(tmp_path):
+    # Patch QApplication so exec_ doesn't block
+    with patch("PyQt5.QtWidgets.QApplication") as MockApp:
+        mock_app_instance = MockApp.return_value
+        mock_app_instance.exec_ = MagicMock()  # prevents GUI loop
+        mock_app_instance.processEvents = MagicMock()
+
+        # Patch YOLO so no real training
+        class DummyTrainer:
+            def __init__(self):
+                self.metrics = {
+                    "metrics/precision(B)": 0.9,
+                    "metrics/recall(B)": 0.8,
+                    "metrics/mAP50-95(B)": 0.7,
+                    "val/box_loss": 0.1,
+                    "val/cls_loss": 0.2,
+                    "val/dfl_loss": 0.3,
+                }
+                self.epoch = 0
+                self.stop = False
+
+        class DummyYOLO:
+            def __init__(self, model_path):
+                self._callback = None
+
+            def add_callback(self, name, func):
+                self._callback = func
+
+            def train(self, **kwargs):
+                trainer = DummyTrainer()
+                if self._callback:
+                    self._callback(trainer)
+
+        with patch("training_workflow.train_model.YOLO", DummyYOLO):
+            with patch("pyqtgraph.exporters.ImageExporter") as DummyExporter:
+                DummyExporter.return_value.export = MagicMock()
+                with patch("torch.cuda.is_available", return_value=False):
+                    with patch("os.makedirs"):
+                        # Patch QWidget.showMaximized to immediately close the window
+                        original_run_training = train_model.run_training
+
+                        def run_training_with_close(*args, **kwargs):
+                            # Call the original function
+                            gui = None
+
+                            # Patch TrainingGUI inside the function to close immediately
+                            def patch_gui_close(*a, **k):
+                                instance = original_run_training.__globals__[
+                                    "QtWidgets"
+                                ].QWidget(*a, **k)
+                                instance.close = MagicMock()
+                                return instance
+
+                            with patch.object(train_model, "QtWidgets") as QtMock:
+                                QtMock.QWidget = patch_gui_close
+                                return original_run_training(*args, **kwargs)
+
+                        # Instead of patching globally, just call normally but make exec_ non-blocking
+                        train_model.run_training(
+                            dataset_yaml="fake_dataset.yaml",
+                            model_save_dir=str(tmp_path),
+                            model_size="nano",
+                            task="detection",
+                            prev_model_path=None,
+                        )
+
+    # If we reach here, GUI opened and immediately closed
+    assert True

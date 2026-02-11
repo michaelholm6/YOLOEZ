@@ -710,8 +710,8 @@ class ContourEditorView(QtWidgets.QGraphicsView):
     def move_selected_points(self):
         if (
             not self.selected_points
-            or not self.move_start_mouse_pos
-            or not self.mouse_pos
+            or self.move_start_mouse_pos is None
+            or self.mouse_pos is None
         ):
             return
 
@@ -833,6 +833,7 @@ class ContourEditorView(QtWidgets.QGraphicsView):
                 self.contours[-1] = np.array(
                     self.new_contour_points, dtype=np.int32
                 ).reshape((-1, 1, 2))
+                self.undo_stack.append([c.copy() for c in self.contours])
                 self.new_contour_points.clear()
                 self.currently_creating_contour = False
                 self.hovering_start_point = False
