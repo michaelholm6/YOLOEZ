@@ -244,6 +244,17 @@ def run_training(
             # QtWidgets.QApplication.processEvents()
             self.close()
 
+        def closeEvent(self, event):
+            """
+            Hard kill if user clicks the window 'X'.
+            No graceful shutdown — immediately terminates the process.
+            """
+            if not self.stop_requested:
+                os._exit(0)  # immediate, no cleanup, kills all threads
+
+            # If stop was already requested, allow normal behavior
+            event.accept()
+
         def update_metrics(
             self, epoch, precision, recall, map_value, box_loss, cls_loss, dfl_loss
         ):
