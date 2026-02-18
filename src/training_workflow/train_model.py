@@ -377,7 +377,7 @@ def run_training(
             # Handle log-scale display
             display_y = closest_y
             if plot == self.loss_plot:
-                display_y = 10 ** closest_y
+                display_y = 10**closest_y
 
             # Set marker
             marker.setData([closest_x], [closest_y])
@@ -386,8 +386,6 @@ def run_training(
 
             marker.setVisible(True)
             text_item.setVisible(True)
-
-
 
         def autoscale_plot(self, plot, plot_type):
             """
