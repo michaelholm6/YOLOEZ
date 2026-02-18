@@ -324,65 +324,70 @@ def run_training(
             if isinstance(evt, tuple):
                 pos = evt[0]
 
-            # Hide marker if mouse is outside plot
             if not plot.sceneBoundingRect().contains(pos):
                 marker.setVisible(False)
                 text_item.setVisible(False)
                 return
 
-            # Map mouse position to data coordinates
-            mouse_point = plot.plotItem.vb.mapSceneToView(pos)
+            vb = plot.plotItem.vb
+
+            # Mouse in data coordinates
+            mouse_point = vb.mapSceneToView(pos)
             x_mouse = mouse_point.x()
             y_mouse = mouse_point.y()
+
+            # 🔥 Key: get pixel scaling
+            dx_per_pixel, dy_per_pixel = vb.viewPixelSize()
+
+            PIXEL_THRESHOLD = 10
+            threshold_sq = PIXEL_THRESHOLD * PIXEL_THRESHOLD
 
             closest_line = None
             closest_x = None
             closest_y = None
-            min_dist = float("inf")
+            min_dist_sq = float("inf")
 
-            # Collect all y-data for threshold calculation
-            all_y_vals = []
-            line_data = []
+            found_any = False
+
             for line in lines:
                 x_data, y_data = line.getData()
-                if x_data is not None and y_data is not None and len(x_data) > 0:
-                    line_data.append((line, x_data, y_data))
-                    all_y_vals.append(y_data)
+                if x_data is None or y_data is None or len(x_data) == 0:
+                    continue
 
-            if not line_data:  # no data at all
-                marker.setVisible(False)
-                text_item.setVisible(False)
-                return
+                found_any = True
 
-            all_y_vals = np.concatenate(all_y_vals)
-            y_range = max(all_y_vals) - min(all_y_vals) if len(all_y_vals) > 0 else 1.0
-            selection_threshold = y_range * 0.1  # 10% of y-range
+                # --- VECTOR distance in "pixel space" ---
+                dx = (x_data - x_mouse) / dx_per_pixel
+                dy = (y_data - y_mouse) / dy_per_pixel
 
-            # Check all lines for nearest actual data point
-            for line, x_data, y_data in line_data:
-                distances = np.hypot(x_data - x_mouse, y_data - y_mouse)
-                idx = np.argmin(distances)
-                dist = distances[idx]
+                dist_sq = dx * dx + dy * dy
 
-                if dist < min_dist:
-                    min_dist = dist
+                idx = np.argmin(dist_sq)
+                if dist_sq[idx] < min_dist_sq:
+                    min_dist_sq = dist_sq[idx]
                     closest_line = line
                     closest_x = x_data[idx]
                     closest_y = y_data[idx]
 
-            # Only show marker if near some point
-            if closest_line is None or min_dist > selection_threshold:
+            if not found_any or closest_line is None or min_dist_sq > threshold_sq:
                 marker.setVisible(False)
                 text_item.setVisible(False)
                 return
 
+            # Handle log-scale display
+            display_y = closest_y
+            if plot == self.loss_plot:
+                display_y = 10 ** closest_y
+
             # Set marker
             marker.setData([closest_x], [closest_y])
-            text_item.setText(f"x={closest_x:.2f}, y={closest_y:.4f}")
+            text_item.setText(f"x={closest_x:.2f}, y={display_y:.4f}")
             self.update_marker_text_position(plot, text_item, closest_x, closest_y)
 
             marker.setVisible(True)
             text_item.setVisible(True)
+
+
 
         def autoscale_plot(self, plot, plot_type):
             """
