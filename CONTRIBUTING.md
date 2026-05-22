@@ -199,11 +199,7 @@ If you are unsure about attribution practices, please ask.
 
 ## Code of Conduct
 
-A formal Code of Conduct has not yet been added.
-
-Until then, contributors are expected to engage respectfully, professionally, and constructively.
-
-Harassment or unprofessional behavior will not be tolerated.
+See CODE_OF_CONDUCT.md
 
 ---
 
