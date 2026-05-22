@@ -10,6 +10,8 @@ from utils import make_label_with_tooltip
 
 
 class YOLOTrainingDialog(QtWidgets.QDialog):
+    """Dialog that collects all parameters needed before the training workflow begins."""
+
     def __init__(self):
         super().__init__()
         self.setWindowTitle("YOLO Training Setup")
@@ -19,10 +21,8 @@ class YOLOTrainingDialog(QtWidgets.QDialog):
         self.task = "segmentation"
         self.close_flag = False
 
-        # --- Left pane: controls ---
         left_layout = QtWidgets.QVBoxLayout()
 
-        # Dataset selection
         dataset_container = make_label_with_tooltip(
             "Training Dataset Folder:",
             "Select the root folder containing your training images and YOLO label txt files created using this tool.",
@@ -34,8 +34,6 @@ class YOLOTrainingDialog(QtWidgets.QDialog):
         left_layout.addWidget(self.dataset_path_edit)
         left_layout.addWidget(self.browse_dataset_button)
 
-        # Transformations
-        # --- Transformations ---
         apply_transforms_label = make_label_with_tooltip(
             "Apply Data Augmentations:",
             "Data augmentations help improve model robustness by artificially increasing dataset diversity. Select the augmentations you want to apply during training.\
@@ -93,7 +91,7 @@ Baiscally this will create more images from your existing ones by applying these
             QPushButton:pressed { background-color: #8e0000; }
             QPushButton:disabled { background-color: #cccccc; color: #666666; }
         """)
-        self.remove_image_button.setVisible(False)  # initially hidden
+        self.remove_image_button.setVisible(False)
 
         # Wrap in container to reserve space in layout
         self.remove_image_container = QtWidgets.QWidget()
@@ -109,13 +107,8 @@ Baiscally this will create more images from your existing ones by applying these
             self.remove_image_button.sizeHint().height()
         )
 
-        # --- Hide Rotate if detection ---
-        if self.task == "detection":
-            self.rotate_container.hide()
-        else:
-            self.rotate_container.show()
+        self.update_transform_visibility()
 
-        # Number of augmentations per image
         aug_layout = QtWidgets.QHBoxLayout()
         aug_label_container = make_label_with_tooltip(
             "Augmentations per image:",
@@ -129,7 +122,6 @@ Baiscally this will create more images from your existing ones by applying these
         aug_layout.addWidget(self.aug_spin)
         left_layout.addLayout(aug_layout)
 
-        # YOLO model size
         model_label_container = make_label_with_tooltip(
             "YOLO Model Size:",
             "Select the model size (nano, small, medium, large, extra-large) to train. Larger models are typically more accurate but require more computational resources. Choosing a model that is larger\
@@ -148,13 +140,12 @@ A typical split is 80% for training and 20% for validation.",
         self.split_spin = QtWidgets.QSpinBox()
         self.split_spin.setMinimum(1)
         self.split_spin.setMaximum(99)
-        self.split_spin.setValue(80)  # default 80%
+        self.split_spin.setValue(80)
         split_layout = QtWidgets.QHBoxLayout()
         split_layout.addWidget(split_container)
         split_layout.addWidget(self.split_spin)
         left_layout.addLayout(split_layout)
 
-        # --- Previously Trained Model ---
         prev_model_container = make_label_with_tooltip(
             "Continue Training from Model:",
             "Optional: Select a previously trained YOLO model to continue training. This should be a .pt file.",
@@ -167,10 +158,8 @@ A typical split is 80% for training and 20% for validation.",
         prev_model_layout.addWidget(self.browse_prev_model_button)
         left_layout.addLayout(prev_model_layout)
 
-        # --- Connection ---
         self.browse_prev_model_button.clicked.connect(self.browse_prev_model)
 
-        # Save directory
         save_container = make_label_with_tooltip(
             "Save Directory:",
             "Select the folder where the trained model and results will be saved.",
@@ -187,13 +176,11 @@ A typical split is 80% for training and 20% for validation.",
         )
         self.browse_save_button.clicked.connect(lambda: self.update_run_button_state())
 
-        # Run button
         run_container = QtWidgets.QWidget()
         run_layout = QtWidgets.QVBoxLayout(run_container)
         run_layout.setContentsMargins(0, 0, 0, 0)
         run_layout.setSpacing(4)
 
-        # Run button
         self.run_button = QtWidgets.QPushButton("Run")
         self.run_button.setStyleSheet("""
             QPushButton {
@@ -210,7 +197,6 @@ A typical split is 80% for training and 20% for validation.",
         self.run_button.setEnabled(False)
         run_layout.addWidget(self.run_button)
 
-        # Status label
         self.status_label = QtWidgets.QLabel("")
         self.status_label.setStyleSheet("color: red;")
         self.status_label.setWordWrap(True)
@@ -219,11 +205,10 @@ A typical split is 80% for training and 20% for validation.",
             QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed
         )
         font = self.status_label.font()
-        font.setPointSize(16)  # choose whatever size you want
+        font.setPointSize(16)
         self.status_label.setFont(font)
         run_layout.addWidget(self.status_label)
 
-        # Add the container to your left_layout
         left_layout.addWidget(run_container)
         left_layout.addStretch()
 
@@ -231,7 +216,6 @@ A typical split is 80% for training and 20% for validation.",
         left_container.setLayout(left_layout)
         left_container.setMinimumWidth(400)
 
-        # --- Right pane: image preview ---
         right_layout = QtWidgets.QVBoxLayout()
         self.image_preview = QtWidgets.QLabel("No Dataset Selected")
         self.image_preview.setAlignment(QtCore.Qt.AlignCenter)
@@ -240,7 +224,7 @@ A typical split is 80% for training and 20% for validation.",
             QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored
         )
         self.image_preview.setScaledContents(False)
-        right_layout.addWidget(self.remove_image_container)  # fixed placeholder
+        right_layout.addWidget(self.remove_image_container)
         right_layout.addWidget(self.image_preview)
 
         self.image_index_label = QtWidgets.QLabel("Image 0/0")
@@ -265,7 +249,6 @@ A typical split is 80% for training and 20% for validation.",
             self.image_index_label.sizeHint().height()
         )
 
-        # Start hidden (label only)
         self.image_index_label.setVisible(False)
 
         right_layout.addWidget(self.image_index_container)
@@ -282,19 +265,15 @@ A typical split is 80% for training and 20% for validation.",
         right_container = QtWidgets.QWidget()
         right_container.setLayout(right_layout)
 
-        # --- Main layout ---
         main_layout = QtWidgets.QHBoxLayout()
         main_layout.addWidget(left_container)
         main_layout.addWidget(right_container, stretch=1)
         self.setLayout(main_layout)
 
-        # --- Internal state ---
         self.image_files = []
         self.current_image_index = -1
-        self.task = "segmentation"  # default
         self._original_pixmap = None
 
-        # --- Connections ---
         self.browse_dataset_button.clicked.connect(self.browse_dataset)
         self.browse_save_button.clicked.connect(self.browse_save)
         self.prev_button.clicked.connect(self.show_previous_image)
@@ -311,22 +290,21 @@ A typical split is 80% for training and 20% for validation.",
         self.update_run_button_state()
 
     def on_run_clicked(self):
-        """Called when the Run button is clicked"""
-        self.close_flag = True  # window can close without quitting program
-        self.accept()  # close the dialog
+        """Set the close flag and accept the dialog so get_values() can be called."""
+        self.close_flag = True
+        self.accept()
 
     def closeEvent(self, event):
-        """Called when the window is closed"""
+        """Accept normally after Run; exit the whole program if the user clicks X."""
         if getattr(self, "close_flag", False):
-            # Run button triggered — just close dialog, do not exit program
             event.accept()
         else:
-            # User clicked X — fully exit program
             print("Window closed — exiting program.")
             QtWidgets.QApplication.quit()
             sys.exit(0)
 
     def update_run_button_state(self):
+        """Enable the Run button only when dataset and save folders are valid and non-empty."""
         errors = []
         dataset_folder = self.dataset_path_edit.text().strip()
         save_folder = self.save_path_edit.text().strip()
@@ -355,6 +333,7 @@ A typical split is 80% for training and 20% for validation.",
             self.status_label.setText("")
 
     def browse_prev_model(self):
+        """Open a file dialog to pick a pre-trained model and populate the path field."""
         file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
             self,
             "Select Previously Trained Model",
@@ -365,6 +344,7 @@ A typical split is 80% for training and 20% for validation.",
             self.prev_model_edit.setText(file_path)
 
     def update_transform_visibility(self):
+        """Show or hide the rotation augmentation control based on the detected task type."""
         if self.task == "detection":
             self.rotate_container.hide()
         else:
@@ -374,7 +354,7 @@ A typical split is 80% for training and 20% for validation.",
                     cb.setEnabled(True)
 
     def showEvent(self, event):
-        """Ensure the dialog actually starts maximized."""
+        """Maximize the window whenever it becomes visible."""
         super().showEvent(event)
         self.showMaximized()
 
@@ -390,8 +370,8 @@ A typical split is 80% for training and 20% for validation.",
         else:
             return "segmentation"
 
-    # --- Browse functions ---
     def browse_dataset(self):
+        """Scan the chosen folder for image+label pairs and lock the task type from the first non-empty label."""
         folder = QtWidgets.QFileDialog.getExistingDirectory(
             self, "Select Training Dataset"
         )
@@ -425,18 +405,17 @@ A typical split is 80% for training and 20% for validation.",
                 try:
                     label_type = self.detect_label_format(label_path)
                 except Exception:
-                    continue  # unreadable label → skip
+                    continue
 
                 if label_type == "empty":
                     self.image_files.append(img_path)
                     continue
 
-                # First non-empty label → lock dataset type
+                # First non-empty label, lock dataset type
                 if detected_task is None:
                     detected_task = label_type
                     self.task = detected_task
 
-                # Only keep matching formats
                 if label_type == detected_task:
                     self.image_files.append(img_path)
 
@@ -448,7 +427,6 @@ A typical split is 80% for training and 20% for validation.",
             self.current_image_index = -1
             return
 
-        # Update UI
         self.update_transform_visibility()
         self.disable_rotation_if_detection()
 
@@ -458,15 +436,15 @@ A typical split is 80% for training and 20% for validation.",
         self.remove_image_button.setVisible(bool(self.image_files))
 
     def remove_current_image(self):
+        """Remove the currently previewed image from the training list without deleting it from disk."""
         if not self.image_files or self.current_image_index < 0:
             return
 
-        removed_path = self.image_files.pop(self.current_image_index)
+        self.image_files.pop(self.current_image_index)
 
         if len(self.image_files) == 0:
             self.image_index_label.setVisible(False)
 
-        # Adjust index
         if self.current_image_index >= len(self.image_files):
             self.current_image_index = len(self.image_files) - 1
 
@@ -482,6 +460,7 @@ A typical split is 80% for training and 20% for validation.",
         self.update_image_index_label()
 
     def browse_save(self):
+        """Open a directory picker and set the model save path."""
         folder = QtWidgets.QFileDialog.getExistingDirectory(
             self, "Select Save Directory"
         )
@@ -489,6 +468,7 @@ A typical split is 80% for training and 20% for validation.",
             self.save_path_edit.setText(folder)
 
     def update_image_index_label(self):
+        """Refresh the 'Image N/M' counter label above the preview."""
         if self.image_files:
             self.image_index_label.setText(
                 f"Image {self.current_image_index + 1}/{len(self.image_files)}"
@@ -498,8 +478,8 @@ A typical split is 80% for training and 20% for validation.",
             self.image_index_label.setText("Image 0/0")
             self.image_index_label.setVisible(False)
 
-    # --- Image navigation ---
     def show_current_image(self):
+        """Render the current image with its YOLO labels overlaid into the preview widget."""
         if not self.image_files or self.current_image_index < 0:
             self.image_preview.setText("No images loaded.")
             return
@@ -512,7 +492,6 @@ A typical split is 80% for training and 20% for validation.",
             self.image_preview.setText("Failed to load image")
             return
 
-        # Convert BGR → RGB and then to QPixmap
         img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         qt_img = QtGui.QImage(
             img_rgb.data,
@@ -523,11 +502,10 @@ A typical split is 80% for training and 20% for validation.",
         )
         pixmap = QtGui.QPixmap.fromImage(qt_img)
 
-        # Draw labels using QPainter
         if os.path.exists(lbl_path):
             painter = QtGui.QPainter(pixmap)
-            pen = QtGui.QPen(QtGui.QColor(0, 255, 0))  # green boxes
-            pen.setWidth(5)  # screen pixels
+            pen = QtGui.QPen(QtGui.QColor(0, 255, 0))
+            pen.setWidth(5)
             painter.setPen(pen)
 
             h, w = img.shape[:2]
@@ -535,7 +513,7 @@ A typical split is 80% for training and 20% for validation.",
                 for line in f:
                     parts = line.strip().split()
                     coords = [float(x) for x in parts[1:]]
-                    if len(coords) == 4:  # bbox
+                    if len(coords) == 4:
                         xc, yc, bw, bh = coords
                         x1 = int((xc - bw / 2) * w)
                         y1 = int((yc - bh / 2) * h)
@@ -548,31 +526,22 @@ A typical split is 80% for training and 20% for validation.",
                             for i in range(0, len(coords), 2)
                         ]
                         polygon = QtGui.QPolygonF(pts)
-                        pen.setColor(QtGui.QColor(255, 0, 0))  # red polygon
+                        pen.setColor(QtGui.QColor(255, 0, 0))
                         painter.setPen(pen)
                         painter.drawPolygon(polygon)
 
             painter.end()
 
-        # Scale pixmap to fit the label
         scaled_pixmap = pixmap.scaled(
             self.image_preview.size(),
             QtCore.Qt.KeepAspectRatio,
             QtCore.Qt.SmoothTransformation,
         )
         self.image_preview.setPixmap(scaled_pixmap)
-
-        # Update image index
-        if self.image_files:
-            self.image_index_label.setText(
-                f"Image {self.current_image_index + 1}/{len(self.image_files)}"
-            )
-            self.image_index_label.setVisible(True)
-        else:
-            self.image_index_label.setText("Image 0/0")
-            self.image_index_label.setVisible(False)
+        self.update_image_index_label()
 
     def show_next_image(self):
+        """Advance to the next image in the list and refresh the preview."""
         if self.current_image_index < len(self.image_files) - 1:
             self.current_image_index += 1
             self.show_current_image()
@@ -580,6 +549,7 @@ A typical split is 80% for training and 20% for validation.",
         self.update_image_index_label()
 
     def show_previous_image(self):
+        """Step back to the previous image in the list and refresh the preview."""
         if self.current_image_index > 0:
             self.current_image_index -= 1
             self.show_current_image()
@@ -587,13 +557,14 @@ A typical split is 80% for training and 20% for validation.",
         self.update_image_index_label()
 
     def update_navigation_buttons(self):
+        """Enable or disable Prev/Next buttons based on the current position in image_files."""
         self.prev_button.setEnabled(self.current_image_index > 0)
         self.next_button.setEnabled(
             self.current_image_index < len(self.image_files) - 1
         )
 
-    # --- Transformations ---
     def get_transform_dict(self):
+        """Return a dict of augmentation flags from the checked checkboxes."""
         selected = [cb.text() for cb in self.transform_checkboxes if cb.isChecked()]
         rotate_enabled = "Rotate" in selected
         if self.task == "detection":
@@ -608,6 +579,7 @@ A typical split is 80% for training and 20% for validation.",
         }
 
     def disable_rotation_if_detection(self):
+        """Uncheck and disable the Rotate augmentation when the dataset task is detection."""
         for cb in self.transform_checkboxes:
             if cb.text() == "Rotate":
                 if self.task == "detection":
@@ -616,8 +588,8 @@ A typical split is 80% for training and 20% for validation.",
                 else:
                     cb.setEnabled(True)
 
-    # --- Get final values ---
     def get_values(self):
+        """Return a dict of all training parameters collected by the dialog."""
         model_size_map = {
             "Nano": "n",
             "Small": "s",
@@ -639,6 +611,7 @@ A typical split is 80% for training and 20% for validation.",
 
 
 def get_training_inputs():
+    """Show the training input dialog and return the values dict, or None if the user cancelled."""
     app = QtWidgets.QApplication.instance()
     owns_app = False
     if not app:

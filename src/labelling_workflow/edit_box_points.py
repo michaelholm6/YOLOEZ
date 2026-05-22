@@ -22,6 +22,14 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
     """
 
     def __init__(self, image, boxes=None, line_thickness=2, parent=None):
+        """Initialize the view with an image and optional pre-loaded boxes.
+
+        Args:
+            image: BGR numpy array of the image to edit.
+            boxes: Initial list of boxes, each a (4,1,2) int32 numpy array (TL, TR, BR, BL).
+            line_thickness: Pixel width used for drawing box outlines and corner handles.
+            parent: Optional Qt parent widget.
+        """
         super().__init__(parent)
         self.image = image
         self.boxes = (
@@ -66,6 +74,7 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
         self.update_display()
 
     def _reset_creation_visuals(self):
+        """Remove the crosshair guides and temp rectangle, then reset creation-mode state flags."""
         # remove guides
         self._remove_guides()
 
@@ -81,6 +90,7 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
         self.current_mode = "Selection"
 
     def _create_guides(self):
+        """Add dashed horizontal and vertical crosshair lines to the scene."""
         pen = QtGui.QPen(QtGui.QColor(110, 110, 110))
         pen.setStyle(QtCore.Qt.DashLine)
         pen.setWidth(2)
@@ -98,6 +108,7 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
         self.scene.addItem(self.h_guide)
 
     def _remove_guides(self):
+        """Remove the crosshair guide lines from the scene if they exist."""
         if self.v_guide:
             self.scene.removeItem(self.v_guide)
             self.v_guide = None
@@ -106,6 +117,7 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
             self.h_guide = None
 
     def _update_guides(self, scene_pos):
+        """Reposition the crosshair guides to pass through scene_pos."""
         if not self.v_guide or not self.h_guide:
             return
 
@@ -117,6 +129,7 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
         self.h_guide.setLine(rect.left(), y, rect.right(), y)
 
     def _rebuild_box_items(self):
+        """Remove all existing box/corner scene items and redraw them from self.boxes."""
         # Remove old items
         for item in self.box_items + self.corner_items:
             self.scene.removeItem(item)
@@ -138,7 +151,7 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
 
             pen = QtGui.QPen(QtGui.QColor(255, 0, 0))
             pen.setWidth(self.line_thickness)
-            pen.setCosmetic(True)  # 🔥 screen-space thickness
+            pen.setCosmetic(True)  # screen-space thickness
 
             path_item = QtWidgets.QGraphicsPathItem(path)
             path_item.setPen(pen)
@@ -162,7 +175,6 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
                 item.setBrush(QtGui.QBrush(color))
                 item.setPen(QtGui.QPen(Qt.NoPen))
 
-                # 🔥 critical line
                 item.setFlag(QtWidgets.QGraphicsItem.ItemIgnoresTransformations)
 
                 item.setZValue(20)
@@ -197,6 +209,7 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
         self._rebuild_box_items()
 
     def paintEvent(self, event):
+        """Overlay the current mode name in the top-left corner of the viewport."""
         super().paintEvent(event)
         painter = QtGui.QPainter(self.viewport())
         painter.setRenderHint(QtGui.QPainter.Antialiasing)
@@ -208,6 +221,7 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
         painter.end()
 
     def keyPressEvent(self, event):
+        """Handle Ctrl+Z/Y (undo/redo), D (delete), Escape (cancel mode), C (create), M (move)."""
         k = event.key()
         ctrl = event.modifiers() & Qt.ControlModifier
         # Undo
@@ -328,6 +342,7 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
         super().keyPressEvent(event)
 
     def mousePressEvent(self, event):
+        """Left-click starts box creation, lasso selection, or commits a move; right-click starts panning."""
         scene_pos = self.mapToScene(event.pos())
         if (
             getattr(self, "moving_active", False)
@@ -444,6 +459,7 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
+        """Update the temp rectangle, lasso path, pan offset, or move delta as the mouse moves."""
         scene_pos = self.mapToScene(event.pos())
         # Updating temporary rect when creating box
         if self.creating_box and self.first_corner is None:
@@ -526,6 +542,7 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
             self.setFocus(QtCore.Qt.ActiveWindowFocusReason)
 
     def mouseReleaseEvent(self, event):
+        """Finalize box creation on left release, apply lasso selection, or end panning."""
         scene_pos = self.mapToScene(event.pos())
         if (
             self.creating_box
@@ -596,6 +613,7 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
         super().mouseReleaseEvent(event)
 
     def wheelEvent(self, event):
+        """Zoom in or out centered on the cursor position."""
         delta = event.angleDelta().y()
         zoom_factor = 1.2 if delta > 0 else 1 / 1.2
         self.zoom *= zoom_factor
@@ -841,7 +859,15 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
 
 
 class MultiImageBoxEditor(QtWidgets.QWidget):
+    """Multi-image shell around BoundingBoxEditorView that handles navigation, persistence, and the Finish button."""
+
     def __init__(self, image_dict, loop, line_thickness=2, initial_boxes=None):
+        """Args:
+            image_dict: Ordered dict of {image_path: numpy BGR image}.
+            loop: QEventLoop to quit when the user clicks Finish.
+            line_thickness: Passed through to BoundingBoxEditorView.
+            initial_boxes: Optional dict of {image_path: list of box arrays} for bootstrapped annotations.
+        """
         super().__init__()
         self.image_dict = image_dict
         self.close_flag = False
@@ -913,10 +939,12 @@ class MultiImageBoxEditor(QtWidgets.QWidget):
         QtCore.QTimer.singleShot(10, lambda: self.change_image(0, force=True))
 
     def update_navigation_buttons(self):
+        """Enable or disable Previous / Next based on the current index."""
         self.prev_btn.setEnabled(self.index > 0)
         self.next_btn.setEnabled(self.index < len(self.image_keys) - 1)
 
     def finish_editing(self):
+        """Save the current image's boxes, quit the local event loop, and close the window."""
         # Save current image boxes before exiting
         key = self.image_keys[self.index]
         self.results[key] = self.editor_view.get_edited_boxes()
@@ -938,6 +966,7 @@ class MultiImageBoxEditor(QtWidgets.QWidget):
             sys.exit(0)
 
     def load_image(self, idx):
+        """Save edits for the current image then load the image at idx into the editor view."""
         key = self.image_keys[idx]
         img = self.image_dict[key]
 
@@ -971,14 +1000,17 @@ class MultiImageBoxEditor(QtWidgets.QWidget):
         self._has_loaded_once = True
 
     def change_image(self, delta, force=False):
+        """Navigate to the adjacent image by delta.  Pass force=True to reload the same index."""
         new_index = max(0, min(len(self.image_keys) - 1, self.index + delta))
         if force or new_index != self.index:
             self.load_image(new_index)
 
     def update_status(self):
+        """Update the "Image N / M" status label."""
         self.status_label.setText(f"Image {self.index + 1} / {len(self.image_keys)}")
 
     def get_results(self):
+        """Flush the current editor state and return the full {image_path: boxes} dict."""
         if self.editor_view is not None:
             key = self.image_keys[self.index]
             self.results[key] = self.editor_view.get_edited_boxes()
@@ -986,7 +1018,16 @@ class MultiImageBoxEditor(QtWidgets.QWidget):
 
 
 def run_box_editor(cropped_images, line_thickness=2, initial_boxes=None):
+    """Launch the multi-image bounding box editor, block until Finish, and return results.
 
+    Args:
+        cropped_images: Ordered dict of {image_path: numpy BGR image}.
+        line_thickness: Line width for box and corner handle rendering.
+        initial_boxes: Optional dict of bootstrapped {image_path: list of box arrays}.
+
+    Returns:
+        Dict {image_path: list of (4,1,2) int32 numpy arrays}.
+    """
     app = QtWidgets.QApplication.instance()
     created_app = False
     if app is None:

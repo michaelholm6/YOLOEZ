@@ -9,6 +9,8 @@ from utils import make_label_with_tooltip
 
 
 class InputDialogInference(QtWidgets.QDialog):
+    """Dialog that collects all parameters needed before the inference workflow begins."""
+
     def __init__(self):
         super().__init__()
         font = QtGui.QFont()
@@ -21,14 +23,12 @@ class InputDialogInference(QtWidgets.QDialog):
         self._resize_timer.timeout.connect(self.show_current_image)
         self.close_flag = False
 
-        # === Controls ===
         self.image_path_edit = QtWidgets.QLineEdit()
         self.browse_image_button = QtWidgets.QPushButton("Browse Folder of Images...")
 
         self.output_path_edit = QtWidgets.QLineEdit()
         self.browse_output_button = QtWidgets.QPushButton("Browse Output Folder...")
 
-        # === Model Selection ===
         self.model_path_edit = QtWidgets.QLineEdit()
         self.browse_model_button = QtWidgets.QPushButton("Select trained YOLO Model...")
 
@@ -48,7 +48,6 @@ class InputDialogInference(QtWidgets.QDialog):
         self.confidence_spinbox.setDecimals(2)
         self.confidence_spinbox.setValue(0.5)
 
-        # Link slider <-> spinbox
         self.confidence_slider.valueChanged.connect(
             lambda val: self.confidence_spinbox.setValue(val / 100)
         )
@@ -56,7 +55,6 @@ class InputDialogInference(QtWidgets.QDialog):
             lambda val: self.confidence_slider.setValue(int(val * 100))
         )
 
-        # Clamp spinbox input to 0–1
         self.confidence_spinbox.editingFinished.connect(
             lambda: self.confidence_spinbox.setValue(
                 min(max(self.confidence_spinbox.value(), 0.0), 1.0)
@@ -68,7 +66,6 @@ class InputDialogInference(QtWidgets.QDialog):
         outer_layout.setContentsMargins(0, 0, 0, 0)
         outer_layout.setSpacing(4)
 
-        # --- Top row: label + icon ---
         top_row = QtWidgets.QHBoxLayout()
         top_row.setSpacing(4)
 
@@ -85,21 +82,17 @@ class InputDialogInference(QtWidgets.QDialog):
         top_row.addWidget(icon_label)
         top_row.addStretch()
 
-        # --- Bottom row: slider + spinbox ---
         bottom_row = QtWidgets.QHBoxLayout()
         bottom_row.setSpacing(4)
 
         bottom_row.addWidget(self.confidence_slider)
         bottom_row.addWidget(self.confidence_spinbox)
 
-        # --- Assemble ---
         outer_layout.addLayout(top_row)
         outer_layout.addLayout(bottom_row)
 
-        # Initially hide; show only if bootstrapping model is selected
         self.confidence_container = conf_container
 
-        # === Run Button ===
         self.run_button = QtWidgets.QPushButton("Run")
         self.run_button.setStyleSheet("""
             QPushButton {
@@ -120,11 +113,10 @@ class InputDialogInference(QtWidgets.QDialog):
         self.status_label.setPalette(palette)
         self.status_label.setWordWrap(True)
         font = self.status_label.font()
-        font.setPointSize(16)  # choose whatever size you want
+        font.setPointSize(16)
         self.status_label.setFont(font)
         self.status_label.show()
 
-        # === Image Preview and Navigation ===
         self.image_preview = QtWidgets.QLabel()
         self.image_preview.setStyleSheet(
             "border: 1px solid black; background-color: #eee;"
@@ -159,14 +151,11 @@ class InputDialogInference(QtWidgets.QDialog):
             self.image_index_label.sizeHint().height()
         )
 
-        # Start hidden
         self.image_index_label.setVisible(False)
 
-        # Keep track of folder images
         self.image_files = []
         self.current_image_index = -1
 
-        # Navigation buttons
         self.prev_button = QtWidgets.QPushButton("◀ Previous")
         self.next_button = QtWidgets.QPushButton("Next ▶")
         self.prev_button.setEnabled(False)
@@ -214,8 +203,6 @@ class InputDialogInference(QtWidgets.QDialog):
         preview_widget = QtWidgets.QWidget()
         preview_widget.setLayout(preview_layout)
 
-        # === Helper to create label + tooltip ===
-
         image_path_label = make_label_with_tooltip(
             "Image Folder:",
             "Select a folder containing input images to label for future training.",
@@ -225,7 +212,6 @@ class InputDialogInference(QtWidgets.QDialog):
             "Select a folder where any generated outputs will be saved.",
         )
 
-        # === Controls Layout ===
         controls_layout = QtWidgets.QVBoxLayout()
         controls_layout.addWidget(image_path_label)
         controls_layout.addWidget(self.image_path_edit)
@@ -250,13 +236,11 @@ class InputDialogInference(QtWidgets.QDialog):
         controls_widget.setLayout(controls_layout)
         controls_widget.setMinimumWidth(600)
 
-        # === Main Layout ===
         main_layout = QtWidgets.QHBoxLayout()
         main_layout.addWidget(controls_widget)
         main_layout.addWidget(preview_widget, stretch=1)
         self.setLayout(main_layout)
 
-        # === Connections ===
         self.browse_image_button.clicked.connect(self.browse_image)
         self.browse_model_button.clicked.connect(self.browse_model)
         self.browse_output_button.clicked.connect(self.browse_output)
@@ -271,13 +255,12 @@ class InputDialogInference(QtWidgets.QDialog):
         self.run_button.setEnabled(False)
         self.update_run_button_state()
 
-        # Show dialog
         self.showMaximized()
         self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowStaysOnTopHint)
         self.show()
 
     def remove_current_image(self):
-        self.update_image_index_label()
+        """Remove the currently previewed image from the loaded list and refresh the UI."""
         if not self.image_files or self.current_image_index < 0:
             return
 
@@ -296,10 +279,8 @@ class InputDialogInference(QtWidgets.QDialog):
         self.show_current_image()
         self.update_navigation_buttons()
 
-        if len(self.image_files) == 0:
-            self.image_index_label.setVisible(False)
-
     def update_image_index_label(self):
+        """Update the "Image N/M" label text and visibility."""
         if not self.image_files or self.current_image_index < 0:
             self.image_index_label.setVisible(False)
             return
@@ -310,6 +291,7 @@ class InputDialogInference(QtWidgets.QDialog):
         self.image_index_label.setVisible(True)
 
     def browse_model(self):
+        """Open a file dialog for the YOLO model and show/hide confidence controls accordingly."""
         file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
             self,
             "Select YOLO Model",
@@ -324,8 +306,8 @@ class InputDialogInference(QtWidgets.QDialog):
         else:
             self.confidence_container.setVisible(False)
 
-    # === Folder Browse ===
     def browse_image(self):
+        """Open a folder dialog, load valid image files, and display the first one in the preview."""
         folder = QtWidgets.QFileDialog.getExistingDirectory(
             self, "Select Folder of Images"
         )
@@ -346,16 +328,15 @@ class InputDialogInference(QtWidgets.QDialog):
             self.next_button.setEnabled(False)
             return
 
-        else:
-            self.remove_image_button.setVisible(True)
+        self.remove_image_button.setVisible(True)
 
         self.current_image_index = 0
         self.update_image_index_label()
         self.show_current_image()
         self.update_navigation_buttons()
 
-    # === Image Navigation ===
     def show_current_image(self):
+        """Display the current image in the preview, re-scaling only when the widget size changes."""
         if not self.image_files:
             self.image_preview.setText("No images loaded.")
             return
@@ -386,6 +367,7 @@ class InputDialogInference(QtWidgets.QDialog):
         self.update_image_index_label()
 
     def show_next_image(self):
+        """Advance to the next image in the preview list."""
         if not self.image_files:
             return
         if self.current_image_index < len(self.image_files) - 1:
@@ -394,6 +376,7 @@ class InputDialogInference(QtWidgets.QDialog):
         self.update_navigation_buttons()
 
     def show_previous_image(self):
+        """Go back to the previous image in the preview list."""
         if not self.image_files:
             return
         if self.current_image_index > 0:
@@ -402,21 +385,22 @@ class InputDialogInference(QtWidgets.QDialog):
         self.update_navigation_buttons()
 
     def update_navigation_buttons(self):
+        """Enable or disable Previous / Next based on the current index."""
         self.prev_button.setEnabled(self.current_image_index > 0)
         self.next_button.setEnabled(
             self.current_image_index < len(self.image_files) - 1
         )
 
-    # === Output Folder ===
     def browse_output(self):
+        """Open a folder dialog and set the output path field."""
         folder = QtWidgets.QFileDialog.getExistingDirectory(
             self, "Select Output Folder"
         )
         if folder:
             self.output_path_edit.setText(folder)
 
-    # === Button Enable Logic ===
     def update_run_button_state(self):
+        """Validate all inputs and enable the Run button only when everything is valid."""
         image_path = self.image_path_edit.text().strip()
         output_path = self.output_path_edit.text().strip()
         YOLO_model = self.model_path_edit.text().strip()
@@ -444,33 +428,33 @@ class InputDialogInference(QtWidgets.QDialog):
             self.status_label.hide()
 
     def on_run_clicked(self):
-        """Called when the Run button is clicked"""
-        self.close_flag = True  # window can close without quitting program
+        """Mark the dialog as accepted and close it."""
+        self.close_flag = True
         self.accept()
 
     def closeEvent(self, event):
-        """Called when the window is closed"""
+        """Exit the program if the user closed with X; accept normally after Run."""
         if getattr(self, "close_flag", False):
-            # Run button triggered — just close dialog, do not exit program
             event.accept()
         else:
-            # User clicked X — fully exit program
             print("Window closed — exiting program.")
             QtWidgets.QApplication.quit()
             sys.exit(0)
 
-    # === Misc ===
     def keyPressEvent(self, event: QtGui.QKeyEvent):
+        """Escape immediately exits the program."""
         if event.key() == QtCore.Qt.Key_Escape:
             sys.exit(0)
         else:
             super().keyPressEvent(event)
 
     def resizeEvent(self, event):
+        """Re-scale the preview image whenever the dialog is resized."""
         super().resizeEvent(event)
         self.show_current_image()
 
     def get_values(self):
+        """Return a dict of all user-selected parameters for the inference workflow."""
         return {
             "image_paths": self.image_files,
             "output_folder": self.output_path_edit.text().strip(),
@@ -484,6 +468,7 @@ class InputDialogInference(QtWidgets.QDialog):
 
 
 def get_user_inference_inputs():
+    """Show the inference input dialog and return the values dict, or None if the user cancelled."""
     app = QtWidgets.QApplication.instance()
     owns_app = False
     if not app:

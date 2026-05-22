@@ -45,7 +45,7 @@ def save_segmentation_results(
         cnts = [np.array(c, dtype=np.int32) for c in cnts]
 
         if len(cnts) == 0 and not save_unlabeled_images:
-            print(f"{img_path}: no contours → skipping.")
+            print(f"{img_path}: no contours, skipping.")
             continue
 
         h_img, w_img = base_img.shape[:2]

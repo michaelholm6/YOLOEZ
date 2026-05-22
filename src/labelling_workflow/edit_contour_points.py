@@ -12,6 +12,11 @@ from PyQt5.QtCore import QPointF, Qt
 
 
 class ContourEditorView(QtWidgets.QGraphicsView):
+    """Interactive polygon/contour editor backed by a QGraphicsScene.
+
+    Supports lasso selection, creation (click or freehand), deletion, move, scale, rotate, and union.
+    """
+
     def __init__(
         self,
         image,
@@ -22,6 +27,17 @@ class ContourEditorView(QtWidgets.QGraphicsView):
         detected_contours=None,
         parent=None,
     ):
+        """Initialize the editor with an image and optional pre-existing contours.
+
+        Args:
+            image: BGR numpy array.
+            contours: List of (N,1,2) int32 numpy arrays to start with (may be empty).
+            line_thickness: Pixel width for contour lines and point handles.
+            current_image_path: Key used to look up AOI polygons from aois_dict.
+            aois_dict: Optional {image_path: [(x,y)...]} restricting where new points can be placed.
+            detected_contours: Bootstrap contours used only when contours is empty.
+            parent: Optional Qt parent widget.
+        """
         super().__init__(parent)
         self.image = image
         self.selected_points = set()
@@ -91,6 +107,7 @@ class ContourEditorView(QtWidgets.QGraphicsView):
         QtCore.QTimer.singleShot(0, self._initial_center_and_fit)
 
     def _clear_redo(self):
+        """Discard the redo stack (called whenever a new undoable action is performed)."""
         self.redo_stack.clear()
 
     def _initial_center_and_fit(self):
@@ -118,6 +135,7 @@ class ContourEditorView(QtWidgets.QGraphicsView):
         return x_c, y_c
 
     def _rebuild_contour_items(self):
+        """Remove all existing contour/point scene items and redraw them from self.contours."""
         # Remove old items
         for item in self.contour_items + self.point_items:
             self.scene.removeItem(item)
@@ -175,7 +193,6 @@ class ContourEditorView(QtWidgets.QGraphicsView):
                 item.setBrush(QtGui.QBrush(color))
                 item.setPen(QtGui.QPen(Qt.NoPen))
 
-                # 🔥 THIS is the missing line
                 item.setFlag(QtWidgets.QGraphicsItem.ItemIgnoresTransformations)
 
                 item.setZValue(20)
@@ -184,6 +201,7 @@ class ContourEditorView(QtWidgets.QGraphicsView):
                 self.point_items.append(item)
 
     def update_display(self):
+        """Refresh the image pixmap and rebuild all contour and point handle scene items."""
         h, w = self.image.shape[:2]
         qimage = QtGui.QImage(self.image.data, w, h, 3 * w, QtGui.QImage.Format_BGR888)
         self.pixmap_item.setPixmap(QtGui.QPixmap.fromImage(qimage))
@@ -191,6 +209,7 @@ class ContourEditorView(QtWidgets.QGraphicsView):
         self._rebuild_contour_items()
 
     def paintEvent(self, event):
+        """Draw the scene normally, then overlay the current mode name on the viewport."""
         super().paintEvent(event)  # Draw scene normally
 
         if self.current_mode:
@@ -207,7 +226,7 @@ class ContourEditorView(QtWidgets.QGraphicsView):
             painter.end()
 
     def keyPressEvent(self, event):
-
+        """Route keyboard shortcuts: Ctrl+Z/Y, U (union), D (delete), Escape, S (scale), M (move), R (rotate), C (create)."""
         k = event.key()
         ctrl = event.modifiers() & Qt.ControlModifier
 
@@ -239,7 +258,7 @@ class ContourEditorView(QtWidgets.QGraphicsView):
                     self.update_display()
 
                 else:
-                    # Current stack is empty → remove it
+                    # Current stack is empty, remove it
                     self.contour_creation_undo_stack.pop()
                     if self.contour_creation_undo_stack[-1]:
                         self.contour_creation_undo_stack[-1].pop()
@@ -587,6 +606,7 @@ class ContourEditorView(QtWidgets.QGraphicsView):
             super().keyPressEvent(event)
 
     def mousePressEvent(self, event):
+        """Left-click: start lasso, add contour point, or close polygon.  Right-click: start panning."""
         if event.button() == QtCore.Qt.LeftButton:
             # Deactivate all modes if not creating a contour
             if not self.creating_contour:
@@ -708,6 +728,7 @@ class ContourEditorView(QtWidgets.QGraphicsView):
         super().mousePressEvent(event)
 
     def move_selected_points(self):
+        """Translate selected contour points by the delta between the move start and current mouse position."""
         if (
             not self.selected_points
             or self.move_start_mouse_pos is None
@@ -730,6 +751,7 @@ class ContourEditorView(QtWidgets.QGraphicsView):
                     cnt[pt_idx][0] = [new_x, new_y]
 
     def mouseMoveEvent(self, event):
+        """Handle freehand drawing, lasso update, panning, and active operation updates."""
         self.hovering_start_point = False
         self.mouse_pos = self.mapToScene(event.pos())
 
@@ -804,7 +826,7 @@ class ContourEditorView(QtWidgets.QGraphicsView):
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event):
-
+        """Finalize freehand drawing or lasso selection on left release; end panning on right release."""
         if (
             self.creating_contour
             and self.freehand_drawing
@@ -869,6 +891,7 @@ class ContourEditorView(QtWidgets.QGraphicsView):
         super().mouseReleaseEvent(event)
 
     def wheelEvent(self, event):
+        """Zoom in or out on mouse wheel scroll."""
         # Zoom on scroll
         delta = event.angleDelta().y()
         zoom_factor = 1.2 if delta > 0 else 1 / 1.2
@@ -876,6 +899,7 @@ class ContourEditorView(QtWidgets.QGraphicsView):
         self.scale(zoom_factor, zoom_factor)
 
     def select_points_in_polygon(self, polygon):
+        """Replace the selection set with all contour points that fall inside the lasso polygon."""
         self.selected_points.clear()
         for c_idx, cnt in enumerate(self.contours):
             for pt_idx, pt in enumerate(cnt):
@@ -885,9 +909,11 @@ class ContourEditorView(QtWidgets.QGraphicsView):
                     self.selected_points.add((c_idx, pt_idx))
 
     def get_edited_contours(self):
+        """Return the current list of contour arrays."""
         return self.contours
 
     def delete_selected_points(self):
+        """Remove all selected points from their contours and push an undo state."""
         new_contours = []
         for c_idx, cnt in enumerate(self.contours):
             new_cnt = []
@@ -912,6 +938,7 @@ class ContourEditorView(QtWidgets.QGraphicsView):
         self.contours = [cnt for cnt in self.contours if len(cnt) >= 3]
 
     def rotate_selected_points(self):
+        """Rotate selected points around their contour's centroid by the angle delta from the start mouse position."""
         if (
             not self.rotation_reference
             or not self.mouse_pos
@@ -950,6 +977,7 @@ class ContourEditorView(QtWidgets.QGraphicsView):
             self.contours[c_idx][pt_idx][0] = [int(new_x), int(new_y)]
 
     def union_selected_contours(self):
+        """Merge all contours that have at least one selected point into a single union contour using pixel masks."""
         # Find which contours are involved
         selected_contour_indices = {c_idx for (c_idx, _) in self.selected_points}
 
@@ -990,6 +1018,7 @@ class ContourEditorView(QtWidgets.QGraphicsView):
         self.update_display()
 
     def scale_selected_points(self):
+        """Scale selected points outward or inward from their contour centroid based on the mouse distance ratio."""
         if (
             not self.selected_points
             or not self.mouse_pos
@@ -1033,11 +1062,14 @@ class ContourEditorView(QtWidgets.QGraphicsView):
 
 
 class MultiImageContourEditor(QtWidgets.QWidget):
+    """Multi-image shell around ContourEditorView that handles navigation, persistence, and the Finish button."""
+
     def __init__(self, image_dict, loop, line_thickness=2, detected_contours=None):
-        """
-        image_dict: dict[str, np.ndarray]
-            Keys are image identifiers (usually original paths),
-            values are numpy images already loaded in memory.
+        """Args:
+            image_dict: {image_path: numpy BGR image} — keys are used as result keys.
+            loop: QEventLoop to quit when the user clicks Finish.
+            line_thickness: Passed through to ContourEditorView.
+            detected_contours: Optional {image_path: list of contour arrays} for bootstrapped annotations.
         """
         super().__init__()
         self.loop = loop
@@ -1106,6 +1138,7 @@ class MultiImageContourEditor(QtWidgets.QWidget):
         QtCore.QTimer.singleShot(0, lambda: self.change_image(0, force=True))
 
     def save_current_polygon(self):
+        """Persist the editor's current contours for the active image into self.results."""
         key = self.image_keys[self.index]
         if self.editor_view is not None:
             self.results[key] = [
@@ -1131,10 +1164,12 @@ class MultiImageContourEditor(QtWidgets.QWidget):
             sys.exit(0)
 
     def update_navigation_buttons(self):
+        """Enable or disable Previous / Next based on the current index."""
         self.prev_btn.setEnabled(self.index > 0)
         self.next_btn.setEnabled(self.index < len(self.image_keys) - 1)
 
     def load_image(self, idx):
+        """Save the current contours then load the image at idx, reusing the existing editor view."""
         key = self.image_keys[idx]
         detected = self.detected_contours.get(key, [])
         img = self.image_dict[key]
@@ -1153,7 +1188,7 @@ class MultiImageContourEditor(QtWidgets.QWidget):
                 # User has visited this image before (even if they deleted everything)
                 self.editor_view.contours = [c.copy() for c in saved_contours]
             else:
-                # First visit → initialize from detector
+                # First visit, initialize from detector
                 self.editor_view.contours = [c.copy() for c in detected]
 
             self.editor_view.original_contours = [
@@ -1197,14 +1232,17 @@ class MultiImageContourEditor(QtWidgets.QWidget):
         self.editor_view.viewport().setFocus(QtCore.Qt.ActiveWindowFocusReason)
 
     def change_image(self, delta, force=False):
+        """Navigate to the adjacent image by delta.  Pass force=True to reload the same index."""
         new_index = max(0, min(len(self.image_keys) - 1, self.index + delta))
         if force or new_index != self.index:
             self.load_image(new_index)
 
     def update_status(self):
+        """Update the "Image N / M" status label."""
         self.status_label.setText(f"Image {self.index + 1} / {len(self.image_keys)}")
 
     def get_results(self):
+        """Flush the current editor state and return the full {image_path: contours} dict."""
         # Save the currently edited image
         if self.editor_view is not None:
             self.results[self.image_keys[self.index]] = (

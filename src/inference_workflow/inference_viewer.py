@@ -7,12 +7,15 @@ from PyQt5 import QtWidgets, QtGui, QtCore
 
 
 class ImageCanvas(QtWidgets.QWidget):
+    """Widget that renders a single image scaled to fill the widget while preserving aspect ratio."""
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.pixmap = None
         self.setMinimumSize(400, 300)
 
     def set_image(self, path):
+        """Load the image at path and trigger a repaint."""
         pix = QtGui.QPixmap(path)
         if pix.isNull():
             self.pixmap = None
@@ -21,6 +24,7 @@ class ImageCanvas(QtWidgets.QWidget):
         self.update()
 
     def paintEvent(self, event):
+        """Fill background dark grey and draw the scaled image centered."""
         painter = QtGui.QPainter(self)
         painter.fillRect(self.rect(), QtGui.QColor(30, 30, 30))
 
@@ -39,6 +43,8 @@ class ImageCanvas(QtWidgets.QWidget):
 
 
 class ImageViewer(QtWidgets.QWidget):
+    """Full-screen viewer for browsing a list of result images with Previous / Next / Finish navigation."""
+
     def __init__(self, image_paths, loop=None):
         super().__init__()
 
@@ -99,6 +105,7 @@ class ImageViewer(QtWidgets.QWidget):
         self.activateWindow()
 
     def load_current_image(self):
+        """Refresh the canvas, label, and button states for self.index."""
         path = self.image_paths[self.index]
         self.canvas.set_image(path)
         self.update_label()
@@ -113,27 +120,31 @@ class ImageViewer(QtWidgets.QWidget):
 
     def closeEvent(self, event):
         if getattr(self, "close_flag", False):
-            # Finish button triggered → just close this window
+            # Finish button triggered, just close this window
             event.accept()
         else:
-            # User clicked X or pressed Esc → exit program
+            # User clicked X or pressed Esc, exit program
             QtWidgets.QApplication.quit()
             sys.exit(0)
 
     def update_label(self):
+        """Update the "Image N / M" counter label."""
         self.image_index_label.setText(
             f"Image {self.index + 1} / {len(self.image_paths)}"
         )
 
     def update_buttons(self):
+        """Enable or disable Previous / Next based on the current position in the list."""
         self.prev_btn.setEnabled(self.index > 0)
         self.next_btn.setEnabled(self.index < len(self.image_paths) - 1)
 
     def change_image(self, delta):
+        """Move the current index by delta (clamped to valid range) and reload."""
         self.index = max(0, min(len(self.image_paths) - 1, self.index + delta))
         self.load_current_image()
 
     def keyPressEvent(self, event):
+        """Left/right arrows navigate images; Escape closes the viewer."""
         if event.key() == QtCore.Qt.Key_Right:
             self.change_image(1)
         elif event.key() == QtCore.Qt.Key_Left:
@@ -145,6 +156,7 @@ class ImageViewer(QtWidgets.QWidget):
 
 
 def view_images(image_paths):
+    """Launch an ImageViewer for image_paths and block until the user clicks Finish or closes."""
     app = QtWidgets.QApplication.instance()
     if app is None:
         app = QtWidgets.QApplication(sys.argv)

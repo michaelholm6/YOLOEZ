@@ -11,6 +11,18 @@ from PyQt5 import QtWidgets, QtCore
 
 
 def run_yolo_inference(model, cropped_images, save_path, conf, parent=None):
+    """Run YOLO inference on each image, save annotated JPEGs and per-image JSON results.
+
+    Args:
+        model: Loaded Ultralytics YOLO model.
+        cropped_images: Ordered dict of {path: PIL/numpy image}.
+        save_path: Directory to write result_N.jpg and result_N.json files.
+        conf: Confidence threshold passed to the model.
+        parent: Optional parent widget for the progress dialog.
+
+    Returns:
+        List of saved annotated image paths.
+    """
     saved_images = []
     num_images = len(cropped_images)
     progress = QtWidgets.QProgressDialog(

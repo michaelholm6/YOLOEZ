@@ -11,6 +11,8 @@ import sys
 
 
 class ChoiceDialog(QtWidgets.QDialog):
+    """Startup dialog that lets the user pick Label / Train / Use and whether to suppress instructional popups."""
+
     def __init__(self):
         super().__init__()
 
@@ -102,11 +104,13 @@ class ChoiceDialog(QtWidgets.QDialog):
         self.setFocus()
 
     def set_choice(self, choice):
+        """Record the chosen workflow and close the dialog."""
         self.chosen = choice
         self.accept()  # close dialog
 
 
 def main():
+    """Show the choice dialog and dispatch to the selected workflow."""
     app = QtWidgets.QApplication(sys.argv)
 
     # Normal screen resolution check

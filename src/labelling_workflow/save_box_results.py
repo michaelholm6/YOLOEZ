@@ -42,7 +42,7 @@ def save_box_results(
         boxes = [np.array(b, dtype=np.int32) for b in boxes]
 
         if len(boxes) == 0 and not save_unlabeled_images:
-            print(f"{img_path}: no boxes → skipping.")
+            print(f"{img_path}: no boxes, skipping.")
             continue
 
         h_img, w_img = base_img.shape[:2]

@@ -14,6 +14,12 @@ import tempfile
 
 
 def run_training_workflow(suppress_instructions=False, test_inputs=None):
+    """Execute the full training pipeline: collect inputs, split data, augment, create YAML, train, and clean up.
+
+    Args:
+        suppress_instructions: Skip all instructional popups when True.
+        test_inputs: If provided, bypasses the user input dialog and uses this dict directly.
+    """
     if not suppress_instructions:
         show_instructions(
             "Welcome to the Training Workflow!\n\n"
@@ -58,17 +64,7 @@ def run_training_workflow(suppress_instructions=False, test_inputs=None):
             "You can hover over points in the plots to see exact values."
         )
 
-    if previous_model_path is not None:
-        results = run_training(
-            yaml_file,
-            model_save_dir,
-            model_size,
-            task=task,
-            prev_model_path=previous_model_path,
-        )
-
-    else:
-        results = run_training(yaml_file, model_save_dir, model_size, task=task)
+    results = run_training(yaml_file, model_save_dir, model_size, task=task, prev_model_path=previous_model_path)
 
     dataset_yaml_path = os.path.join(os.path.split(dataset_path)[0], "dataset.yaml")
     if os.path.exists(dataset_yaml_path):
@@ -86,7 +82,7 @@ def run_training_workflow(suppress_instructions=False, test_inputs=None):
         show_instructions(
             "Training complete!\n\n"
             f"Trained model saved to: {model_save_dir}\n\n"
-            "TOLOEZ will now close."
+            "YOLOEZ will now close."
         )
 
     return results
