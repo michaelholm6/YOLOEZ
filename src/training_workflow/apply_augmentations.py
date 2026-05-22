@@ -188,7 +188,12 @@ def augment_yolo_dataset(
 
                         coords = []
                         for x, y in pts:
-                            coords.extend([max(0.0, min(1.0, x / aug_w)), max(0.0, min(1.0, y / aug_h))])
+                            coords.extend(
+                                [
+                                    max(0.0, min(1.0, x / aug_w)),
+                                    max(0.0, min(1.0, y / aug_h)),
+                                ]
+                            )
 
                         aug_labels.append({"label": l["label"], "coords": coords})
 

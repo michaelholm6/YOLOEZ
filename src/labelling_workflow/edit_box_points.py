@@ -863,10 +863,10 @@ class MultiImageBoxEditor(QtWidgets.QWidget):
 
     def __init__(self, image_dict, loop, line_thickness=2, initial_boxes=None):
         """Args:
-            image_dict: Ordered dict of {image_path: numpy BGR image}.
-            loop: QEventLoop to quit when the user clicks Finish.
-            line_thickness: Passed through to BoundingBoxEditorView.
-            initial_boxes: Optional dict of {image_path: list of box arrays} for bootstrapped annotations.
+        image_dict: Ordered dict of {image_path: numpy BGR image}.
+        loop: QEventLoop to quit when the user clicks Finish.
+        line_thickness: Passed through to BoundingBoxEditorView.
+        initial_boxes: Optional dict of {image_path: list of box arrays} for bootstrapped annotations.
         """
         super().__init__()
         self.image_dict = image_dict

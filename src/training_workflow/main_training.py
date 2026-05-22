@@ -64,7 +64,13 @@ def run_training_workflow(suppress_instructions=False, test_inputs=None):
             "You can hover over points in the plots to see exact values."
         )
 
-    results = run_training(yaml_file, model_save_dir, model_size, task=task, prev_model_path=previous_model_path)
+    results = run_training(
+        yaml_file,
+        model_save_dir,
+        model_size,
+        task=task,
+        prev_model_path=previous_model_path,
+    )
 
     dataset_yaml_path = os.path.join(os.path.split(dataset_path)[0], "dataset.yaml")
     if os.path.exists(dataset_yaml_path):

@@ -1066,10 +1066,10 @@ class MultiImageContourEditor(QtWidgets.QWidget):
 
     def __init__(self, image_dict, loop, line_thickness=2, detected_contours=None):
         """Args:
-            image_dict: {image_path: numpy BGR image} — keys are used as result keys.
-            loop: QEventLoop to quit when the user clicks Finish.
-            line_thickness: Passed through to ContourEditorView.
-            detected_contours: Optional {image_path: list of contour arrays} for bootstrapped annotations.
+        image_dict: {image_path: numpy BGR image} — keys are used as result keys.
+        loop: QEventLoop to quit when the user clicks Finish.
+        line_thickness: Passed through to ContourEditorView.
+        detected_contours: Optional {image_path: list of contour arrays} for bootstrapped annotations.
         """
         super().__init__()
         self.loop = loop

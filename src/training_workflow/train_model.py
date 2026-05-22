@@ -48,7 +48,9 @@ def run_training(
 
     class TrainingGUI(QtWidgets.QWidget):
         save_and_close_requested = QtCore.pyqtSignal()
-        metrics_updated = QtCore.pyqtSignal(int, float, float, float, float, float, float)
+        metrics_updated = QtCore.pyqtSignal(
+            int, float, float, float, float, float, float
+        )
 
         def __init__(self, device_text="Device: CPU"):
             """Build the metrics/loss plots and all control widgets."""
