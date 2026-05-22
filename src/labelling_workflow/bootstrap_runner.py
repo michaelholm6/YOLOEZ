@@ -19,7 +19,6 @@ def extract_clean_contours_from_mask(mask):
     mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
 
-    # 2. Find contours (ordered by traversal)
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 
     clean_contours = []
@@ -34,6 +33,17 @@ def extract_clean_contours_from_mask(mask):
 def run_yolo_on_crops(
     images_dict, model_path, confidence_threshold=0.5, annotation_mode="bounding_box"
 ):
+    """Run a YOLO model on cropped images and return per-image contours or bounding boxes.
+
+    Args:
+        images_dict: Ordered dict of {image_path: numpy BGR image}.
+        model_path: Path to the YOLO .pt weights file.
+        confidence_threshold: Minimum confidence for a detection to be included.
+        annotation_mode: "segmentation" returns polygon contours; "bounding_box" returns rectangle contours.
+
+    Returns:
+        Dict {image_path: list of OpenCV contours (each shape (N,1,2) int32)}.
+    """
 
     model = YOLO(model_path)
 
@@ -72,9 +82,6 @@ def run_yolo_on_crops(
             orig_h, orig_w = result.orig_shape
 
             for mask, conf in zip(masks, confs):
-                if conf < confidence_threshold:
-                    continue
-
                 binary = (mask > 0.5).astype(np.uint8) * 255
                 binary = cv2.resize(
                     binary, (orig_w, orig_h), interpolation=cv2.INTER_NEAREST
@@ -86,8 +93,6 @@ def run_yolo_on_crops(
         else:  # bounding box mode
             if result.boxes is not None:
                 for box, conf in zip(result.boxes.xyxy, result.boxes.conf):
-                    if conf < confidence_threshold:
-                        continue
                     x1, y1, x2, y2 = map(int, box)
                     contour = np.array(
                         [[x1, y1], [x2, y1], [x2, y2], [x1, y2]], dtype=np.int32

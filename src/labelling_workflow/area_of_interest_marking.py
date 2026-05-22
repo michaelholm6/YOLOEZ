@@ -28,6 +28,7 @@ class PolygonCanvas(QWidget):
     """
 
     def __init__(self, parent=None):
+        """Initialize an empty canvas; call load_image() to display an image."""
         super().__init__(parent)
         self.orig_image = None  # BGR numpy array
         self.scaled_pixmap = None  # QPixmap
@@ -38,7 +39,6 @@ class PolygonCanvas(QWidget):
         self.orig_h = 1
         self.polygons = []  # list of {"points": [QPoint,...], "closed": bool}
         self.current_polygon = {"points": [], "closed": False}
-        self.undo_stack = []
         self.redo_stack = []
         self.dragging = False
         self.last_drag_point = None
@@ -54,17 +54,20 @@ class PolygonCanvas(QWidget):
 
     # --- image loading / scaling helpers ---
     def load_image(self, image_bgr, saved_polygon_image_coords=None):
+        """Load a BGR numpy image and optionally restore previously saved polygons.
+
+        Args:
+            image_bgr: The image to display.
+            saved_polygon_image_coords: List of polygons in image coordinates to pre-populate.
+        """
         self.orig_image = image_bgr
         self.orig_h, self.orig_w = image_bgr.shape[:2]
         self.update_scaled_image()
 
-        # FULL reset per image
         self.polygons = []
         self.current_polygon = {"points": [], "closed": False}
-        self.undo_stack = []
         self.hover_first = False
 
-        # Restore saved polygons (image → widget coords)
         if saved_polygon_image_coords:
             for poly_img in saved_polygon_image_coords:
                 poly_widget = {
@@ -84,7 +87,6 @@ class PolygonCanvas(QWidget):
         h_win = max(1, self.height())
         w_win = max(1, self.width())
 
-        # convert to QImage/QPixmap
         if len(self.orig_image.shape) == 2:
             qimg = QImage(
                 self.orig_image.data,
@@ -104,22 +106,18 @@ class PolygonCanvas(QWidget):
             )
 
         pix = QPixmap.fromImage(qimg)
-        # scale with keep aspect ratio
         scaled = pix.scaled(w_win, h_win, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         self.scaled_pixmap = scaled
 
-        # offsets to center
         self.offset_x = (w_win - scaled.width()) // 2
         self.offset_y = (h_win - scaled.height()) // 2
-
-        # uniform scale from image -> widget
         self.scale = scaled.width() / max(1, self.orig_w)
 
     def mouseMoveEvent(self, event):
+        """Track hover proximity to the first point and accumulate drag-drawn points."""
         pos = event.pos()
         pts = self.current_polygon["points"]
 
-        # Handle hover near first point
         if len(pts) > 0 and not self.current_polygon["closed"]:
             first_pt = pts[0]
             dist_sq = (first_pt.x() - pos.x()) ** 2 + (first_pt.y() - pos.y()) ** 2
@@ -128,7 +126,6 @@ class PolygonCanvas(QWidget):
             if self.hover_first:
                 self.hover_first = False
 
-        # If dragging, add points as we move
         if self.dragging:
             if (
                 self.last_drag_point is None
@@ -139,13 +136,11 @@ class PolygonCanvas(QWidget):
 
         self.update()
 
-    # --- coordinate conversions ---
     def widget_to_image_coords(self, qpoint):
         """Convert a QPoint (widget coords) to image (x, y) ints."""
         xw, yw = qpoint.x(), qpoint.y()
         ix = int(round((xw - self.offset_x) / max(1e-6, self.scale)))
         iy = int(round((yw - self.offset_y) / max(1e-6, self.scale)))
-        # clamp
         ix = max(0, min(self.orig_w - 1, ix))
         iy = max(0, min(self.orig_h - 1, iy))
         return ix, iy
@@ -156,19 +151,17 @@ class PolygonCanvas(QWidget):
         wy = int(round(iy * self.scale + self.offset_y))
         return QPoint(wx, wy)
 
-    # --- painting / interaction ---
     def paintEvent(self, event):
+        """Draw the scaled image and all polygon overlays."""
         painter = QPainter(self)
         painter.fillRect(self.rect(), QColor(255, 255, 255))
 
         if self.scaled_pixmap:
             painter.drawPixmap(self.offset_x, self.offset_y, self.scaled_pixmap)
 
-        # --- Draw completed polygons ---
         for poly in self.polygons:
             pts = poly["points"]
 
-            # draw lines in green
             pen_lines = QPen(QColor(0, 200, 0), self.line_thickness)
             painter.setPen(pen_lines)
             for i in range(len(pts) - 1):
@@ -176,7 +169,6 @@ class PolygonCanvas(QWidget):
             if poly["closed"] and len(pts) > 2:
                 painter.drawLine(pts[-1], pts[0])
 
-            # draw points in red
             pen_points = QPen(QColor(200, 0, 0))
             painter.setPen(pen_points)
             painter.setBrush(QColor(200, 0, 0))
@@ -185,19 +177,16 @@ class PolygonCanvas(QWidget):
                     pt, 2 * self.line_thickness, 2 * self.line_thickness
                 )
 
-        # --- Draw current polygon ---
         pts = self.current_polygon["points"]
 
-        # draw lines in green
         pen_lines = QPen(QColor(0, 200, 0), self.line_thickness)
         painter.setPen(pen_lines)
         for i in range(len(pts) - 1):
             painter.drawLine(pts[i], pts[i + 1])
 
-        # draw points
         for i, pt in enumerate(pts):
             if i == 0 and self.hover_first and len(pts) >= 3:
-                color = QColor(0, 0, 255)  # first point hovered -> blue
+                color = QColor(0, 0, 255)
             else:
                 color = QColor(200, 0, 0)
             painter.setPen(QPen(color))
@@ -205,6 +194,7 @@ class PolygonCanvas(QWidget):
             painter.drawEllipse(pt, 2 * self.line_thickness, 2 * self.line_thickness)
 
     def mouseReleaseEvent(self, event):
+        """On left release, append the drag endpoint or close the polygon if near the first point."""
         if event.button() != Qt.LeftButton or not self.scaled_pixmap:
             return
 
@@ -216,26 +206,24 @@ class PolygonCanvas(QWidget):
         if not pts:
             return
 
-        # If released near first point, close polygon
         if len(pts) >= 3:
             first_pt = pts[0]
             dist_sq = (first_pt.x() - pos.x()) ** 2 + (first_pt.y() - pos.y()) ** 2
-            if len(pts) >= 3 and dist_sq <= 100:
+            if dist_sq <= 100:
                 self.close_polygon()
                 return
             else:
-                # Add final point on release
                 pts.append(pos)
 
         self.update()
 
     def mousePressEvent(self, event):
+        """Add a polygon vertex on left click, or close the polygon if near the first point."""
         if event.button() != Qt.LeftButton or not self.scaled_pixmap:
             return
 
         pos = event.pos()
 
-        # Only accept clicks inside the image
         if not (
             self.offset_x <= pos.x() <= self.offset_x + self.scaled_pixmap.width()
             and self.offset_y <= pos.y() <= self.offset_y + self.scaled_pixmap.height()
@@ -246,7 +234,6 @@ class PolygonCanvas(QWidget):
         self.dragging = True
         self.last_drag_point = pos
 
-        # If first point clicked (and polygon has ≥3 points), close polygon
         if len(pts) >= 3:
             first_pt = pts[0]
             dist_sq = (first_pt.x() - pos.x()) ** 2 + (first_pt.y() - pos.y()) ** 2
@@ -254,12 +241,12 @@ class PolygonCanvas(QWidget):
                 self.close_polygon()
                 return
 
-        # Otherwise, add point to current polygon
         self.redo_stack.clear()
         pts.append(pos)
         self.update()
 
     def resizeEvent(self, event):
+        """Re-scale the image and recompute widget coordinates for existing polygon points."""
         # Recompute scaled image and convert any existing polygon in image coords back
         prev_image = self.orig_image
         if prev_image is not None:
@@ -276,8 +263,8 @@ class PolygonCanvas(QWidget):
             self.update_scaled_image()
         super().resizeEvent(event)
 
-    # --- utility to get polygon in image coords ---
     def get_polygon_image_coords(self):
+        """Return all completed polygons as lists of (x, y) image-coordinate tuples."""
         all_polys = []
         for poly in self.polygons:
             pts_img = [self.widget_to_image_coords(pt) for pt in poly["points"]]
@@ -285,11 +272,10 @@ class PolygonCanvas(QWidget):
         return all_polys
 
     def close_polygon(self):
+        """Finalize the in-progress polygon and add it to the completed list.  Returns True on success."""
         if len(self.current_polygon["points"]) > 2:
             self.current_polygon["closed"] = True
             self.polygons.append(self.current_polygon)
-
-            self.undo_stack.append({"action": "add", "polygon": self.current_polygon})
 
             self.redo_stack.clear()
 
@@ -299,44 +285,35 @@ class PolygonCanvas(QWidget):
         return False
 
     def undo(self):
+        """Remove the last added point or cancel the last completed polygon."""
         if self.current_polygon["points"]:
-            # cancel in-progress polygon
             action = {"action": "cancel_current", "polygon": self.current_polygon}
-            self.undo_stack.append(action)
             self.redo_stack.append(action)
-
             self.current_polygon = {"points": [], "closed": False}
             self.hover_first = False
 
         elif self.polygons:
             last = self.polygons.pop()
-            action = {"action": "remove", "polygon": last}
-            self.undo_stack.append(action)
-            self.redo_stack.append(action)
+            self.redo_stack.append({"action": "remove", "polygon": last})
 
         self.update()
 
     def redo(self):
+        """Re-apply the last undone polygon action."""
         if not self.redo_stack:
             return
 
         action = self.redo_stack.pop()
 
         if action["action"] == "remove":
-            # re-add removed polygon
             self.polygons.append(action["polygon"])
-            self.undo_stack.append(action)
 
         elif action["action"] == "add":
-            # remove polygon again
             if self.polygons and self.polygons[-1] == action["polygon"]:
                 self.polygons.pop()
-            self.undo_stack.append(action)
 
         elif action["action"] == "cancel_current":
-            # restore canceled polygon
             self.current_polygon = action["polygon"]
-            self.undo_stack.append(action)
 
         self.update()
 
@@ -347,6 +324,12 @@ class PolygonAnnotatorWindow(QWidget):
     """
 
     def __init__(self, image_paths, loop):
+        """Build the AOI annotator window.
+
+        Args:
+            image_paths: Ordered list of image file paths to annotate.
+            loop: QEventLoop to quit when the user clicks Finish.
+        """
         super().__init__()
         self.close_flag = False
         self.loop = loop
@@ -354,21 +337,17 @@ class PolygonAnnotatorWindow(QWidget):
         self.index = 0
         self.results = {p: [] for p in image_paths}  # polygons in image coords
 
-        # Canvas
         self.canvas = PolygonCanvas(self)
 
-        # Buttons
         self.prev_btn = QPushButton("◀ Previous")
         self.next_btn = QPushButton("Next ▶")
         self.prev_btn.clicked.connect(lambda: self.change_image(-1))
         self.next_btn.clicked.connect(lambda: self.change_image(1))
 
-        # Layout buttons full width
         nav_btn_layout = QHBoxLayout()
         nav_btn_layout.addWidget(self.prev_btn, stretch=1)
         nav_btn_layout.addWidget(self.next_btn, stretch=1)
 
-        # Bottom row: Finish button (blue)
         self.finish_btn = QPushButton("Finish")
         self.finish_btn.setStyleSheet("""
             QPushButton {
@@ -386,7 +365,6 @@ class PolygonAnnotatorWindow(QWidget):
         finish_layout = QHBoxLayout()
         finish_layout.addWidget(self.finish_btn, stretch=1)
 
-        # Status label
         self.status_label = QLabel("")
         status_layout = QHBoxLayout()
         status_layout.addWidget(self.status_label)
@@ -405,7 +383,6 @@ class PolygonAnnotatorWindow(QWidget):
         slider_layout.addWidget(QLabel("Line Thickness:"))
         slider_layout.addWidget(self.thickness_slider)
 
-        # Main layout
         main_layout = QVBoxLayout(self)
         main_layout.addWidget(self.canvas, stretch=1)
         main_layout.addLayout(slider_layout)
@@ -419,32 +396,30 @@ class PolygonAnnotatorWindow(QWidget):
         self.raise_()
         self.activateWindow()
 
-        # Load first image
         self.load_current_image()
 
     def finish_annotation(self):
-        """Called when Finish button is clicked"""
         self.save_current_polygon()
-        self.loop.quit()  # stop local loop
+        self.loop.quit()
         self.close_flag = True
         self.close()  # triggers closeEvent
 
     def update_line_thickness(self, value):
+        """Propagate the slider value to the canvas and trigger a repaint."""
         self.canvas.line_thickness = value
         self.canvas.update()
 
     def closeEvent(self, event):
-        """Called when the window is closed"""
+        """Exit the program if the user closed with X; accept normally after Finish."""
         if getattr(self, "close_flag", False):
-            # Finish button triggered — just close window, do not exit program
             event.accept()
         else:
-            # User clicked X — fully exit program
             print("Window closed — exiting program.")
             QApplication.quit()
             sys.exit(0)
 
     def load_current_image(self):
+        """Load the image at the current index into the canvas, restoring any saved polygons."""
         path = self.image_paths[self.index]
         img = cv2.imread(path)
         if img is None:
@@ -456,22 +431,27 @@ class PolygonAnnotatorWindow(QWidget):
         self.update_button_states()
 
     def update_status_label(self):
+        """Update the "Image N / M" counter in the status bar."""
         self.status_label.setText(f"Image {self.index + 1} / {len(self.image_paths)}")
 
     def update_button_states(self):
+        """Enable or disable Previous / Next based on the current index."""
         self.prev_btn.setEnabled(self.index > 0)
         self.next_btn.setEnabled(self.index < len(self.image_paths) - 1)
 
     def save_current_polygon(self):
+        """Persist the canvas polygons for the current image into self.results."""
         path = self.image_paths[self.index]
         self.results[path] = self.canvas.get_polygon_image_coords()
 
     def change_image(self, delta):
+        """Save the current polygons then navigate to the adjacent image by delta."""
         self.save_current_polygon()
         self.index = max(0, min(len(self.image_paths) - 1, self.index + delta))
         self.load_current_image()
 
     def keyPressEvent(self, event: QKeyEvent):
+        """Ctrl+Z/Y for undo/redo, arrow keys to navigate images, Escape to close."""
         k = event.key()
         ctrl = event.modifiers() & Qt.ControlModifier
 
@@ -504,10 +484,8 @@ def annotate_images(image_paths):
     win = PolygonAnnotatorWindow(image_paths, loop)
     win.show()
 
-    # block here until user clicks Finish or closes the window
     loop.exec_()
 
-    # return polygons and final line thickness
     return win.results, win.canvas.line_thickness
 
 

@@ -7,6 +7,7 @@ import os
 
 
 def create_yaml(dataset_path):
+    """Write a YOLO dataset.yaml under dataset_path and return its file path."""
     yaml_file = os.path.join(dataset_path, "dataset.yaml")
     yaml_dict = {
         "path": os.path.abspath(dataset_path),

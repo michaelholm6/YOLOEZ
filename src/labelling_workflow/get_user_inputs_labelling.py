@@ -9,6 +9,8 @@ from utils import make_label_with_tooltip
 
 
 class InputDialogLabelling(QtWidgets.QDialog):
+    """Dialog that collects all parameters needed before the labeling workflow begins."""
+
     def __init__(self):
         super().__init__()
         font = QtGui.QFont()
@@ -20,7 +22,6 @@ class InputDialogLabelling(QtWidgets.QDialog):
         self._resize_timer.setSingleShot(True)
         self._resize_timer.timeout.connect(self.show_current_image)
 
-        # === Controls ===
         self.image_path_edit = QtWidgets.QLineEdit()
         self.browse_image_button = QtWidgets.QPushButton("Browse Folder of Images...")
 
@@ -29,7 +30,6 @@ class InputDialogLabelling(QtWidgets.QDialog):
         self.output_path_edit = QtWidgets.QLineEdit()
         self.browse_output_button = QtWidgets.QPushButton("Browse Output Folder...")
 
-        # === Bootstrapping Model Selection ===
         self.model_path_edit = QtWidgets.QLineEdit()
         self.browse_model_button = QtWidgets.QPushButton(
             "Select Bootstrapping Model..."
@@ -53,7 +53,6 @@ The idea here is that you can incrementally improve your model by labelling some
         self.confidence_spinbox.setDecimals(2)
         self.confidence_spinbox.setValue(0.5)
 
-        # Link slider <-> spinbox
         self.confidence_slider.valueChanged.connect(
             lambda val: self.confidence_spinbox.setValue(val / 100)
         )
@@ -61,7 +60,6 @@ The idea here is that you can incrementally improve your model by labelling some
             lambda val: self.confidence_slider.setValue(int(val * 100))
         )
 
-        # Clamp spinbox input to 0–1
         self.confidence_spinbox.editingFinished.connect(
             lambda: self.confidence_spinbox.setValue(
                 min(max(self.confidence_spinbox.value(), 0.0), 1.0)
@@ -73,7 +71,6 @@ The idea here is that you can incrementally improve your model by labelling some
         outer_layout.setContentsMargins(0, 0, 0, 0)
         outer_layout.setSpacing(4)
 
-        # --- Top row: label + icon ---
         top_row = QtWidgets.QHBoxLayout()
         top_row.setSpacing(4)
 
@@ -92,22 +89,17 @@ The idea here is that you can incrementally improve your model by labelling some
         top_row.addWidget(icon_label)
         top_row.addStretch()
 
-        # --- Bottom row: slider + spinbox ---
         bottom_row = QtWidgets.QHBoxLayout()
         bottom_row.setSpacing(4)
 
         bottom_row.addWidget(self.confidence_slider)
         bottom_row.addWidget(self.confidence_spinbox)
 
-        # --- Assemble ---
         outer_layout.addLayout(top_row)
         outer_layout.addLayout(bottom_row)
 
-        # Initially hide; show only if bootstrapping model is selected
         conf_container.setVisible(False)
         self.confidence_container = conf_container
-
-        # === Mode Selection (Bounding Box vs Segmentation) ===
 
         mode_label = make_label_with_tooltip(
             "Annotation Mode:",
@@ -146,7 +138,6 @@ The idea here is that you can incrementally improve your model by labelling some
             QPushButton:disabled { background-color: #cccccc; color: #666666; }
         """)
 
-        # --- Placeholder container ---
         self.remove_image_container = QtWidgets.QWidget()
         container_layout = QtWidgets.QHBoxLayout(self.remove_image_container)
         container_layout.setContentsMargins(0, 0, 0, 0)
@@ -159,7 +150,6 @@ The idea here is that you can incrementally improve your model by labelling some
 
         self.remove_image_button.setVisible(False)
 
-        # === Run Button ===
         self.run_button = QtWidgets.QPushButton("Run")
         self.run_button.setStyleSheet("""
             QPushButton {
@@ -180,11 +170,10 @@ The idea here is that you can incrementally improve your model by labelling some
         self.status_label.setPalette(palette)
         self.status_label.setWordWrap(True)
         font = self.status_label.font()
-        font.setPointSize(16)  # choose whatever size you want
+        font.setPointSize(16)
         self.status_label.setFont(font)
         self.status_label.show()
 
-        # === Image Preview and Navigation ===
         self.image_preview = QtWidgets.QLabel()
         self.image_preview.setStyleSheet(
             "border: 1px solid black; background-color: #eee;"
@@ -200,11 +189,9 @@ The idea here is that you can incrementally improve your model by labelling some
         self.image_index_label.setAlignment(QtCore.Qt.AlignCenter)
         self.image_index_label.setVisible(False)
 
-        # Keep track of folder images
         self.image_files = []
         self.current_image_index = -1
 
-        # Navigation buttons
         self.prev_button = QtWidgets.QPushButton("◀ Previous")
         self.next_button = QtWidgets.QPushButton("Next ▶")
         self.prev_button.setEnabled(False)
@@ -222,8 +209,6 @@ The idea here is that you can incrementally improve your model by labelling some
         preview_widget = QtWidgets.QWidget()
         preview_widget.setLayout(preview_layout)
 
-        # === Helper to create label + tooltip ===
-
         image_path_label = make_label_with_tooltip(
             "Image Folder:",
             "Select a folder containing input images to label for future training.",
@@ -233,7 +218,6 @@ The idea here is that you can incrementally improve your model by labelling some
             "Select a folder where any generated outputs will be saved.",
         )
 
-        # === YOLO Save Checkbox ===
         self.save_yolo_checkbox = QtWidgets.QCheckBox()
         yolo_container = QtWidgets.QWidget()
         yolo_layout = QtWidgets.QHBoxLayout(yolo_container)
@@ -251,7 +235,6 @@ The idea here is that you can incrementally improve your model by labelling some
         yolo_layout.addWidget(yolo_icon)
         yolo_layout.addStretch()
 
-        # Save unlabeled images checkbox
         self.save_unlabeled_checkbox = QtWidgets.QCheckBox()
         unlabeled_container = QtWidgets.QWidget()
         unlabeled_layout = QtWidgets.QHBoxLayout(unlabeled_container)
@@ -271,7 +254,6 @@ The idea here is that you can incrementally improve your model by labelling some
         unlabeled_layout.addWidget(unlabeled_icon)
         unlabeled_layout.addStretch()
 
-        # === Controls Layout ===
         controls_layout = QtWidgets.QVBoxLayout()
         controls_layout.addWidget(image_path_label)
         controls_layout.addWidget(self.image_path_edit)
@@ -303,13 +285,11 @@ The idea here is that you can incrementally improve your model by labelling some
         controls_widget.setLayout(controls_layout)
         controls_widget.setMinimumWidth(600)
 
-        # === Main Layout ===
         main_layout = QtWidgets.QHBoxLayout()
         main_layout.addWidget(controls_widget)
         main_layout.addWidget(preview_widget, stretch=1)
         self.setLayout(main_layout)
 
-        # === Connections ===
         self.browse_image_button.clicked.connect(self.browse_image)
         self.browse_model_button.clicked.connect(self.browse_model)
         self.browse_output_button.clicked.connect(self.browse_output)
@@ -326,19 +306,17 @@ The idea here is that you can incrementally improve your model by labelling some
         self.run_button.setEnabled(False)
         self.update_run_button_state()
 
-        # Show dialog
-
         self.showMaximized()
         self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowStaysOnTopHint)
         self.show()
 
     def remove_current_image(self):
+        """Remove the currently previewed image from the loaded list and refresh the UI."""
         if not self.image_files or self.current_image_index < 0:
             return
 
-        removed_path = self.image_files.pop(self.current_image_index)
+        self.image_files.pop(self.current_image_index)
 
-        # Adjust index
         if self.current_image_index >= len(self.image_files):
             self.current_image_index = len(self.image_files) - 1
 
@@ -357,6 +335,7 @@ The idea here is that you can incrementally improve your model by labelling some
         self.update_navigation_buttons()
 
     def browse_model(self):
+        """Open a file dialog to select an optional bootstrapping model and show/hide confidence controls."""
         file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
             self,
             "Select Bootstrapping Model",
@@ -372,10 +351,12 @@ The idea here is that you can incrementally improve your model by labelling some
             self.confidence_container.setVisible(False)
 
     def on_run_clicked(self):
+        """Mark the dialog as accepted and close it."""
         self.close_flag = True
         self.accept()
 
     def warn_if_high_res_images(self, image_files, threshold_mp=8_000_000):
+        """Show a warning if any image exceeds threshold_mp pixels; only warns once for the whole batch."""
         for path in image_files:
             reader = QtGui.QImageReader(path)
             size = reader.size()
@@ -394,6 +375,7 @@ The idea here is that you can incrementally improve your model by labelling some
                 return
 
     def browse_image(self):
+        """Open a folder dialog, load valid image files, and display the first one in the preview."""
         folder = QtWidgets.QFileDialog.getExistingDirectory(
             self, "Select Folder of Images"
         )
@@ -423,18 +405,16 @@ The idea here is that you can incrementally improve your model by labelling some
         self.update_navigation_buttons()
 
     def closeEvent(self, event):
-        """Called when the window is closed"""
+        """Exit the program if the user closed with X; accept normally after Run."""
         if getattr(self, "close_flag", False):
-            # Finish button triggered — just close window, do not exit program
             event.accept()
         else:
-            # User clicked X — fully exit program
             print("Window closed — exiting program.")
             QtWidgets.QApplication.quit()
             sys.exit(0)
 
-    # === Image Navigation ===
     def show_current_image(self):
+        """Display the current image in the preview label, re-scaling only when the widget size changes."""
         if not self.image_files:
             self.image_preview.setText("No images loaded.")
             return
@@ -468,6 +448,7 @@ The idea here is that you can incrementally improve your model by labelling some
         )
 
     def show_next_image(self):
+        """Advance to the next image in the preview list."""
         if not self.image_files:
             return
         if self.current_image_index < len(self.image_files) - 1:
@@ -476,6 +457,7 @@ The idea here is that you can incrementally improve your model by labelling some
         self.update_navigation_buttons()
 
     def show_previous_image(self):
+        """Go back to the previous image in the preview list."""
         if not self.image_files:
             return
         if self.current_image_index > 0:
@@ -484,6 +466,7 @@ The idea here is that you can incrementally improve your model by labelling some
         self.update_navigation_buttons()
 
     def update_navigation_buttons(self):
+        """Sync nav button states, the remove button visibility, and the index label."""
         has_images = bool(self.image_files)
 
         self.prev_button.setEnabled(has_images and self.current_image_index > 0)
@@ -499,8 +482,8 @@ The idea here is that you can incrementally improve your model by labelling some
         else:
             self.image_index_label.setText("Image 0/0")
 
-    # === Output Folder ===
     def browse_output(self):
+        """Open a folder dialog and set the output path field."""
         folder = QtWidgets.QFileDialog.getExistingDirectory(
             self, "Select Output Folder"
         )
@@ -508,6 +491,7 @@ The idea here is that you can incrementally improve your model by labelling some
             self.output_path_edit.setText(folder)
 
     def get_yolo_model_type(self, model_path):
+        """Load the model at model_path and return 'segmentation', 'bounding_box', or None on failure."""
         try:
             from ultralytics import YOLO
 
@@ -525,8 +509,8 @@ The idea here is that you can incrementally improve your model by labelling some
         except Exception as e:
             return None
 
-    # === Button Enable Logic ===
     def update_run_button_state(self):
+        """Validate all inputs and enable the Run button only when everything is valid."""
         image_path = self.image_path_edit.text().strip()
         output_path = self.output_path_edit.text().strip()
         mode_selected = (
@@ -540,7 +524,7 @@ The idea here is that you can incrementally improve your model by labelling some
         if image_path:
             if not self.image_files:
                 errors.append("No valid image files found in selected image folder.")
-        elif not os.path.isdir(image_path):
+        elif image_path and not os.path.isdir(image_path):
             errors.append("Selected path must be a folder.")
 
         if not output_path:
@@ -580,18 +564,20 @@ The idea here is that you can incrementally improve your model by labelling some
             self.run_button.setEnabled(True)
             self.status_label.hide()
 
-    # === Misc ===
     def keyPressEvent(self, event: QtGui.QKeyEvent):
+        """Escape immediately exits the program."""
         if event.key() == QtCore.Qt.Key_Escape:
             sys.exit(0)
         else:
             super().keyPressEvent(event)
 
     def resizeEvent(self, event):
+        """Re-scale the preview image whenever the dialog is resized."""
         super().resizeEvent(event)
         self.show_current_image()
 
     def get_values(self):
+        """Return a dict of all user-selected parameters for the labeling workflow."""
         mode = "bounding_box" if self.bbox_radio.isChecked() else "segmentation"
         return {
             "image_paths": self.image_files,
@@ -610,6 +596,7 @@ The idea here is that you can incrementally improve your model by labelling some
 
 
 def get_user_labelling_inputs():
+    """Show the labeling input dialog and return the values dict, or None if the user cancelled."""
     app = QtWidgets.QApplication.instance()
     owns_app = False
     if not app:

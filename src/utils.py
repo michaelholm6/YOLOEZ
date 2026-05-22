@@ -9,6 +9,7 @@ import sys
 
 
 def show_instructions(message: str, title: str = "Instructions"):
+    """Show a scrollable instructional dialog.  Exits the program if the user closes with X."""
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
 
     dialog = QtWidgets.QDialog()
@@ -56,6 +57,7 @@ def show_instructions(message: str, title: str = "Instructions"):
 
 
 def make_label_with_tooltip(text, tooltip):
+    """Return a QWidget containing a text label and a question-mark icon with the given tooltip."""
     container = QtWidgets.QWidget()
     layout = QtWidgets.QHBoxLayout(container)
     layout.setContentsMargins(0, 0, 0, 0)
@@ -74,6 +76,7 @@ def make_label_with_tooltip(text, tooltip):
 
 
 def show_error_window(message: str, title: str = "Error"):
+    """Show a modal error message box."""
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
 
     msg_box = QtWidgets.QMessageBox()

@@ -7,10 +7,17 @@ import cv2
 import albumentations as A
 
 
-# ---------------------------
-# Transform builder
-# ---------------------------
 def build_transform(aug_dict, task):
+    """Build an Albumentations Compose pipeline from a dict of enabled augmentation flags.
+
+    Args:
+        aug_dict: Keys are augmentation names (flip, rotate, scale, color, blur, noise);
+                  values are booleans indicating whether each is enabled.
+        task: "detection" uses BboxParams; anything else uses KeypointParams for segmentation.
+
+    Returns:
+        An Albumentations Compose transform, or NoOp if no augmentations are selected.
+    """
     transforms = []
 
     if aug_dict.get("flip"):
@@ -36,9 +43,8 @@ def build_transform(aug_dict, task):
     if aug_dict.get("noise"):
         transforms.append(A.GaussNoise(p=0.3))
 
-    # If no transforms are enabled, just return identity
     if not transforms:
-        return A.NoOp()  # NoOp just returns the input image unchanged
+        return A.NoOp()
 
     if task == "detection":
         return A.Compose(
@@ -57,10 +63,8 @@ def build_transform(aug_dict, task):
         )
 
 
-# ---------------------------
-# Label format detection
-# ---------------------------
 def detect_label_format(lbl_path):
+    """Return 'segmentation' if the label file has polygon coords, 'detection' if it has 4 bbox values, or None for empty files."""
     with open(lbl_path, "r") as f:
         for line in f:
             parts = line.strip().split()
@@ -71,12 +75,18 @@ def detect_label_format(lbl_path):
     return None
 
 
-# ---------------------------
-# Dataset augmentation
-# ---------------------------
 def augment_yolo_dataset(
     dataset_dir, aug_dict, output_dir, num_augments=1, task="segmentation"
 ):
+    """Copy dataset_dir to output_dir and append num_augments augmented variants of each image.
+
+    Args:
+        dataset_dir: Root of a YOLO dataset with images/{train,val} and labels/{train,val} subdirs.
+        aug_dict: Augmentation flags; passed to build_transform.
+        output_dir: Destination root (same structure as dataset_dir).
+        num_augments: Number of augmented copies to produce per original image.
+        task: "detection" or "segmentation"; controls which label format is transformed.
+    """
     exts = {".jpg", ".jpeg", ".png", ".bmp"}
 
     for split in ["train", "val"]:
@@ -117,7 +127,6 @@ def augment_yolo_dataset(
                         }
                     )
 
-            # Save original
             cv2.imwrite(os.path.join(img_out, fname), img)
             with open(os.path.join(lbl_out, name + ".txt"), "w") as f:
                 for l in labels:
@@ -179,11 +188,15 @@ def augment_yolo_dataset(
 
                         coords = []
                         for x, y in pts:
-                            coords.extend([x / aug_w, y / aug_h])
+                            coords.extend(
+                                [
+                                    max(0.0, min(1.0, x / aug_w)),
+                                    max(0.0, min(1.0, y / aug_h)),
+                                ]
+                            )
 
                         aug_labels.append({"label": l["label"], "coords": coords})
 
-                # Save augmented
                 aug_img_name = f"{name}_aug{k}{ext}"
                 cv2.imwrite(os.path.join(img_out, aug_img_name), aug_img)
 

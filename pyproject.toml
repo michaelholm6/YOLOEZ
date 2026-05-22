@@ -1,7 +1,7 @@
 [project]
 name = "YOLOEZ"
 version = "0.3.0"
-description = "GUI tool for training a YOLO model"
+description = "No-code GUI application for labeling image datasets, training YOLO11 models, and running inference"
 readme = "README.md"
 requires-python = ">=3.12"
 

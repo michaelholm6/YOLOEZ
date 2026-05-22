@@ -13,9 +13,13 @@ from labelling_workflow.bootstrap_runner import run_yolo_on_crops
 from utils import show_instructions
 
 
-def run_labeling_workflow(
-    suppress_instructions=False, test_inputs=None  # new parameter
-):
+def run_labeling_workflow(suppress_instructions=False, test_inputs=None):
+    """Execute the full labeling pipeline: collect inputs, mark AOIs, optionally bootstrap, edit, and save.
+
+    Args:
+        suppress_instructions: Skip all instructional popups when True.
+        test_inputs: If provided, bypasses the user input dialog and uses this dict directly.
+    """
     if not suppress_instructions:
         instructions = (
             "Welcome to the Labelling Workflow!\n\n"
@@ -53,8 +57,8 @@ def run_labeling_workflow(
 
     cropped_images = crop_and_mask_images(images, areas_of_interest)
 
-    if args["bootstrapping_model"] != None:
-
+    detection_results = None
+    if args["bootstrapping_model"] is not None:
         detection_results = run_yolo_on_crops(
             cropped_images,
             args["bootstrapping_model"],
@@ -86,9 +90,7 @@ def run_labeling_workflow(
         contours = run_contour_editor(
             cropped_images,
             line_thickness,
-            detected_contours=(
-                detection_results if args["bootstrapping_model"] != None else None
-            ),
+            detected_contours=detection_results,
         )
 
     else:
@@ -111,9 +113,7 @@ def run_labeling_workflow(
         contours = run_box_editor(
             cropped_images,
             line_thickness,
-            initial_boxes=(
-                detection_results if args["bootstrapping_model"] != None else None
-            ),
+            initial_boxes=detection_results,
         )
 
     save_yolo = args["YOLO_true"]
@@ -139,7 +139,7 @@ def run_labeling_workflow(
             line_thickness,
             args["output_folder"],
             save_yolo,
-            areas_of_interest,
+            args["save_unlabeled_images"],
         )
 
     if not suppress_instructions:

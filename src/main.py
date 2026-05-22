@@ -21,13 +21,34 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import sys
 import traceback
 
+from PyQt5.QtCore import qInstallMessageHandler
 from PyQt5.QtWidgets import QApplication
 
 from YOLO_EZ import main as YOLO_EZ_main
 from utils import show_error_window
 
+_SUPPRESSED_WARNINGS = (
+    "Timers can only be used with threads started with QThread",
+    "no QGuiApplication instance",
+)
+
+
+def _qt_message_handler(_msg_type, _context, message):
+    """Suppress known-noisy Qt runtime warnings; forward everything else to stderr."""
+    if any(w in message for w in _SUPPRESSED_WARNINGS):
+        return
+    print(message, file=sys.stderr)
+
+
+qInstallMessageHandler(_qt_message_handler)
+
 
 def main(test_mode: bool = False) -> int:
+    """Application entry point.  Returns the QApplication exit code.
+
+    Args:
+        test_mode: When True, return immediately without starting the GUI (used by the test suite).
+    """
     if test_mode:
         return 0
 
