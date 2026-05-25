@@ -9,4 +9,5 @@ Selected Apples Pictures/
 *.spec
 ImageJ_Analysis/
 CLAUDE.md
-
+.coverage
+.claude
