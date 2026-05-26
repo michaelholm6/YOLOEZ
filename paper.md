@@ -52,11 +52,11 @@ YOLOEZ is organized around three independent workflows, each implemented as a se
 
 **Labeling workflow:** Users select a folder of images and optionally provide a pre-trained YOLO model for bootstrap annotation, where the model generates an initial set of annotations that the user then corrects rather than creating all labels from scratch. An area-of-interest tool using polygon masking allows irrelevant image regions to be excluded before annotation begins, reducing the labeling burden for images with large uniform backgrounds. Users then refine bounding boxes or polygon contours in interactive editors built on `QGraphicsView`, with undo/redo, lasso selection, and zoom. Labels are saved in YOLO format alongside the source images.
 
-**Training workflow:** Users select a labeled dataset, choose a model size (nano through extra-large), configure data augmentation via checkboxes, and set a train/validation split (\autoref{fig:training}). The dataset task type (detection or segmentation) is automatically inferred from label file structure, removing a common source of configuration error. Training is executed via the Ultralytics API [@ultralytics2023] in a background thread, with live loss and metric plots rendered using PyQtGraph. Augmentation uses the Albumentations library [@buslaev2020], with coordinate transforms applied consistently to both images and their labels.
+**Training workflow:** Users select a labeled dataset, choose a model size (nano through extra-large), configure data augmentation via checkboxes, and set a train/validation split. The dataset task type (detection or segmentation) is automatically inferred from label file structure, removing a common source of configuration error. Training is executed via the Ultralytics API [@ultralytics2023] in a background thread, with live loss and metric plots rendered using PyQtGraph (\autoref{fig:training}). Augmentation uses the Albumentations library [@buslaev2020], with coordinate transforms applied consistently to both images and their labels.
 
 **Inference workflow:** Users load a trained `.pt` model and a folder of images, optionally crop to areas of interest, run inference, and browse results in a built-in viewer before saving annotated images and structured JSON output.
 
-![The training configuration and live metrics panel.\label{fig:training}](images/training_panel.png)
+![The training live metrics panel.\label{fig:training}](images/training_panel.png)
 
 ## Design decisions
 

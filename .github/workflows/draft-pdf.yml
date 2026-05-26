@@ -1,5 +1,11 @@
 name: Draft PDF
-on: [push]
+on:
+  push:
+    paths:
+      - paper.md
+      - paper.bib
+      - images/gui_main.png
+      - images/training_panel.png
 
 jobs:
   paper:
