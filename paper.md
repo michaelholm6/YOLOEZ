@@ -8,7 +8,6 @@ tags:
   - graphical user interface
   - YOLO
   - machine learning
-  - structural health monitoring
 authors:
   - name: Michael Holm
     orcid: 0009-0002-8353-5694
@@ -31,7 +30,7 @@ YOLOEZ is an open-source, cross-platform desktop application that provides a com
 
 State-of-the-art object detection and segmentation models have become accessible to the broader research community through frameworks such as Ultralytics YOLO [@ultralytics2023], yet the practical barrier to using these tools remains high for domain experts without programming backgrounds. A concrete example motivates this work: materials scientists performing structural health monitoring routinely detect cracks in images using classical morphological image processing methods [TSAI2019209], not because those methods are superior, but because training a deep learning model requires Python proficiency, familiarity with dataset formats, and knowledge of training configuration that most domain practitioners do not have. YOLOEZ was developed to address this gap directly: a researcher with image data and domain knowledge should be able to train and deploy a state-of-the-art detection or segmentation model without writing a single line of code.
 
-More broadly, biologists, medical researchers, engineers, and other domain experts with labeled or unlabeled image data face the same barrier. Existing tools address only parts of this problem. Annotation tools such as CVAT [@cvat2022] and Label Studio [@labelstudio2020] cover the labeling step but provide no path to model training or inference. Cloud-based platforms such as Roboflow and Ultralytics HUB provide end-to-end graphical pipelines but require data to be uploaded to external servers, which is unacceptable for sensitive, proprietary, or patient-related research data. The Ultralytics Python API and CLI require programming proficiency and explicit manual dataset management. None of these options provides a fully local, no-code, end-to-end workflow on the researcher's own hardware.
+More broadly, biologists, medical researchers, engineers, and other domain experts with labeled or unlabeled image data face the same barrier. Existing tools address only parts of this problem. Annotation tools such as CVAT [@cvat2022] and Label Studio [@labelstudio2020] cover the labeling step but provide no path to model training or inference. Cloud-based platforms such as Roboflow [@dwyer2026roboflow] and Ultralytics HUB [@jocher2023ultralytics] provide end-to-end graphical pipelines but require data to be uploaded to external servers, which is unacceptable for sensitive, proprietary, or patient-related research data. The Ultralytics Python API and CLI require programming proficiency and explicit manual dataset management. None of these options provides a fully local, no-code, end-to-end workflow on the researcher's own hardware.
 
 # State of the Field
 
@@ -39,11 +38,11 @@ The tools most relevant to YOLOEZ span three categories:
 
 **Annotation-only tools:** LabelMe [@wada2024labelme] and CVAT [@cvat2022] support YOLO-format export but offer no training or inference. Label Studio [@labelstudio2020] provides broader ML backend integration but requires a running server and configuration expertise.
 
-**Cloud platforms:** Roboflow and Ultralytics HUB offer end-to-end pipelines with graphical interfaces but are cloud-hosted, require account registration, and transmit data to external services. They are unsuitable for air-gapped environments or research involving sensitive data.
+**Cloud platforms:** Roboflow and Ultralytics HUB offer end-to-end pipelines with graphical interfaces but are cloud-hosted, require account registration, and transmit data to external services, making them unsuitable for sensitive or proprietary research data; Roboflow's model training is additionally restricted to a paid subscription tier. Browser-based tools such as Google Teachable Machine [@teachablemachine] and Microsoft Custom Vision [@customvision] provide no-code interfaces but support only image classification, lacking the object detection and instance segmentation capabilities required for precise defect localization.
 
 **CLI and scripting tools:** The Ultralytics Python package and CLI provide complete programmatic control over YOLO11 but require Python proficiency, manual YAML configuration, and explicit dataset directory preparation.
 
-YOLOEZ covers the entire pipeline—labeling, training, and inference—locally, without configuration files, command-line interaction, or account registration. For domain researchers whose data cannot leave local infrastructure and who lack software engineering support, no existing tool provides this combination.
+YOLOEZ covers the entire pipeline (labeling, training, and inference) locally, without configuration files, command-line interaction, or account registration. For domain researchers whose data cannot leave local infrastructure and who lack software engineering support, no existing tool provides this combination.
 
 # Software Design
 
@@ -63,7 +62,7 @@ YOLOEZ is organized around three independent workflows, each implemented as a se
 
 The design of YOLOEZ reflects deliberate trade-offs in favor of accessibility over flexibility, each motivated by the target audience of non-programmers.
 
-**Pre-trained architectures only.** YOLOEZ restricts users to the standard Ultralytics YOLO11 model family (nano through extra-large) and does not expose custom architecture definition. Allowing users to modify network architecture would require understanding of layer types, parameter counts, and GPU memory constraints — concepts outside the scope of the intended user. The five size variants cover the full practical range from edge-deployable to high-accuracy configurations.
+**Pre-trained architectures only.** YOLOEZ restricts users to the standard Ultralytics YOLO11 model family (nano through extra-large) and does not expose custom architecture definition. Allowing users to modify network architecture would require understanding of layer types, parameter counts, and GPU memory constraints, which are outside the scope of the intended user. The five size variants cover the full practical range from edge-deployable to high-accuracy configurations.
 
 **No remote training.** YOLOEZ runs training only on the local machine and does not support submitting jobs to a remote GPU server. Configuring SSH credentials, remote paths, and job schedulers inside a GUI would significantly increase interface complexity for a capability that most target users do not need and that the tool's data-privacy motivation already argues against.
 
@@ -75,7 +74,7 @@ The design of YOLOEZ reflects deliberate trade-offs in favor of accessibility ov
 
 # Research Impact Statement
 
-YOLOEZ was developed at Purdue University and has been applied directly in structural health monitoring research. A study accepted for publication at the ASME Conference on Smart Materials, Adaptive Structures and Intelligent Systems (SMASIS) [@holm2026smasis] used YOLOEZ to train a YOLO11 crack detection model and compared its performance against a traditional morphological image processing approach on the same dataset. The YOLO11 model trained with YOLOEZ outperformed the morphological baseline, demonstrating that domain researchers can achieve competitive deep learning results using the tool without programming expertise. This comparison is precisely the gap YOLOEZ targets: materials scientists default to morphological methods for crack detection in structural health monitoring not because those methods are better, but because they lack access to a practical path to train deep learning alternatives. YOLOEZ provides that path.
+YOLOEZ was developed at Purdue University and has been applied directly in structural health monitoring research. A study accepted for publication at the ASME Conference on Smart Materials, Adaptive Structures and Intelligent Systems (SMASIS) [@holm2026smasis] used YOLOEZ to train a YOLO11 segmentation model for detecting micro-scale cracks in scanning electron microscope images of additively manufactured tungsten. Evaluated against a classical morphological baseline tuned across 780 parameter combinations, the YOLOEZ-trained model outperformed it in recall (0.61 vs. 0.44), F1 score (0.56 vs. 0.54), and IoU (0.42 vs. 0.40), with results validated across ten independent training runs and tested on an out-of-distribution sample from a separate tungsten specimen. This performance was achieved with only 20 labeled training images, a dataset size typical of SHM research, demonstrating that domain researchers can achieve competitive deep learning results without programming expertise. This is precisely the gap YOLOEZ targets: materials scientists default to morphological methods not because they are superior, but because no accessible path to training a deep learning model previously existed.
 
 # Open-Source Software Practices
 
