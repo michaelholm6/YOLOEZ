@@ -118,8 +118,8 @@ Contributors are encouraged to use Python 3.12 when possible.
 ### Installation
 
 ```bash
-pip install -e .[dev]
-````
+pip install -e ".[dev]"
+```
 
 This installs:
 

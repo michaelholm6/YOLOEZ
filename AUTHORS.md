@@ -7,12 +7,19 @@ The project was developed at **Purdue University** and is published as open-sour
 
 ---
 
-## Lead Author
+## Authors
 
-- **Michael Holm**  
+These are the authors of the YOLOEZ software and its accompanying paper, listed in author order.
+
+- **Michael Holm** (first author)  
   Purdue University  
-  ORCID: 0009-0002-8353-5694 
+  ORCID: [0009-0002-8353-5694](https://orcid.org/0009-0002-8353-5694)  
   Project creator and primary maintainer
+
+- **Guang Lin**  
+  Purdue University  
+  ORCID: [0000-0002-0976-1987](https://orcid.org/0000-0002-0976-1987)  
+  Project supervision and research direction
 
 ---
 
@@ -23,13 +30,14 @@ The following individuals have contributed code, documentation, testing, design,
 Contributors are listed in alphabetical order by last name.
 
 <!--
-After making a substantive contribution, please add yourself below.
-Include ORCID and affiliation if available.
+After making a substantive contribution, please add yourself below, following this format:
+
+- **Your Name**
+  Affiliation (optional)
+  ORCID: 0000-0000-0000-0000
 -->
 
-- **Your Name**  
-  Affiliation (optional)  
-  ORCID: _0000-0000-0000-0000_
+_No outside contributors yet. See [How to Be Added](#how-to-be-added) below._
 
 ---
 

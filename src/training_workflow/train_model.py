@@ -165,7 +165,7 @@ def run_training(
             layout.addWidget(self.loss_plot)
 
             self.box_loss_curve = self.loss_plot.plot(
-                pen=pg.mkPen(color="y", width=2), name="Box Loss"
+                pen=pg.mkPen(color="k", width=2), name="Box Loss"
             )
             self.cls_loss_curve = self.loss_plot.plot(
                 pen=pg.mkPen(color="c", width=2), name="Cls Loss"

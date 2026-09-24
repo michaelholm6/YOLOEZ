@@ -1,0 +1,34 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "YOLOEZ: A no-code GUI application for end-to-end YOLO model development"
+abstract: >-
+  YOLOEZ is an open-source, cross-platform desktop application providing a
+  complete no-code pipeline for developing and deploying YOLO11 computer vision
+  models. It guides users through dataset labeling, model training, and
+  inference through a graphical interface, supporting both bounding box object
+  detection and polygon-based instance segmentation. All processing runs
+  locally, with no account registration or data upload required.
+type: software
+authors:
+  - family-names: Holm
+    given-names: Michael
+    orcid: "https://orcid.org/0009-0002-8353-5694"
+    affiliation: "Purdue University"
+  - family-names: Lin
+    given-names: Guang
+    orcid: "https://orcid.org/0000-0002-0976-1987"
+    affiliation: "Purdue University"
+repository-code: "https://github.com/michaelholm6/YOLOEZ"
+url: "https://github.com/michaelholm6/YOLOEZ"
+license: AGPL-3.0-or-later
+# Update both fields below whenever a new version is tagged.
+version: 0.6.0-alpha
+date-released: "2026-05-22"
+keywords:
+  - computer vision
+  - object detection
+  - image segmentation
+  - YOLO
+  - graphical user interface
+  - machine learning
+  - no-code
