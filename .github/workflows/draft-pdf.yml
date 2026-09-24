@@ -28,7 +28,11 @@ jobs:
           # PDF. Note, this should be the same directory as the input
           # paper.md
           path: paper.pdf
+      # main is protected by a ruleset requiring changes to arrive via pull
+      # request, so the bot cannot push there. main receives the PDF through
+      # merges from development instead.
       - name: Commit PDF to repository
+        if: github.ref != 'refs/heads/main'
         uses: EndBug/add-and-commit@v9
         with:
          message: '(auto) Paper PDF Draft'
