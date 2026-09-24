@@ -21,13 +21,16 @@ The application guides users through every step with built-in tooltips, instruct
 3. [System Requirements](#system-requirements)
 4. [Supported Tasks](#supported-tasks)
 5. [Getting Started](#getting-started)
-6. [Application Workflow](#application-workflow)
-7. [User Guidance and Help System](#user-guidance-and-help-system)
-8. [Linux Remote Desktop Setup](#linux-remote-desktop-setup)
-9. [Screenshots and Visual Examples](#screenshots-and-visual-examples)
-10. [Repository Structure](#repository-structure)
-11. [Intended Audience](#intended-audience)
-12. [License](#license)
+6. [Running from Source](#running-from-source)
+7. [Quick Start Example](#quick-start-example)
+8. [Testing](#testing)
+9. [Application Workflow](#application-workflow)
+10. [User Guidance and Help System](#user-guidance-and-help-system)
+11. [Linux Remote Desktop Setup](#linux-remote-desktop-setup)
+12. [Screenshots and Visual Examples](#screenshots-and-visual-examples)
+13. [Repository Structure](#repository-structure)
+14. [Intended Audience](#intended-audience)
+15. [License](#license)
 
 ---
 
@@ -95,6 +98,162 @@ No installation or environment setup is required.
 5. NOTE: You must keep the executable file in the same directory as the _internal folder.
 
 The application will start immediately and guide you through the available workflows.
+
+---
+
+## Running from Source
+
+Most users should use the prebuilt executables described above. Running from source is intended for anyone who wants to use the latest development code, modify YOLOEZ, or review the project.
+
+**Requirements:** Python 3.12 or newer, `git`, and a graphical display.
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/michaelholm6/YOLOEZ.git
+cd YOLOEZ
+
+# 2. (Recommended) create and activate a virtual environment
+python -m venv .venv
+source .venv/bin/activate      # Linux / macOS
+.venv\Scripts\activate      # Windows
+
+# 3. Install YOLOEZ and its dependencies
+pip install -e ".[dev]"
+
+# 4. Launch the application
+python src/main.py
+```
+
+This installs the runtime dependencies along with PyQt5 and the development tools. PyQt5 is listed under the `[dev]` extra rather than as a core dependency because it cannot be installed by UV; installing with `pip`, as shown above, works correctly.
+
+The first training or inference run will download the relevant pretrained YOLO11 weights automatically, so an internet connection is needed the first time.
+
+YOLOEZ is a graphical application and requires a display. To run it on a headless Linux machine, see [Linux Remote Desktop Setup](#linux-remote-desktop-setup).
+
+---
+
+## Quick Start Example
+
+This example walks through one complete label → train → infer cycle using the five sample images bundled in [`assets/test_images/`](assets/test_images), each showing a single apple photographed against a dark background. It is deliberately small: the goal is to confirm YOLOEZ works end to end on your machine and to show the shape of the workflow, not to produce a useful model.
+
+Every step below is also explained by instructional popups inside the application, so you do not need to keep this page open while you work.
+
+**What you will produce:** a bounding box detector for a single class, trained on five images.
+
+> **This example is a tour of the interface. It is not a demonstration that YOLOEZ produces good models, and should not be read as one.**
+>
+> Treated as evidence of effectiveness it would be a poor study, deliberately so — it is built to run in a few minutes on any machine, not to be valid:
+>
+> - **Five training images**, orders of magnitude fewer than a detection task normally needs.
+> - **No held-out test set.** Step 3 runs inference on the same images the model was trained on.
+> - **A validation set of one.** An 80/20 split of five images leaves a single image for validation, so every metric reported during training is noise.
+> - **Degenerate validation numbers.** The run reaches recall 1.0 at precision 0.003, which is what a model that fires indiscriminately looks like.
+> - **An unusable confidence threshold.** Step 3 needs 0.02 to show anything at all, far below what you would deploy.
+>
+> None of these are limitations of YOLOEZ; they are consequences of shrinking a real workflow down to something you can finish in one sitting. For evidence that YOLOEZ trains models that hold up, see [Applying this to your own data](#applying-this-to-your-own-data) at the end of this section.
+
+---
+
+### Step 1 — Label the images
+
+1. Launch YOLOEZ and click **Label Images** on the "What would you like to do?" dialog.
+2. Click **Browse Folder of Images...** and select `assets/test_images/`. The images appear in the preview pane; use **◀ Previous** and **Next ▶** to page through them.
+3. For the annotation mode, select **Bounding Boxes**.
+4. Tick **Save YOLO Training Sample** so the run writes a YOLO-format dataset.
+5. Click **Browse Output Folder...** and choose where results should go.
+6. Click **Run**.
+7. **Area of interest:** you will be asked to outline the regions worth labeling. For this example you can skip it — leaving an image unmarked uses the whole image.
+8. **Bounding box editor:** press `C`, then click and drag a box around the apple. Repeat for each image and close the window when finished.
+
+![A bounding box drawn around the apple in the labeling editor. The title bar lists the available shortcuts, and the mode indicator shows the current editing mode.](images/example_labeling.png)
+
+Your output folder now contains:
+
+<pre>
+output_folder/
+├── box_visualizations/   # PNGs showing the boxes drawn on each image
+└── yolo_dataset/         # The training dataset: one .png and one .txt per image
+</pre>
+
+Each `.txt` holds one line per object in YOLO format, as `class x_center y_center width height`, normalized to a 0–1 range:
+
+```
+0 0.606152 0.347836 0.323312 0.382597
+```
+
+A reference copy of this output ships in [`assets/test_labels/`](assets/test_labels) if you want to compare against it.
+
+---
+
+### Step 2 — Train a model
+
+1. Return to the start dialog and click **Train Model**.
+2. Click **Browse Training Dataset...** and select the `yolo_dataset/` folder from Step 1. YOLOEZ infers automatically from the label format that this is a detection dataset rather than a segmentation one.
+3. Choose a model size. **Nano** trains fastest and is the right choice here.
+4. Under **Apply Data Augmentations**, tick all five available options — **Flip**, **Color Jitter**, **Blur**, **Noise**, and **Scale** — and set **Augmentations per image** to `3`. **Rotate** is hidden automatically, because rotating an image would invalidate its axis-aligned bounding boxes.
+5. Leave **Train/Test Split (% for training)** at its default of 80.
+6. Click **Browse Save Directory...** to choose where the trained `.pt` file is written, then click **Run**.
+
+YOLOEZ does not ask you for a number of epochs. Training runs continuously and you decide when to stop it: watch the live metric and loss plots, and click **Stop Training** once the curves have flattened out. The best-performing weights are what get saved, so stopping later than necessary costs time but not accuracy.
+
+The panel header shows whether the run is using your **GPU** or falling back to **CPU**. On this five-image dataset, a Nano model on CPU trains fast enough that the plots update every few seconds — the run shown below was stopped after about a dozen epochs.
+
+![Live training metrics for the example run, stopped after roughly a dozen epochs.](images/example_training.png)
+
+> **Note:** the metrics above illustrate the caveat at the top of this section. Recall reaches 1.0 while precision sits near 0.003, meaning the model predicts boxes almost everywhere rather than telling apples from background. The near-perfect mAP reflects how trivially separable a single large apple on a plain surface is, and is measured against a validation set of one image. These are the numbers a five-image dataset produces, not the numbers YOLOEZ produces.
+
+---
+
+### Step 3 — Run inference
+
+1. Return to the start dialog and click **Use Model**.
+2. Click **Select trained YOLO Model...** and choose the `.pt` file saved in Step 2.
+3. Click **Browse Folder of Images...** and select `assets/test_images/` again. These are the same images the model trained on, so the detections below show only that the pipeline runs end to end — they are not a measure of accuracy.
+4. Set the **Confidence Threshold** to `0.02`. This is far lower than you would use in practice; a model trained on five images produces weak, low-confidence predictions, so a normal threshold would filter everything out.
+5. Click **Browse Output Folder...**, then click **Run**.
+
+Results open in a built-in viewer before being saved. The output folder receives the annotated images alongside a JSON file per image describing each detection.
+
+![Inference results on the example images, shown in the built-in viewer.](images/example_inference.png)
+
+---
+
+### Applying this to your own data
+
+The same three steps apply to any image set: point Step 1 at your own folder instead of `assets/test_images/`. Real datasets need considerably more than five images — but likely fewer than you would expect. In a published structural health monitoring study, YOLOEZ was used to train a segmentation model on 20 labeled electron microscope images that outperformed a classical morphological baseline tuned across 780 parameter combinations, measured by recall, F1 score, and IoU ([Holm et al., SMASIS 2026](https://arxiv.org/abs/2608.25176)).
+
+---
+
+## Testing
+
+YOLOEZ includes an automated test suite built with `pytest` and `pytest-qt` that exercises all three workflows end to end against a small bundled dataset, without requiring a visible display.
+
+After installing from source as described above, run the full suite from the repository root:
+
+```bash
+pytest
+```
+
+On a headless Linux machine, the Qt tests need an offscreen platform plugin and a virtual display:
+
+```bash
+QT_QPA_PLATFORM=offscreen xvfb-run -a python -m pytest
+```
+
+Other useful commands:
+
+```bash
+# Run a single test
+pytest tests/test_cases.py::test_name -v
+
+# Run the suite with a coverage report
+python -m pytest --cov=src --cov-report=xml
+
+# Check formatting the way CI does
+black --check .
+```
+
+The same suite runs automatically in continuous integration on both Ubuntu and Windows (Python 3.12) for every push and pull request to `main` and `development`, together with a Black formatting check. Current status is shown by the badges at the top of this README.
 
 ---
 
@@ -345,13 +504,16 @@ tightvncserver -kill :1 (or :2, :3, etc. depending on how many sessions you're r
 <pre>
 ├── src/                 # Application source code  
 ├── assets/              # Icons and UI assets  
-├── test/                # Test cases for ensuring code quality
+├── tests/               # Test cases for ensuring code quality
 ├── images/              # README images and screenshots      
 ├── AUTHORS.md           # File containing list of YOLOEZ authors
+├── CITATION.cff         # Machine-readable citation metadata for this software
 ├── CODE_OF_CONDUCT.md   # File explaining how people are expected to act in this repo
 ├── CONTRIBUTING.md      # File explaining the process of contributing code to this project
 ├── LICENSE              # License file explaining how this code may be used
 ├── README.md            # File explaining this project
+├── paper.md             # Software paper describing YOLOEZ
+├── paper.bib            # Bibliography for the software paper
 └── Various UV environment files
    
 </pre>

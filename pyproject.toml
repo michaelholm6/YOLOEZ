@@ -1,9 +1,40 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "YOLOEZ"
-version = "0.3.0"
+version = "0.6.0-alpha"
 description = "No-code GUI application for labeling image datasets, training YOLO11 models, and running inference"
 readme = "README.md"
 requires-python = ">=3.12"
+license = "AGPL-3.0-or-later"
+license-files = ["LICENSE"]
+
+authors = [
+    { name = "Michael Holm" },
+    { name = "Guang Lin" },
+]
+
+keywords = [
+    "computer vision",
+    "object detection",
+    "image segmentation",
+    "YOLO",
+    "graphical user interface",
+    "machine learning",
+    "no-code",
+]
+
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Image Recognition",
+]
 
 dependencies = [
     # Core runtime dependencies
@@ -32,6 +63,7 @@ dev = [
     "pytest-cov>=7.0.0",
 ]
 
-
-
-
+[project.urls]
+Homepage = "https://github.com/michaelholm6/YOLOEZ"
+Repository = "https://github.com/michaelholm6/YOLOEZ"
+Issues = "https://github.com/michaelholm6/YOLOEZ/issues"
