@@ -46,8 +46,10 @@ dependencies = [
 [project.optional-dependencies]
 
 # Development / CI / formatting
-# UV can't install pyqt5 so this is not listed under the dependencies section, but it is required to run YOLOEZ
-# Install it with pip
+# PyQt5 is required to run YOLOEZ, but is declared here rather than among the core
+# dependencies because uv cannot install it on Windows: pyqt5-qt5 publishes no
+# Windows wheels at the version uv resolves to. Windows setups install with pip,
+# which selects a compatible version. See CONTRIBUTING.md for the setup steps.
 dev = [
     "pyqt5>=5.15.11",
     "black>=26.1.0",
