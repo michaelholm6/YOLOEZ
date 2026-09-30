@@ -18,7 +18,7 @@ authors:
 affiliations:
   - index: 1
     name: Purdue University, United States
-date: 29 September 2026
+date: 30 September 2026
 bibliography: paper.bib
 ---
 

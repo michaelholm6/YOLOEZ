@@ -23,7 +23,7 @@ url: "https://github.com/michaelholm6/YOLOEZ"
 license: AGPL-3.0-or-later
 # Update both fields below whenever a new version is tagged.
 version: 0.7.0
-date-released: "2026-09-29"
+date-released: "2026-09-30"
 keywords:
   - computer vision
   - object detection
