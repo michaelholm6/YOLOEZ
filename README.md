@@ -107,9 +107,11 @@ Most users should use the prebuilt executables described above. Running from sou
 
 **Requirements:** Python 3.12 or newer, `git`, and a graphical display.
 
-Check your Python version with `python3 --version` before starting. If it is older than 3.12, install a newer interpreter first — the [Python Version](CONTRIBUTING.md#python-version) section of CONTRIBUTING.md covers how to do this on each platform without administrator access.
+Check your interpreter before starting — `python3 --version` on Linux and macOS, `py --version` on Windows. If it is older than 3.12, install a newer one first; the [Python Version](CONTRIBUTING.md#python-version) section of CONTRIBUTING.md covers how to do that on each platform, including options that need no administrator access.
 
-The simplest route, if you have [uv](https://docs.astral.sh/uv/), is to let it manage the interpreter for you:
+### Linux and macOS
+
+The quickest route is [uv](https://docs.astral.sh/uv/), which downloads and manages Python 3.12 for you, so no system Python is involved:
 
 ```bash
 git clone https://github.com/michaelholm6/YOLOEZ.git
@@ -118,30 +120,49 @@ uv sync --extra dev --python 3.12
 uv run python src/main.py
 ```
 
-uv downloads Python 3.12 itself, so no system Python is involved. Otherwise, use a virtual environment built from a 3.12 interpreter:
+Or, using a virtual environment and `pip`:
 
 ```bash
-# 1. Clone the repository
 git clone https://github.com/michaelholm6/YOLOEZ.git
 cd YOLOEZ
 
-# 2. Create and activate a virtual environment
-#    Name the interpreter explicitly so an older default python3 is not used
 python3.12 -m venv .venv
-source .venv/bin/activate      # Linux / macOS
-.venv\Scripts\activate         # Windows
+source .venv/bin/activate
 
-# 3. Install YOLOEZ and its dependencies
 python -m pip install --upgrade pip
 pip install -e ".[dev]"
 
-# 4. Launch the application
 python src/main.py
 ```
 
-This installs the runtime dependencies along with PyQt5 and the development tools. PyQt5 is listed under the `[dev]` extra rather than as a core dependency because it cannot be installed by UV on Windows; installing with `pip`, as shown above, works correctly.
+Naming the interpreter explicitly as `python3.12` matters: on distributions whose default `python3` is older, a plain `python3 -m venv` builds an environment YOLOEZ cannot be installed into.
 
-The first training or inference run will download the relevant pretrained YOLO11 weights automatically, so an internet connection is needed the first time.
+### Windows
+
+Use a virtual environment and `pip`. The uv route above does **not** work here — see the note below.
+
+```powershell
+git clone https://github.com/michaelholm6/YOLOEZ.git
+cd YOLOEZ
+
+py -3.12 -m venv .venv
+.venv\Scripts\activate
+
+python -m pip install --upgrade pip
+pip install -e ".[dev]"
+
+python src/main.py
+```
+
+### Why the two paths differ
+
+PyQt5's Qt binaries (`pyqt5-qt5`) publish no Windows wheels at the version uv resolves to, so `uv sync` fails on Windows with a "no source distribution or wheel for the current platform" error. `pip` selects a compatible older version and installs correctly. This is also why PyQt5 is declared in the `[dev]` extra rather than among the core dependencies.
+
+On Linux and macOS the same package does ship wheels, so uv works there.
+
+### Notes
+
+The first training or inference run downloads the relevant pretrained YOLO11 weights automatically, so an internet connection is needed the first time.
 
 YOLOEZ is a graphical application and requires a display. To run it on a headless Linux machine, see [Linux Remote Desktop Setup](#linux-remote-desktop-setup).
 
@@ -249,6 +270,12 @@ After installing from source as described above, run the full suite from the rep
 pytest
 ```
 
+If you set the project up with uv, prefix commands with `uv run`:
+
+```bash
+uv run pytest
+```
+
 On a headless Linux machine, the Qt tests need an offscreen platform plugin and a virtual display:
 
 ```bash
@@ -259,7 +286,7 @@ Other useful commands:
 
 ```bash
 # Run a single test
-pytest tests/test_cases.py::test_name -v
+pytest tests/test_cases.py::test_labeling_workflow_runs_without_gui -v
 
 # Run the suite with a coverage report
 python -m pytest --cov=src --cov-report=xml
@@ -333,7 +360,7 @@ Installed components:
 * **tightvncserver** — VNC server
 * **unzip** — utility to extract zip files
 
-### 2. Download all parts from the [releases page](https://github.com/michaelholm6/YOLOEZ/releases) to your **local Windows machine** for your specific architecture. If you're not sure which files you need, you probably need the ones title YOLOEZ-linux-x86_64.zip.001, YOLOEZ-linux-x86_64.zip.002, etc.
+### 2. Download all parts from the [releases page](https://github.com/michaelholm6/YOLOEZ/releases) to your **local Windows machine** for your specific architecture. If you're not sure which files you need, you probably need the ones titled YOLOEZ-linux-x86_64.zip.001, YOLOEZ-linux-x86_64.zip.002, etc.
 
 ### 3. Copy the files to your Linux server using `scp` (or WinSCP):
 
@@ -371,8 +398,11 @@ unzip YOLOEZ-linux-x86_64.zip
 
 ### 8. Make the YOLOEZ executable runnable:
 
+The archive extracts to a folder named `YOLOEZ-linux-x86_64`, which contains an executable of the same name alongside an `_internal` folder. The two must stay together.
+
 ```bash
-chmod +x YOLOEZ
+cd YOLOEZ-linux-x86_64
+chmod +x YOLOEZ-linux-x86_64
 ```
 
 ### 9. Initialize TightVNC
@@ -471,8 +501,8 @@ You should now see the XFCE desktop.
 
 ### 16. Open Executable
 
-1. In the remote desktop viewer, navigate to /home/username
-2. Find the unzipped executable, and run it
+1. In the remote desktop viewer, open the file manager and navigate to `/home/username/YOLOEZ-linux-x86_64`
+2. Run the `YOLOEZ-linux-x86_64` executable inside that folder
 3. The tool will now guide you through using it
 
 
@@ -481,8 +511,10 @@ You should now see the XFCE desktop.
 Stop a session:
 
 ```bash
-tightvncserver -kill :1 (or :2, :3, etc. depending on how many sessions you're running)
+tightvncserver -kill :1
 ```
+
+Use `:2`, `:3`, and so on for additional sessions, depending on how many you are running.
 
 
 ### Notes
@@ -490,8 +522,7 @@ tightvncserver -kill :1 (or :2, :3, etc. depending on how many sessions you're r
 * Each display `:N` uses port `5900 + N`
 * VNC passwords are separate from system passwords
 
-
-
+---
 
 ## Screenshots and Visual Examples
 
@@ -517,20 +548,22 @@ tightvncserver -kill :1 (or :2, :3, etc. depending on how many sessions you're r
 
 ## Repository Structure
 <pre>
-├── src/                 # Application source code  
-├── assets/              # Icons and UI assets  
-├── tests/               # Test cases for ensuring code quality
-├── images/              # README images and screenshots      
-├── AUTHORS.md           # File containing list of YOLOEZ authors
-├── CITATION.cff         # Machine-readable citation metadata for this software
-├── CODE_OF_CONDUCT.md   # File explaining how people are expected to act in this repo
-├── CONTRIBUTING.md      # File explaining the process of contributing code to this project
-├── LICENSE              # License file explaining how this code may be used
-├── README.md            # File explaining this project
+├── src/                 # Application source code
+├── tests/               # Test suite
+├── assets/              # Icons, and the sample images used by the Quick Start Example
+├── images/              # README images and screenshots
+├── .github/             # Issue templates and CI workflows
+├── AUTHORS.md           # Authors and contributors
+├── CITATION.cff         # Machine-readable citation metadata
+├── CODE_OF_CONDUCT.md   # Expected conduct in this repository
+├── CONTRIBUTING.md      # How to contribute, and development setup
+├── LICENSE              # AGPL-3.0 license text
+├── README.md            # This file
 ├── paper.md             # Software paper describing YOLOEZ
 ├── paper.bib            # Bibliography for the software paper
-└── Various UV environment files
-   
+├── pyproject.toml       # Project metadata and dependencies
+├── pytest.ini           # Test configuration
+└── uv.lock              # Resolved dependency versions for uv
 </pre>
 
 ---

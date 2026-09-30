@@ -112,72 +112,118 @@ Pull requests must pass all CI checks before being merged.
 
 YOLOEZ requires **Python 3.12 or newer**. Continuous integration tests against Python 3.12.
 
-Check what you have:
+Check what you have — `python3 --version` on Linux and macOS, `py --version` on Windows. If it is older than 3.12, install a newer interpreter before continuing; installing into an older Python will fail, since the project declares `requires-python = ">=3.12"`.
 
-```bash
-python3 --version
-```
+Ways to obtain Python 3.12:
 
-If it is older than 3.12, install a newer interpreter before continuing. Installing into an older Python will fail, since the project declares `requires-python = ">=3.12"`.
+- **uv** (no administrator access needed) — downloads and manages its own interpreters:
 
-**Using uv (recommended; requires no administrator access):**
+  ```bash
+  curl -LsSf https://astral.sh/uv/install.sh | sh
+  ```
 
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-uv sync --extra dev --python 3.12
-```
+  On Windows, install uv with `winget install astral-sh.uv` instead of the shell script. Note that on Windows uv is useful only for obtaining an interpreter; `uv sync` cannot install this project's dependencies there, for the reason given under Installation below.
 
-uv downloads and manages its own Python, creates `.venv`, and installs every dependency including PyQt5. If you use this, skip the Installation section below.
+- **Ubuntu / Debian** (requires `sudo`):
 
-**Ubuntu / Debian (requires sudo):**
+  ```bash
+  sudo add-apt-repository ppa:deadsnakes/ppa
+  sudo apt update && sudo apt install python3.12 python3.12-venv
+  ```
 
-```bash
-sudo add-apt-repository ppa:deadsnakes/ppa
-sudo apt update && sudo apt install python3.12 python3.12-venv
-```
+- **pyenv** (no administrator access needed):
 
-**pyenv (requires no administrator access):**
+  ```bash
+  pyenv install 3.12 && pyenv local 3.12
+  ```
 
-```bash
-pyenv install 3.12 && pyenv local 3.12
-```
-
-**Windows:** use the installer from [python.org](https://www.python.org/downloads/), or `winget install Python.Python.3.12`.
+- **Windows** — the installer from [python.org](https://www.python.org/downloads/), or `winget install Python.Python.3.12`.
 
 ### Installation
 
-Create and activate a virtual environment, then install YOLOEZ together with its development dependencies. Name the interpreter explicitly so the environment cannot be built from an older default `python3`:
+Fork and clone the repository first, as described under [Development Workflow](#development-workflow) above, then run the commands below from the repository root.
+
+#### Linux and macOS
+
+The quickest route is uv, which creates `.venv`, fetches Python 3.12, and installs every dependency including PyQt5:
+
+```bash
+uv sync --extra dev --python 3.12
+```
+
+Run commands in that environment with `uv run`, for example `uv run pytest`.
+
+Or set up a virtual environment manually:
 
 ```bash
 python3.12 -m venv .venv
-source .venv/bin/activate      # Linux / macOS
-.venv\Scripts\activate         # Windows
+source .venv/bin/activate
 
 python -m pip install --upgrade pip
 pip install -e ".[dev]"
 ```
 
-This installs:
+Name the interpreter explicitly as `python3.12`. On distributions whose default `python3` is older, a plain `python3 -m venv` produces an environment YOLOEZ cannot be installed into.
+
+#### Windows
+
+Use a virtual environment and `pip`:
+
+```powershell
+py -3.12 -m venv .venv
+.venv\Scripts\activate
+
+python -m pip install --upgrade pip
+pip install -e ".[dev]"
+```
+
+`uv sync` does **not** work on Windows for this project: PyQt5's Qt binaries (`pyqt5-qt5`) publish no Windows wheels at the version uv resolves to, so the sync fails with a "no source distribution or wheel for the current platform" error. `pip` selects a compatible older version. This is why PyQt5 is declared in the `[dev]` extra rather than among the core dependencies.
+
+Either route installs:
 
 * Runtime dependencies
-* Development dependencies (`pytest`, `pytest-qt`, etc.)
+* Development dependencies (`pytest`, `pytest-qt`, `black`, `pyinstaller`, and others)
 
 ---
 
 ## Testing
 
 * Tests are written using **pytest**
-* GUI tests use **pytest-qt**
-* Tests must pass on:
+* GUI tests use **pytest-qt**, and run headless — no visible display is required
+* Tests must pass on both Windows and Linux
 
-  * Windows
-  * Linux (headless via `xvfb`)
-
-To run tests locally:
+Run the full suite from the repository root:
 
 ```bash
 pytest
 ```
+
+If you set the project up with uv, prefix commands with `uv run`:
+
+```bash
+uv run pytest
+```
+
+On a headless Linux machine, Qt needs an offscreen platform plugin and a virtual display:
+
+```bash
+QT_QPA_PLATFORM=offscreen xvfb-run -a python -m pytest
+```
+
+Other useful commands:
+
+```bash
+# Run a single test
+pytest tests/test_cases.py::test_labeling_workflow_runs_without_gui -v
+
+# Run the suite with a coverage report
+python -m pytest --cov=src --cov-report=xml
+
+# Check formatting the way CI does
+black --check .
+```
+
+New or changed functionality must be covered by tests, and the whole suite must pass before a pull request can be merged.
 
 ---
 
@@ -227,7 +273,7 @@ By contributing, you agree that:
 * Your contributions are licensed under AGPL-3.0-or-later
 * Existing copyright headers must be preserved
 * New files must include appropriate headers
-* You should add yourself to the `AUTHORS` file after making a substantive contribution
+* You should add yourself to [AUTHORS.md](AUTHORS.md) after making a substantive contribution
 
 If you are unsure about attribution practices, please ask.
 
@@ -235,7 +281,7 @@ If you are unsure about attribution practices, please ask.
 
 ## Code of Conduct
 
-See CODE_OF_CONDUCT.md
+See [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
 ---
 
@@ -244,5 +290,3 @@ See CODE_OF_CONDUCT.md
 Thank you for helping improve YOLOEZ.
 
 Community contributions are essential to making this tool reliable, usable, and impactful for researchers and practitioners.
-
-```
