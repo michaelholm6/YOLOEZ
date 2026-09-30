@@ -118,6 +118,7 @@ source .venv/bin/activate      # Linux / macOS
 .venv\Scripts\activate      # Windows
 
 # 3. Install YOLOEZ and its dependencies
+python -m pip install --upgrade pip
 pip install -e ".[dev]"
 
 # 4. Launch the application
@@ -125,6 +126,8 @@ python src/main.py
 ```
 
 This installs the runtime dependencies along with PyQt5 and the development tools. PyQt5 is listed under the `[dev]` extra rather than as a core dependency because it cannot be installed by UV; installing with `pip`, as shown above, works correctly.
+
+Create the virtual environment with Python 3.12 or newer. On systems where the default `python3` is older, name the interpreter explicitly, for example `python3.12 -m venv .venv`.
 
 The first training or inference run will download the relevant pretrained YOLO11 weights automatically, so an internet connection is needed the first time.
 

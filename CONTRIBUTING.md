@@ -117,7 +117,14 @@ Contributors are encouraged to use Python 3.12 when possible.
 
 ### Installation
 
+Create and activate a virtual environment, then install YOLOEZ together with its development dependencies:
+
 ```bash
+python -m venv .venv
+source .venv/bin/activate      # Linux / macOS
+.venv\Scripts\activate         # Windows
+
+python -m pip install --upgrade pip
 pip install -e ".[dev]"
 ```
 
@@ -125,6 +132,8 @@ This installs:
 
 * Runtime dependencies
 * Development dependencies (`pytest`, `pytest-qt`, etc.)
+
+Create the environment with **Python 3.12 or newer**. On systems where the default `python3` is older, name the interpreter explicitly, for example `python3.12 -m venv .venv`. Installing into an older interpreter will fail, since the project declares `requires-python = ">=3.12"`.
 
 ---
 
