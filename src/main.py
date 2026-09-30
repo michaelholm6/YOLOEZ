@@ -18,14 +18,26 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import os
 import sys
 import traceback
 
-from PyQt5.QtCore import qInstallMessageHandler
-from PyQt5.QtWidgets import QApplication
+# On Linux, importing cv2 points QT_QPA_PLATFORM_PLUGIN_PATH at OpenCV's own
+# bundled Qt plugins.  Those are built against a different Qt than PyQt5, so
+# PyQt5 then fails to load the xcb platform plugin and the application aborts
+# before any window appears.  Import cv2 here so it sets those variables now,
+# then clear them, so Qt falls back to PyQt5's own plugins.  cv2 stays in
+# sys.modules, so later imports elsewhere do not set them again.
+import cv2  # noqa: F401
 
-from YOLO_EZ import main as YOLO_EZ_main
-from utils import show_error_window
+os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH", None)
+os.environ.pop("QT_QPA_FONTDIR", None)
+
+from PyQt5.QtCore import qInstallMessageHandler  # noqa: E402
+from PyQt5.QtWidgets import QApplication  # noqa: E402
+
+from YOLO_EZ import main as YOLO_EZ_main  # noqa: E402
+from utils import show_error_window  # noqa: E402
 
 _SUPPRESSED_WARNINGS = (
     "Timers can only be used with threads started with QThread",
