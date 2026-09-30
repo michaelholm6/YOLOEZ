@@ -110,17 +110,46 @@ Pull requests must pass all CI checks before being merged.
 
 ### Python Version
 
-- **Minimum supported version:** Python **3.12**
-- **CI-tested version:** Python **3.12**
+YOLOEZ requires **Python 3.12 or newer**. Continuous integration tests against Python 3.12.
 
-Contributors are encouraged to use Python 3.12 when possible.
+Check what you have:
+
+```bash
+python3 --version
+```
+
+If it is older than 3.12, install a newer interpreter before continuing. Installing into an older Python will fail, since the project declares `requires-python = ">=3.12"`.
+
+**Using uv (recommended; requires no administrator access):**
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+uv sync --extra dev --python 3.12
+```
+
+uv downloads and manages its own Python, creates `.venv`, and installs every dependency including PyQt5. If you use this, skip the Installation section below.
+
+**Ubuntu / Debian (requires sudo):**
+
+```bash
+sudo add-apt-repository ppa:deadsnakes/ppa
+sudo apt update && sudo apt install python3.12 python3.12-venv
+```
+
+**pyenv (requires no administrator access):**
+
+```bash
+pyenv install 3.12 && pyenv local 3.12
+```
+
+**Windows:** use the installer from [python.org](https://www.python.org/downloads/), or `winget install Python.Python.3.12`.
 
 ### Installation
 
-Create and activate a virtual environment, then install YOLOEZ together with its development dependencies:
+Create and activate a virtual environment, then install YOLOEZ together with its development dependencies. Name the interpreter explicitly so the environment cannot be built from an older default `python3`:
 
 ```bash
-python -m venv .venv
+python3.12 -m venv .venv
 source .venv/bin/activate      # Linux / macOS
 .venv\Scripts\activate         # Windows
 
@@ -132,8 +161,6 @@ This installs:
 
 * Runtime dependencies
 * Development dependencies (`pytest`, `pytest-qt`, etc.)
-
-Create the environment with **Python 3.12 or newer**. On systems where the default `python3` is older, name the interpreter explicitly, for example `python3.12 -m venv .venv`. Installing into an older interpreter will fail, since the project declares `requires-python = ">=3.12"`.
 
 ---
 

@@ -107,15 +107,29 @@ Most users should use the prebuilt executables described above. Running from sou
 
 **Requirements:** Python 3.12 or newer, `git`, and a graphical display.
 
+Check your Python version with `python3 --version` before starting. If it is older than 3.12, install a newer interpreter first — the [Python Version](CONTRIBUTING.md#python-version) section of CONTRIBUTING.md covers how to do this on each platform without administrator access.
+
+The simplest route, if you have [uv](https://docs.astral.sh/uv/), is to let it manage the interpreter for you:
+
+```bash
+git clone https://github.com/michaelholm6/YOLOEZ.git
+cd YOLOEZ
+uv sync --extra dev --python 3.12
+uv run python src/main.py
+```
+
+uv downloads Python 3.12 itself, so no system Python is involved. Otherwise, use a virtual environment built from a 3.12 interpreter:
+
 ```bash
 # 1. Clone the repository
 git clone https://github.com/michaelholm6/YOLOEZ.git
 cd YOLOEZ
 
-# 2. (Recommended) create and activate a virtual environment
-python -m venv .venv
+# 2. Create and activate a virtual environment
+#    Name the interpreter explicitly so an older default python3 is not used
+python3.12 -m venv .venv
 source .venv/bin/activate      # Linux / macOS
-.venv\Scripts\activate      # Windows
+.venv\Scripts\activate         # Windows
 
 # 3. Install YOLOEZ and its dependencies
 python -m pip install --upgrade pip
@@ -125,9 +139,7 @@ pip install -e ".[dev]"
 python src/main.py
 ```
 
-This installs the runtime dependencies along with PyQt5 and the development tools. PyQt5 is listed under the `[dev]` extra rather than as a core dependency because it cannot be installed by UV; installing with `pip`, as shown above, works correctly.
-
-Create the virtual environment with Python 3.12 or newer. On systems where the default `python3` is older, name the interpreter explicitly, for example `python3.12 -m venv .venv`.
+This installs the runtime dependencies along with PyQt5 and the development tools. PyQt5 is listed under the `[dev]` extra rather than as a core dependency because it cannot be installed by UV on Windows; installing with `pip`, as shown above, works correctly.
 
 The first training or inference run will download the relevant pretrained YOLO11 weights automatically, so an internet connection is needed the first time.
 
