@@ -1,7 +1,3 @@
-[build-system]
-requires = ["setuptools>=77"]
-build-backend = "setuptools.build_meta"
-
 [project]
 name = "YOLOEZ"
 version = "0.7.0"
