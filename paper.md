@@ -102,6 +102,10 @@ GL would like to thank the support of the National Science Foundation (DMS-25338
 
 This material is based upon work supported by the Air Force Office of Scientific Research under award number FA9550-25-C-B010 in the amount of \$139,700.
 
-The funders had no role in the design of the software, the preparation of the paper, or the decision to publish. The authors declare no conflicts of interest.
+The funders had no role in the design of the software, the preparation of the paper, or the decision to publish.
+
+# Conflicts of Interest
+
+The authors declare no conflicts of interest.
 
 # References
