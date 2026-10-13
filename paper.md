@@ -92,10 +92,20 @@ Generative AI tools were used in three areas of this work:
 
 - **Repository management:** Claude was used to draft GitHub issues and pull request descriptions, prepare commit messages, and carry out routine repository operations such as branch merges. All such actions were directed and approved by the authors.
 
-The authors made all core design decisions, defined the problem framing and architecture, validated all AI-assisted outputs, and take full responsibility for the accuracy and integrity of the submitted work.
+The authors made all core design decisions, defined the problem framing and architecture, and reviewed, edited, and validated all AI-assisted outputs. The authors remain fully responsible for the accuracy, originality, licensing, and ethical and legal compliance of the submitted work.
 
 # Acknowledgements
 
 Development was supported by Purdue University. The authors thank the Ultralytics team for their open-source YOLO11 implementation.
+
+GL would like to thank the support of the National Science Foundation (DMS-2533878, DMS-2053746, DMS-2134209, ECCS-2328241, CBET-2347401, and OAC-2311848), and the U.S. Department of Energy (DOE) Office of Science Advanced Scientific Computing Research program DE-SC0023161, the SciDAC LEADS Institute, and DOE--Fusion Energy Science, under grant number DE-SC0024583.
+
+This material is based upon work supported by the Air Force Office of Scientific Research under award number FA9550-25-C-B010 in the amount of \$139,700.
+
+The funders had no role in the design of the software, the preparation of the paper, or the decision to publish.
+
+# Conflicts of Interest
+
+The authors declare no conflicts of interest.
 
 # References
