@@ -80,7 +80,7 @@ YOLOEZ was developed at Purdue University and has been applied directly in struc
 
 # Open-Source Software Practices
 
-YOLOEZ follows established open-source software practices throughout its development. The project includes a 980-line test suite using pytest and pytest-qt that exercises all three workflows against a synthetic dataset in headless mode. Continuous integration runs on both Ubuntu and Windows (Python 3.12) via GitHub Actions, enforcing Black code formatting and generating coverage reports on every push to the main and development branches. The repository includes CONTRIBUTING.md with a documented contribution workflow, CODE_OF_CONDUCT.md, and a GitHub issue tracker with labeled categories for bugs and feature requests. The software has been under public development since August 2025, with eight public releases and an issue-driven development history. It is licensed under AGPL-3.0.
+YOLOEZ follows established open-source software practices throughout its development. The project includes a 1,700-line test suite using pytest and the pytest-qt plugin, organized as one test per subsystem, that exercises all three workflows against a synthetic dataset in headless mode. Continuous integration runs on both Ubuntu and Windows (Python 3.12) via GitHub Actions, enforcing Black code formatting and generating coverage reports on every push to the main and development branches. The repository includes CONTRIBUTING.md with a documented contribution workflow, CODE_OF_CONDUCT.md, and a GitHub issue tracker with labeled categories for bugs and feature requests. The software has been under public development since August 2025, with eight public releases and an issue-driven development history. It is licensed under AGPL-3.0.
 
 # AI Usage Disclosure
 
