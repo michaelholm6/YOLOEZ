@@ -5,9 +5,8 @@
 from labelling_workflow.main_labelling import run_labeling_workflow
 from training_workflow.main_training import run_training_workflow
 from inference_workflow.main_inference import run_inference_workflow
-from utils import make_label_with_tooltip
+from utils import ensure_app, make_label_with_tooltip
 from PyQt5 import QtWidgets, QtCore, QtGui
-import sys
 
 
 class ChoiceDialog(QtWidgets.QDialog):
@@ -111,10 +110,13 @@ class ChoiceDialog(QtWidgets.QDialog):
 
 def main():
     """Show the choice dialog and dispatch to the selected workflow."""
-    app = QtWidgets.QApplication(sys.argv)
+    app = ensure_app()
 
     # Normal screen resolution check
     screen = app.primaryScreen()
+    if screen is None:
+        return
+
     size = screen.size()
     width, height = size.width(), size.height()
     recommended_width, recommended_height = 1920, 1080
@@ -128,8 +130,7 @@ def main():
         )
 
     dialog = ChoiceDialog()
-    dialog.show()
-    app.exec_()
+    dialog.exec_()
     chosen = dialog.chosen
     suppress_instructions = dialog.checkbox.isChecked()
 

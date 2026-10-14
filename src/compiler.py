@@ -3,6 +3,7 @@
 # Developed at Purdue University
 
 import PyInstaller.__main__
+import os
 import platform
 
 
@@ -16,9 +17,13 @@ def generate_exe():
 
     print(f"Building executable: {exe_name}")
 
-    PyInstaller.__main__.run(
-        ["main.py", "--name", exe_name, "--icon", "../assets/molecule.ico"]
-    )
+    # Resolve inputs relative to this file so the documented
+    # "python src/compiler.py" works from the repository root.
+    here = os.path.dirname(os.path.abspath(__file__))
+    entry_point = os.path.join(here, "main.py")
+    icon = os.path.join(here, os.pardir, "assets", "molecule.ico")
+
+    PyInstaller.__main__.run([entry_point, "--name", exe_name, "--icon", icon])
 
 
 if __name__ == "__main__":

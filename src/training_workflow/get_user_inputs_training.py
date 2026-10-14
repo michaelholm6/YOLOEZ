@@ -5,8 +5,8 @@
 import sys, os
 from PyQt5 import QtWidgets, QtGui, QtCore
 import cv2
-import numpy as np
-from utils import make_label_with_tooltip
+from utils import ensure_app, make_label_with_tooltip, read_image
+from training_workflow.apply_augmentations import detect_label_format
 
 
 class YOLOTrainingDialog(QtWidgets.QDialog):
@@ -359,16 +359,12 @@ A typical split is 80% for training and 20% for validation.",
         self.showMaximized()
 
     def detect_label_format(self, label_path):
-        """Return 'detection', 'segmentation', or None for empty/unreadable labels."""
-        with open(label_path, "r") as f:
-            lines = [line.strip().split() for line in f if line.strip()]
+        """Return 'detection', 'segmentation', or 'empty' for a label with no usable lines.
 
-        if not lines:
-            return "empty"  # treat empty label as valid, but not for task locking
-        elif all(len(l) == 5 for l in lines):
-            return "detection"
-        else:
-            return "segmentation"
+        Delegates to the augmentation step's detector so the task locked here is
+        the same one that step will infer; a disagreement made it skip the image.
+        """
+        return detect_label_format(label_path) or "empty"
 
     def browse_dataset(self):
         """Scan the chosen folder for image+label pairs and lock the task type from the first non-empty label."""
@@ -425,6 +421,7 @@ A typical split is 80% for training and 20% for validation.",
             self.prev_button.setEnabled(False)
             self.next_button.setEnabled(False)
             self.current_image_index = -1
+            self.update_run_button_state()
             return
 
         self.update_transform_visibility()
@@ -434,6 +431,9 @@ A typical split is 80% for training and 20% for validation.",
         self.show_current_image()
         self.update_navigation_buttons()
         self.remove_image_button.setVisible(bool(self.image_files))
+        # Validation ran against the previous image list when the path field was
+        # set above, so re-run it now that image_files reflects this folder.
+        self.update_run_button_state()
 
     def remove_current_image(self):
         """Remove the currently previewed image from the training list without deleting it from disk."""
@@ -453,11 +453,14 @@ A typical split is 80% for training and 20% for validation.",
             self.prev_button.setEnabled(False)
             self.next_button.setEnabled(False)
             self.remove_image_button.setVisible(False)
+            self.update_image_index_label()
+            self.update_run_button_state()
             return
 
         self.show_current_image()
         self.update_navigation_buttons()
         self.update_image_index_label()
+        self.update_run_button_state()
 
     def browse_save(self):
         """Open a directory picker and set the model save path."""
@@ -487,7 +490,7 @@ A typical split is 80% for training and 20% for validation.",
         img_path = self.image_files[self.current_image_index]
         lbl_path = os.path.splitext(img_path)[0] + ".txt"
 
-        img = cv2.imread(img_path)
+        img = read_image(img_path)
         if img is None:
             self.image_preview.setText("Failed to load image")
             return
@@ -512,7 +515,15 @@ A typical split is 80% for training and 20% for validation.",
             with open(lbl_path, "r") as f:
                 for line in f:
                     parts = line.strip().split()
-                    coords = [float(x) for x in parts[1:]]
+                    if len(parts) < 5:
+                        continue
+                    try:
+                        coords = [float(x) for x in parts[1:]]
+                    except ValueError:
+                        continue
+                    # An odd count would run off the end when pairing x with y.
+                    if len(coords) != 4 and len(coords) % 2 != 0:
+                        continue
                     if len(coords) == 4:
                         xc, yc, bw, bh = coords
                         x1 = int((xc - bw / 2) * w)
@@ -600,6 +611,9 @@ A typical split is 80% for training and 20% for validation.",
 
         return {
             "dataset_folder": self.dataset_path_edit.text().strip(),
+            # The images still listed after any removals; the training workflow
+            # trains on exactly these rather than re-scanning the folder.
+            "image_paths": list(self.image_files),
             "save_folder": self.save_path_edit.text().strip(),
             "model_size": model_size_map[self.model_combo.currentText()],
             "task": self.task,
@@ -612,19 +626,13 @@ A typical split is 80% for training and 20% for validation.",
 
 def get_training_inputs():
     """Show the training input dialog and return the values dict, or None if the user cancelled."""
-    app = QtWidgets.QApplication.instance()
-    owns_app = False
-    if not app:
-        app = QtWidgets.QApplication(sys.argv)
-        owns_app = True
+    ensure_app()
 
     dialog = YOLOTrainingDialog()
     result = None
     if dialog.exec_() == QtWidgets.QDialog.Accepted:
         result = dialog.get_values()
 
-    if owns_app:
-        app.quit()
     return result
 
 

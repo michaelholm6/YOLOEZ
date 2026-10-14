@@ -10,7 +10,7 @@ from labelling_workflow.edit_box_points import run_box_editor
 from labelling_workflow.save_box_results import save_box_results
 from labelling_workflow.crop_and_mask import crop_and_mask_images
 from labelling_workflow.bootstrap_runner import run_yolo_on_crops
-from utils import show_instructions
+from utils import show_error_window, show_instructions
 
 
 def run_labeling_workflow(suppress_instructions=False, test_inputs=None):
@@ -25,7 +25,8 @@ def run_labeling_workflow(suppress_instructions=False, test_inputs=None):
             "Welcome to the Labelling Workflow!\n\n"
             "- You will be guided through a series of steps to label your images.\n"
             "- Please follow the on-screen instructions at each step.\n"
-            "- You can close a window at any time to exit the workflow.\n\n"
+            "- Each step has a 'Finish' button that saves your work and moves on.\n"
+            "- Closing a window with the X exits the workflow and discards your work.\n\n"
             "Click 'OK' to begin."
         )
         show_instructions(message=instructions)
@@ -35,7 +36,16 @@ def run_labeling_workflow(suppress_instructions=False, test_inputs=None):
     else:
         args = get_user_labelling_inputs()
 
+    if not args:
+        return
+
     images = args["image_paths"]
+    if not images:
+        show_error_window(
+            "No images were selected, so there is nothing to label.",
+            title="No Images",
+        )
+        return
 
     if not suppress_instructions:
         instructions = (
@@ -83,7 +93,8 @@ def run_labeling_workflow(suppress_instructions=False, test_inputs=None):
                 "- Press 'U' to union selected contours into a single contour (i.e. combine them into one contour).\n"
                 "- Use the mouse wheel to zoom in and out.\n"
                 "- Press the same key again or left click to exit a mode.\n\n"
-                "When you're done, simply close the window to continue."
+                "When you're done, click the 'Finish' button to save your work and continue.\n"
+                "Closing the window with the X discards your work."
             )
             show_instructions(message=instructions)
 
@@ -101,12 +112,13 @@ def run_labeling_workflow(suppress_instructions=False, test_inputs=None):
                 "- You will now manually edit or create bounding boxes on the image.\n"
                 "- Left click and hold to select boxes by circling them with a lasso.\n"
                 "- Right click and drag to pan the image.\n"
-                "- Press 'C' to create a new bounding box by clicking and dragging.\n"
+                "- Press 'C' to create a new bounding box, then click once for each of two opposite corners.\n"
                 "- Press 'D' to delete selected points (this will delete all boxes associated with those points).\n"
                 "- Press 'ctrl+Z' to undo the last action.\n"
                 "- Use the mouse wheel to zoom in and out.\n"
                 "- Press the same key again, left click, or press 'esc' to exit a mode.\n\n"
-                "When you're done, simply close the window to continue."
+                "When you're done, click the 'Finish' button to save your work and continue.\n"
+                "Closing the window with the X discards your work."
             )
             show_instructions(message=instructions)
 

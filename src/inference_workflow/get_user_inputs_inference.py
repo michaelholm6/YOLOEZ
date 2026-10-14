@@ -5,7 +5,7 @@
 import sys
 import os
 from PyQt5 import QtWidgets, QtGui, QtCore
-from utils import make_label_with_tooltip
+from utils import ensure_app, make_label_with_tooltip
 
 
 class InputDialogInference(QtWidgets.QDialog):
@@ -18,9 +18,6 @@ class InputDialogInference(QtWidgets.QDialog):
         self.setFont(font)
         self.setWindowFlags(QtCore.Qt.Window | QtCore.Qt.WindowStaysOnTopHint)
         self.setWindowTitle("Input Parameters")
-        self._resize_timer = QtCore.QTimer(self)
-        self._resize_timer.setSingleShot(True)
-        self._resize_timer.timeout.connect(self.show_current_image)
         self.close_flag = False
 
         self.image_path_edit = QtWidgets.QLineEdit()
@@ -52,7 +49,9 @@ class InputDialogInference(QtWidgets.QDialog):
             lambda val: self.confidence_spinbox.setValue(val / 100)
         )
         self.confidence_spinbox.valueChanged.connect(
-            lambda val: self.confidence_slider.setValue(int(val * 100))
+            # round, not int: int(0.29 * 100) truncates to 28, which feeds back
+            # into the spin box and silently changes the value the user typed.
+            lambda val: self.confidence_slider.setValue(round(val * 100))
         )
 
         self.confidence_spinbox.editingFinished.connect(
@@ -274,10 +273,13 @@ class InputDialogInference(QtWidgets.QDialog):
             self.prev_button.setEnabled(False)
             self.next_button.setEnabled(False)
             self.remove_image_button.setVisible(False)
+            self.update_image_index_label()
+            self.update_run_button_state()
             return
 
         self.show_current_image()
         self.update_navigation_buttons()
+        self.update_run_button_state()
 
     def update_image_index_label(self):
         """Update the "Image N/M" label text and visibility."""
@@ -326,6 +328,7 @@ class InputDialogInference(QtWidgets.QDialog):
             self.image_preview.setText("No image files found in folder.")
             self.prev_button.setEnabled(False)
             self.next_button.setEnabled(False)
+            self.update_run_button_state()
             return
 
         self.remove_image_button.setVisible(True)
@@ -334,6 +337,7 @@ class InputDialogInference(QtWidgets.QDialog):
         self.update_image_index_label()
         self.show_current_image()
         self.update_navigation_buttons()
+        self.update_run_button_state()
 
     def show_current_image(self):
         """Display the current image in the preview, re-scaling only when the widget size changes."""
@@ -410,6 +414,8 @@ class InputDialogInference(QtWidgets.QDialog):
             errors.append("Please select an image folder.")
         elif not os.path.isdir(image_path):
             errors.append("Selected path must be a folder.")
+        elif not self.image_files:
+            errors.append("No valid image files found in selected image folder.")
 
         if not output_path:
             errors.append("Please select an output folder.")
@@ -469,17 +475,11 @@ class InputDialogInference(QtWidgets.QDialog):
 
 def get_user_inference_inputs():
     """Show the inference input dialog and return the values dict, or None if the user cancelled."""
-    app = QtWidgets.QApplication.instance()
-    owns_app = False
-    if not app:
-        app = QtWidgets.QApplication(sys.argv)
-        owns_app = True
+    ensure_app()
 
     dialog = InputDialogInference()
     result = None
     if dialog.exec_() == QtWidgets.QDialog.Accepted:
         result = dialog.get_values()
 
-    if owns_app:
-        app.quit()
     return result

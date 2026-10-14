@@ -5,7 +5,7 @@
 import sys
 import os
 from PyQt5 import QtWidgets, QtGui, QtCore
-from utils import make_label_with_tooltip
+from utils import ensure_app, make_label_with_tooltip
 
 
 class InputDialogLabelling(QtWidgets.QDialog):
@@ -18,14 +18,10 @@ class InputDialogLabelling(QtWidgets.QDialog):
         self.setFont(font)
         self.setWindowFlags(QtCore.Qt.Window | QtCore.Qt.WindowStaysOnTopHint)
         self.setWindowTitle("Input Parameters")
-        self._resize_timer = QtCore.QTimer(self)
-        self._resize_timer.setSingleShot(True)
-        self._resize_timer.timeout.connect(self.show_current_image)
+        self._model_type_cache = {}
 
         self.image_path_edit = QtWidgets.QLineEdit()
         self.browse_image_button = QtWidgets.QPushButton("Browse Folder of Images...")
-
-        self.suppress_checkbox = QtWidgets.QCheckBox()
 
         self.output_path_edit = QtWidgets.QLineEdit()
         self.browse_output_button = QtWidgets.QPushButton("Browse Output Folder...")
@@ -57,7 +53,9 @@ The idea here is that you can incrementally improve your model by labelling some
             lambda val: self.confidence_spinbox.setValue(val / 100)
         )
         self.confidence_spinbox.valueChanged.connect(
-            lambda val: self.confidence_slider.setValue(int(val * 100))
+            # round, not int: int(0.29 * 100) truncates to 28, which feeds back
+            # into the spin box and silently changes the value the user typed.
+            lambda val: self.confidence_slider.setValue(round(val * 100))
         )
 
         self.confidence_spinbox.editingFinished.connect(
@@ -328,11 +326,13 @@ The idea here is that you can incrementally improve your model by labelling some
             self.prev_button.setEnabled(False)
             self.next_button.setEnabled(False)
             self.remove_image_button.setVisible(False)
+            self.update_run_button_state()
             return
 
         self.image_index_label.setVisible(True)
         self.show_current_image()
         self.update_navigation_buttons()
+        self.update_run_button_state()
 
     def browse_model(self):
         """Open a file dialog to select an optional bootstrapping model and show/hide confidence controls."""
@@ -397,12 +397,14 @@ The idea here is that you can incrementally improve your model by labelling some
             self.prev_button.setEnabled(False)
             self.next_button.setEnabled(False)
             self.image_index_label.setVisible(False)
+            self.update_run_button_state()
             return
 
         self.current_image_index = 0
         self.image_index_label.setVisible(True)
         self.show_current_image()
         self.update_navigation_buttons()
+        self.update_run_button_state()
 
     def closeEvent(self, event):
         """Exit the program if the user closed with X; accept normally after Run."""
@@ -491,7 +493,19 @@ The idea here is that you can incrementally improve your model by labelling some
             self.output_path_edit.setText(folder)
 
     def get_yolo_model_type(self, model_path):
-        """Load the model at model_path and return 'segmentation', 'bounding_box', or None on failure."""
+        """Load the model at model_path and return 'segmentation', 'bounding_box', or None on failure.
+
+        Results are cached per (path, mtime): this runs on every keystroke in the
+        model path field, and loading the weights each time freezes the dialog.
+        """
+        try:
+            stamp = (model_path, os.path.getmtime(model_path))
+        except OSError:
+            return None
+
+        if stamp in self._model_type_cache:
+            return self._model_type_cache[stamp]
+
         try:
             from ultralytics import YOLO
 
@@ -504,10 +518,11 @@ The idea here is that you can incrementally improve your model by labelling some
                 else:
                     model_type = "bounding_box"
 
-            return model_type
+        except Exception:
+            model_type = None
 
-        except Exception as e:
-            return None
+        self._model_type_cache[stamp] = model_type
+        return model_type
 
     def update_run_button_state(self):
         """Validate all inputs and enable the Run button only when everything is valid."""
@@ -521,11 +536,10 @@ The idea here is that you can incrementally improve your model by labelling some
         errors = []
         if not image_path:
             errors.append("Please select an image folder.")
-        if image_path:
-            if not self.image_files:
-                errors.append("No valid image files found in selected image folder.")
-        elif image_path and not os.path.isdir(image_path):
+        elif not os.path.isdir(image_path):
             errors.append("Selected path must be a folder.")
+        elif not self.image_files:
+            errors.append("No valid image files found in selected image folder.")
 
         if not output_path:
             errors.append("Please select an output folder.")
@@ -581,7 +595,6 @@ The idea here is that you can incrementally improve your model by labelling some
         mode = "bounding_box" if self.bbox_radio.isChecked() else "segmentation"
         return {
             "image_paths": self.image_files,
-            "suppress_instructions": self.suppress_checkbox.isChecked(),
             "output_folder": self.output_path_edit.text().strip(),
             "YOLO_true": self.save_yolo_checkbox.isChecked(),
             "annotation_mode": mode,
@@ -597,17 +610,11 @@ The idea here is that you can incrementally improve your model by labelling some
 
 def get_user_labelling_inputs():
     """Show the labeling input dialog and return the values dict, or None if the user cancelled."""
-    app = QtWidgets.QApplication.instance()
-    owns_app = False
-    if not app:
-        app = QtWidgets.QApplication(sys.argv)
-        owns_app = True
+    ensure_app()
 
     dialog = InputDialogLabelling()
     result = None
     if dialog.exec_() == QtWidgets.QDialog.Accepted:
         result = dialog.get_values()
 
-    if owns_app:
-        app.quit()
     return result

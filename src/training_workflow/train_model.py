@@ -3,13 +3,14 @@
 # Developed at Purdue University
 
 import sys
+import traceback
 from PyQt5 import QtWidgets, QtGui
 import pyqtgraph as pg
 from ultralytics import YOLO
 import torch
 import os
 import numpy as np
-from utils import show_error_window
+from utils import ensure_app, show_error_window
 from PyQt5 import QtCore
 
 
@@ -39,7 +40,7 @@ def run_training(
             show_error_window(
                 f"The specified previous model path does not exist:\n{prev_model_path}"
             )
-            return
+            return None
         model_path = prev_model_path
         print(f"Continuing training from previous model: {model_path}")
     else:
@@ -189,6 +190,7 @@ def run_training(
             autoscale_layout.addWidget(self.loss_autoscale_btn)
 
             self.stop_requested = False
+            self.closing_programmatically = False
             self.stop_button = QtWidgets.QPushButton("Stop Training")
             self.stop_button.clicked.connect(self.request_stop)
             layout.addWidget(self.stop_button)
@@ -235,19 +237,24 @@ def run_training(
 
         def _save_and_close(self):
             """Flush pending GUI events then close the window.  Called via signal from the training thread."""
+            self.closing_programmatically = True
             QtWidgets.QApplication.processEvents()
             self.close()
 
         def closeEvent(self, event):
             """
-            Hard kill if user clicks the window 'X'.
+            Hard kill if the user clicks the window 'X' mid-training.
             No graceful shutdown — immediately terminates the process.
-            """
-            if not self.stop_requested:
-                os._exit(0)  # immediate, no cleanup, kills all threads
 
-            # If stop was already requested, allow normal behavior
-            event.accept()
+            A close requested by the program itself (training finished, or it
+            failed) is a normal close: killing the process there would skip the
+            caller's cleanup and completion message.
+            """
+            if self.closing_programmatically or self.stop_requested:
+                event.accept()
+                return
+
+            os._exit(0)  # immediate, no cleanup, kills all threads
 
         def update_metrics(
             self, epoch, precision, recall, map_value, box_loss, cls_loss, dfl_loss
@@ -340,17 +347,72 @@ def run_training(
                 text_item.setVisible(False)
                 return
 
-            # Handle log-scale display
-            display_y = closest_y
-            if plot == self.loss_plot:
-                display_y = 10**closest_y
-
             marker.setData([closest_x], [closest_y])
-            text_item.setText(f"x={closest_x:.2f}, y={display_y:.4f}")
+            text_item.setText(self._format_point(plot, closest_x, closest_y))
             self.update_marker_text_position(plot, text_item, closest_x, closest_y)
 
             marker.setVisible(True)
             text_item.setVisible(True)
+
+        def on_click(self, evt, plot):
+            """Pin the marker to the curve nearest the click, or clear it on empty space."""
+            if plot == self.metrics_plot:
+                lines = [self.precision_curve, self.recall_curve, self.map_curve]
+                marker, text_item = self.marker_metrics, self.marker_metrics_text
+                selected_attr = "selected_metrics_line"
+            else:
+                lines = [self.box_loss_curve, self.cls_loss_curve, self.dfl_loss_curve]
+                marker, text_item = self.marker_loss, self.marker_loss_text
+                selected_attr = "selected_loss_line"
+
+            pos = getattr(evt, "scenePos", None)
+            pos = pos() if callable(pos) else evt
+            if isinstance(pos, tuple):
+                pos = pos[0]
+
+            if not plot.sceneBoundingRect().contains(pos):
+                return
+
+            vb = plot.plotItem.vb
+            mouse_point = vb.mapSceneToView(pos)
+            dx_per_pixel, dy_per_pixel = vb.viewPixelSize()
+
+            PIXEL_THRESHOLD = 10
+            closest = None
+            min_dist_sq = float("inf")
+
+            for line in lines:
+                x_data, y_data = line.getData()
+                if x_data is None or y_data is None or len(x_data) == 0:
+                    continue
+
+                dx = (x_data - mouse_point.x()) / dx_per_pixel
+                dy = (y_data - mouse_point.y()) / dy_per_pixel
+                dist_sq = dx * dx + dy * dy
+
+                idx = np.argmin(dist_sq)
+                if dist_sq[idx] < min_dist_sq:
+                    min_dist_sq = dist_sq[idx]
+                    closest = (line, x_data[idx], y_data[idx])
+
+            if closest is None or min_dist_sq > PIXEL_THRESHOLD * PIXEL_THRESHOLD:
+                setattr(self, selected_attr, None)
+                marker.setVisible(False)
+                text_item.setVisible(False)
+                return
+
+            line, x_val, y_val = closest
+            setattr(self, selected_attr, line)
+            marker.setData([x_val], [y_val])
+            text_item.setText(self._format_point(plot, x_val, y_val))
+            self.update_marker_text_position(plot, text_item, x_val, y_val)
+            marker.setVisible(True)
+            text_item.setVisible(True)
+
+        def _format_point(self, plot, x_val, y_val):
+            """Label a data point, undoing the log transform on the loss plot."""
+            display_y = 10**y_val if plot == self.loss_plot else y_val
+            return f"x={x_val:.2f}, y={display_y:.4f}"
 
         def autoscale_plot(self, plot, plot_type):
             """Reset the view range for the given plot while preserving the selected-line marker."""
@@ -373,7 +435,7 @@ def run_training(
                 if len(x_data) > 0:
                     x_val, y_val = x_data[-1], y_data[-1]
                     marker.setData([x_val], [y_val])
-                    marker_text.setText(f"x={x_val:.2f}, y={y_val:.4f}")
+                    marker_text.setText(self._format_point(plot, x_val, y_val))
                     marker_text.setPos(x_val, y_val)
                     marker.setVisible(True)
                     marker_text.setVisible(True)
@@ -404,13 +466,17 @@ def run_training(
 
             text_item.setPos(x_text, y_text)
 
-    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+    app = ensure_app()
     gui = TrainingGUI(device_text=device_text)
     gui.showMaximized()
 
+    # Filled in by the worker thread and read back on the main thread once the
+    # GUI has closed, so a failure can be reported instead of leaving the
+    # monitor window up with no explanation.
+    outcome = {"ok": False, "error": None, "results": None}
+
     def train_thread():
         """Worker: load YOLO, register epoch callback, run training, then signal the GUI to close."""
-        model = YOLO(model_path)
 
         def on_epoch_end(trainer):
             """Ultralytics callback: emit per-epoch metrics to the GUI and check for stop request."""
@@ -429,20 +495,28 @@ def run_training(
             if gui.stop_requested:
                 trainer.stop = True
 
-        model.add_callback("on_fit_epoch_end", on_epoch_end)
+        try:
+            model = YOLO(model_path)
+            model.add_callback("on_fit_epoch_end", on_epoch_end)
 
-        model.train(
-            data=dataset_yaml,
-            epochs=int(1e10),
-            device=device,
-            project=model_save_dir,
-            name="YOLO_EZ_training",
-            patience=0,
-            save=True,
-            plots=False,
-        )
-
-        gui.save_and_close_requested.emit()
+            outcome["results"] = model.train(
+                data=dataset_yaml,
+                epochs=int(1e10),
+                device=device,
+                project=model_save_dir,
+                name="YOLO_EZ_training",
+                patience=0,
+                save=True,
+                plots=False,
+            )
+            outcome["ok"] = True
+        except BaseException:
+            # Without this the thread dies silently and the monitor window sits
+            # there empty forever with no indication of what went wrong.
+            outcome["error"] = traceback.format_exc()
+            print(outcome["error"], file=sys.stderr)
+        finally:
+            gui.save_and_close_requested.emit()
 
     class _Worker(QtCore.QThread):
         """Minimal QThread subclass that executes an arbitrary callable."""
@@ -460,3 +534,17 @@ def run_training(
     thread.start()
     app.exec_()
     thread.wait()
+
+    if outcome["error"] is not None:
+        # The full traceback goes to stderr; the dialog shows only the tail,
+        # which is where the actual error is, so it stays readable on screen.
+        tail = outcome["error"].strip().splitlines()[-12:]
+        show_error_window(
+            "Training stopped because of an error:\n\n" + "\n".join(tail),
+            title="Training Failed",
+        )
+        return None
+
+    # model.train() returns None under some configurations, so fall back to the
+    # success flag; callers only need a truthy value to mean "training ran".
+    return outcome["results"] if outcome["results"] is not None else outcome["ok"]

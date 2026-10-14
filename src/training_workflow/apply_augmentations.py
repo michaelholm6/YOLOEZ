@@ -3,8 +3,8 @@
 # Developed at Purdue University
 
 import os
-import cv2
 import albumentations as A
+from utils import read_image, write_image
 
 
 def build_transform(aug_dict, task):
@@ -64,15 +64,26 @@ def build_transform(aug_dict, task):
 
 
 def detect_label_format(lbl_path):
-    """Return 'segmentation' if the label file has polygon coords, 'detection' if it has 4 bbox values, or None for empty files."""
-    with open(lbl_path, "r") as f:
-        for line in f:
-            parts = line.strip().split()
-            if len(parts[1:]) > 4:
-                return "segmentation"
-            elif len(parts[1:]) == 4:
-                return "detection"
-    return None
+    """Return 'detection', 'segmentation', or None for an empty/unreadable label file.
+
+    Every line is considered, not just the first: a file is only "detection" if
+    all of its lines are 5-field boxes.  The training dialog uses this same
+    function, so the task it locks onto cannot disagree with what the
+    augmentation step decides and silently skip the image.
+    """
+    try:
+        with open(lbl_path, "r") as f:
+            lines = [line.split() for line in f if line.strip()]
+    except OSError:
+        return None
+
+    lines = [parts for parts in lines if len(parts) >= 5]
+
+    if not lines:
+        return None
+    if all(len(parts) == 5 for parts in lines):
+        return "detection"
+    return "segmentation"
 
 
 def augment_yolo_dataset(
@@ -88,6 +99,7 @@ def augment_yolo_dataset(
         task: "detection" or "segmentation"; controls which label format is transformed.
     """
     exts = {".jpg", ".jpeg", ".png", ".bmp"}
+    transform = build_transform(aug_dict, task)
 
     for split in ["train", "val"]:
         img_in = os.path.join(dataset_dir, "images", split)
@@ -97,6 +109,10 @@ def augment_yolo_dataset(
 
         os.makedirs(img_out, exist_ok=True)
         os.makedirs(lbl_out, exist_ok=True)
+
+        if not os.path.isdir(img_in) or not os.path.isdir(lbl_in):
+            print(f"Skipping {split}: {img_in} or {lbl_in} does not exist.")
+            continue
 
         for fname in os.listdir(img_in):
             name, ext = os.path.splitext(fname)
@@ -113,21 +129,35 @@ def augment_yolo_dataset(
                 print(f"Skipping {name}: expected {task}, found {detected}")
                 continue
 
-            img = cv2.imread(img_path)
+            img = read_image(img_path)
+            if img is None:
+                print(f"Skipping {fname}: could not be read.")
+                continue
             h, w = img.shape[:2]
 
             labels = []
             with open(lbl_path) as f:
                 for line in f:
                     parts = line.strip().split()
-                    labels.append(
-                        {
-                            "label": int(parts[0]),
-                            "coords": [float(x) for x in parts[1:]],
-                        }
-                    )
+                    if len(parts) < 5:
+                        continue  # blank or malformed line
+                    try:
+                        coords = [float(x) for x in parts[1:]]
+                        label = int(parts[0])
+                    except ValueError:
+                        print(f"Skipping a malformed label line in {lbl_path}")
+                        continue
 
-            cv2.imwrite(os.path.join(img_out, fname), img)
+                    # 4 values is a box; a polygon needs x/y pairs.  An odd
+                    # count would silently become a 2-point polygon, which
+                    # reads back as a bounding box.
+                    if len(coords) != 4 and len(coords) % 2 != 0:
+                        print(f"Skipping a label line with odd coords in {lbl_path}")
+                        continue
+
+                    labels.append({"label": label, "coords": coords})
+
+            write_image(os.path.join(img_out, fname), img)
             with open(os.path.join(lbl_out, name + ".txt"), "w") as f:
                 for l in labels:
                     f.write(
@@ -135,8 +165,6 @@ def augment_yolo_dataset(
                         + " ".join(f"{c:.6f}" for c in l["coords"])
                         + "\n"
                     )
-
-            transform = build_transform(aug_dict, task)
 
             for k in range(num_augments):
                 if task == "detection":
@@ -168,9 +196,11 @@ def augment_yolo_dataset(
                 else:  # segmentation
                     polygons = []
                     for l in labels:
+                        # len - 1: an odd coordinate count would otherwise run
+                        # off the end of the list when pairing x with y.
                         pts = [
                             (l["coords"][i] * w, l["coords"][i + 1] * h)
-                            for i in range(0, len(l["coords"]), 2)
+                            for i in range(0, len(l["coords"]) - 1, 2)
                         ]
                         polygons.append(pts)
 
@@ -198,7 +228,7 @@ def augment_yolo_dataset(
                         aug_labels.append({"label": l["label"], "coords": coords})
 
                 aug_img_name = f"{name}_aug{k}{ext}"
-                cv2.imwrite(os.path.join(img_out, aug_img_name), aug_img)
+                write_image(os.path.join(img_out, aug_img_name), aug_img)
 
                 with open(os.path.join(lbl_out, f"{name}_aug{k}.txt"), "w") as f:
                     for l in aug_labels:

@@ -99,6 +99,9 @@ class ContourEditorView(QtWidgets.QGraphicsView):
         self.rect_item = None
         self.start_point = None
         self.initial_fit_done = False
+        # Once the user zooms, their scale is theirs to keep: a resize then
+        # shows more or less of the scene instead of refitting under them.
+        self.user_zoomed = False
         self.horizontalScrollBar().valueChanged.connect(self.viewport().update)
         self.verticalScrollBar().valueChanged.connect(self.viewport().update)
 
@@ -203,7 +206,12 @@ class ContourEditorView(QtWidgets.QGraphicsView):
     def update_display(self):
         """Refresh the image pixmap and rebuild all contour and point handle scene items."""
         h, w = self.image.shape[:2]
-        qimage = QtGui.QImage(self.image.data, w, h, 3 * w, QtGui.QImage.Format_BGR888)
+        image = self.image
+        # Single-channel images would be misread by the 3-byte-per-pixel stride.
+        if image.ndim == 2:
+            image = np.repeat(image[:, :, None], 3, axis=2)
+        image = np.ascontiguousarray(image)
+        qimage = QtGui.QImage(image.data, w, h, 3 * w, QtGui.QImage.Format_BGR888)
         self.pixmap_item.setPixmap(QtGui.QPixmap.fromImage(qimage))
 
         self._rebuild_contour_items()
@@ -258,7 +266,13 @@ class ContourEditorView(QtWidgets.QGraphicsView):
                     self.update_display()
 
                 else:
-                    # Current stack is empty, remove it
+                    # No point states left for the contour in progress.  Step back
+                    # to the previous contour closed during this creation session
+                    # and re-open it.  With only one entry on the stack there is
+                    # no earlier contour, so there is nothing left to undo.
+                    if len(self.contour_creation_undo_stack) < 2:
+                        return
+
                     self.contour_creation_undo_stack.pop()
                     if self.contour_creation_undo_stack[-1]:
                         self.contour_creation_undo_stack[-1].pop()
@@ -269,7 +283,8 @@ class ContourEditorView(QtWidgets.QGraphicsView):
                             self.contours[-1].reshape(-1, 2).tolist()
                         )
                     self.contour_creation_redo_stack.append("close")
-                    self.undo_stack.pop()
+                    if self.undo_stack:
+                        self.undo_stack.pop()
                     self.update_display()
 
                 return
@@ -284,11 +299,13 @@ class ContourEditorView(QtWidgets.QGraphicsView):
                 if self.undo_stack:
                     current = [c.copy() for c in self.contours]
 
+                    # save redo only once, for the first actual undo
+                    self.redo_stack.append(current)
+
+                    # Skip snapshots that are identical to the current state;
+                    # some mode toggles record one without changing anything.
                     while self.undo_stack:
                         prev = self.undo_stack.pop()
-
-                        # save redo only once, for the first actual undo
-                        self.redo_stack.append(current)
 
                         # compare contours by value
                         same = len(prev) == len(current) and all(
@@ -306,6 +323,8 @@ class ContourEditorView(QtWidgets.QGraphicsView):
         elif ctrl and k == QtCore.Qt.Key_Y:
             if self.creating_contour and self.contour_creation_redo_stack:
                 # Save current state back to undo
+                if not self.contour_creation_undo_stack:
+                    self.contour_creation_undo_stack.append([])
                 self.contour_creation_undo_stack[-1].append(
                     self.new_contour_points.copy()
                 )
@@ -323,8 +342,9 @@ class ContourEditorView(QtWidgets.QGraphicsView):
                     self.currently_creating_contour = False
                     self.hovering_start_point = False
 
-                    # Start a new empty contour
-                    self.contour_creation_undo_stack.append([])
+                    # Start a new empty contour.  One stack frame per contour:
+                    # a second append here would leave a frame with no contour
+                    # behind it and swallow a later undo press.
                     self.contours.append(np.empty((0, 1, 2), dtype=np.int32))
                     self.contour_creation_undo_stack.append([])
 
@@ -687,14 +707,17 @@ class ContourEditorView(QtWidgets.QGraphicsView):
                     return
 
                 # --- AOI check ---
-                current_aoi = self.aois_dict.get(self.current_image_path, [])
-                if current_aoi and len(current_aoi) >= 3:
-                    aoi_polygon = QPolygonF([QPointF(px, py) for px, py in current_aoi])
-                else:
-                    aoi_polygon = None
+                # aois_dict maps an image to a LIST of polygons, so build one
+                # QPolygonF per polygon and accept a point inside any of them.
+                aoi_polygons = [
+                    QPolygonF([QPointF(px, py) for px, py in poly])
+                    for poly in self.aois_dict.get(self.current_image_path, [])
+                    if len(poly) >= 3
+                ]
 
-                if aoi_polygon is None or aoi_polygon.containsPoint(
-                    QPointF(x, y), QtCore.Qt.OddEvenFill
+                if not aoi_polygons or any(
+                    poly.containsPoint(QPointF(x, y), QtCore.Qt.OddEvenFill)
+                    for poly in aoi_polygons
                 ):
                     # --- Push undo state exactly once ---
                     if self.contour_creation_undo_stack is not None:
@@ -779,6 +802,8 @@ class ContourEditorView(QtWidgets.QGraphicsView):
                     self.last_freehand_point = (x, y)
 
                     if self.contour_creation_undo_stack is not None:
+                        if not self.contour_creation_undo_stack:
+                            self.contour_creation_undo_stack.append([])
                         self.contour_creation_undo_stack[-1].append(
                             self.new_contour_points.copy()
                         )
@@ -896,7 +921,23 @@ class ContourEditorView(QtWidgets.QGraphicsView):
         delta = event.angleDelta().y()
         zoom_factor = 1.2 if delta > 0 else 1 / 1.2
         self.zoom *= zoom_factor
+        self.user_zoomed = True
         self.scale(zoom_factor, zoom_factor)
+
+    def resizeEvent(self, event):
+        """Keep the image fitted when the window changes size.
+
+        Without this the view keeps the scale it was given when the window was
+        first shown, so maximizing or moving to a larger monitor leaves the
+        image at its old on-screen size in the corner of a bigger viewport.
+        """
+        super().resizeEvent(event)
+        if not self.initial_fit_done or self.user_zoomed:
+            return
+        if self.pixmap_item.pixmap().isNull():
+            return
+        self.fitInView(self.pixmap_item, QtCore.Qt.KeepAspectRatio)
+        self.centerOn(self.pixmap_item)
 
     def select_points_in_polygon(self, polygon):
         """Replace the selection set with all contour points that fall inside the lasso polygon."""
@@ -922,7 +963,7 @@ class ContourEditorView(QtWidgets.QGraphicsView):
                     new_cnt.append(pt)
             if new_cnt:
                 new_contours.append(np.array(new_cnt, dtype=np.int32))
-        self.undo_stack.append(self.contours.copy())
+        self.undo_stack.append([c.copy() for c in self.contours])
         self._clear_redo()
         self.contours = new_contours
         self.selected_points.clear()
@@ -1001,17 +1042,21 @@ class ContourEditorView(QtWidgets.QGraphicsView):
         if not contours:
             return
 
-        union_contour = max(contours, key=cv2.contourArea)
+        # Overlapping selections collapse into one contour; selections that do
+        # not touch stay as separate contours rather than being discarded.
+        union_contours = [cnt for cnt in contours if len(cnt) >= 3]
+        if not union_contours:
+            return
 
         # Build new contour list:
         # - remove old selected contours
-        # - add union contour
+        # - add the union result
         new_contours = []
         for i, cnt in enumerate(self.contours):
             if i not in selected_contour_indices:
                 new_contours.append(cnt)
 
-        new_contours.append(union_contour)
+        new_contours.extend(union_contours)
 
         self.contours = new_contours
         self.selected_points.clear()
@@ -1072,6 +1117,8 @@ class MultiImageContourEditor(QtWidgets.QWidget):
         detected_contours: Optional {image_path: list of contour arrays} for bootstrapped annotations.
         """
         super().__init__()
+        if not image_dict:
+            raise ValueError("MultiImageContourEditor requires at least one image")
         self.loop = loop
         self.close_flag = False
         self.image_dict = image_dict
@@ -1195,6 +1242,15 @@ class MultiImageContourEditor(QtWidgets.QWidget):
                 c.copy() for c in self.editor_view.contours
             ]
 
+            # Undo/redo history belongs to the image it was recorded on, so it
+            # must not carry over - a redo here would otherwise drop the new
+            # image's contours and restore the previous image's state.
+            self.editor_view.undo_stack = []
+            self.editor_view.redo_stack = []
+            self.editor_view.contour_creation_undo_stack = None
+            self.editor_view.contour_creation_redo_stack = None
+            self.editor_view.new_contour_points = []
+
             # ===== RESET TO SELECTION MODE HERE =====
             self.editor_view.selected_points.clear()
             self.editor_view.creating_contour = False
@@ -1211,6 +1267,7 @@ class MultiImageContourEditor(QtWidgets.QWidget):
             self.editor_view.current_mode = "Selection"
             self.editor_view.resetTransform()
             self.editor_view.initial_fit_done = False
+            self.editor_view.user_zoomed = False
             self.editor_view.update_display()
         else:
             # First-time setup
@@ -1248,7 +1305,16 @@ class MultiImageContourEditor(QtWidgets.QWidget):
             self.results[self.image_keys[self.index]] = (
                 self.editor_view.get_edited_contours()
             )
-        return self.results
+
+        # Images the user never opened keep their bootstrapped detections; every
+        # key maps to a list so callers never have to handle None.
+        resolved = {}
+        for key in self.image_keys:
+            saved = self.results.get(key)
+            if saved is None:
+                saved = [c.copy() for c in self.detected_contours.get(key, [])]
+            resolved[key] = saved
+        return resolved
 
 
 def run_contour_editor(image_dict, line_thickness=2, detected_contours=None):
@@ -1262,11 +1328,7 @@ def run_contour_editor(image_dict, line_thickness=2, detected_contours=None):
     Returns:
         dict: {image_path: contours}, where contours are lists of numpy arrays.
     """
-    app = QtWidgets.QApplication.instance()
-    created_app = False
-    if app is None:
-        app = QtWidgets.QApplication(sys.argv)
-        created_app = True
+    utils.ensure_app()
 
     loop = QtCore.QEventLoop()
 
