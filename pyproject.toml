@@ -35,7 +35,6 @@ classifiers = [
 dependencies = [
     # Core runtime dependencies
     "albumentations>=2.0.8",
-    "keyboard>=0.13.5",
     "opencv-python>=4.13.0.90",
     "pyqtgraph>=0.14.0",
     "scikit-learn>=1.8.0",
