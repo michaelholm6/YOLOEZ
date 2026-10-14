@@ -61,6 +61,9 @@ ASSET_LABELS = "assets/test_labels"
 
 _qapp = None
 
+# Widgets deliberately kept referenced for the session; see test_training_monitor.
+_kept_alive = []
+
 
 def _ensure_qapp():
     """Offscreen QApplication shared by the tests.
@@ -1462,9 +1465,6 @@ def test_training_monitor(tmp_path):
     assert "0.0500" in gui._format_point(gui.loss_plot, 1.0, math.log10(0.05))
     assert "0.9500" in gui._format_point(gui.metrics_plot, 1.0, 0.95)
 
-    gui.closing_programmatically = True
-    gui.close()
-
     # regression: a crash inside the worker thread left the monitor on screen
     # forever with no indication of what went wrong.
     class ExplodingYOLO:
@@ -1481,6 +1481,7 @@ def test_training_monitor(tmp_path):
     with (
         patch("training_workflow.train_model.YOLO", ExplodingYOLO),
         patch.object(QtWidgets.QApplication, "exec_", MagicMock(return_value=0)),
+        patch.object(QtWidgets.QWidget, "showMaximized", grab_gui),
         patch("torch.cuda.is_available", return_value=False),
         patch(
             "training_workflow.train_model.show_error_window",
@@ -1499,6 +1500,17 @@ def test_training_monitor(tmp_path):
         )
     assert shown, "the user was never told that training failed"
     assert "dataset is unusable" in shown[0][1]
+
+    # Hold on to every monitor this test created.  Destroying one lays out its
+    # pyqtgraph legend, and LabelItem.sizeHint raises on a half-destroyed item;
+    # pytest-qt turns exceptions from the Qt event loop into a failure of
+    # whichever test is running by then, which under coverage is the next one.
+    # Keeping them referenced for the rest of the session avoids the teardown
+    # entirely - the process is about to exit anyway.
+    for monitor in captured:
+        monitor.closing_programmatically = True
+        monitor.close()
+    _kept_alive.extend(captured)
 
     # A missing previous model is refused before anything starts.
     shown.clear()
