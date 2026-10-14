@@ -5,6 +5,15 @@
 import os
 import cv2
 import numpy as np
+from utils import write_image
+
+
+def _write_image(path, image):
+    """Write an image, reporting failures instead of letting them pass silently."""
+    if not write_image(path, image):
+        print(f"Warning: failed to write {path}")
+        return False
+    return True
 
 
 def save_segmentation_results(
@@ -41,8 +50,16 @@ def save_segmentation_results(
             print(f"Skipping {img_path}: masked image not found.")
             continue
 
-        cnts = contours_dict.get(img_path, [])
+        # "or []" rather than a .get default: an editor may store None for an
+        # image the user never opened, and the key exists in that case.
+        cnts = contours_dict.get(img_path) or []
         cnts = [np.array(c, dtype=np.int32) for c in cnts]
+
+        # Drop contours that cannot form a polygon.  This happens before the
+        # save_unlabeled_images decision: they produce no label line, and
+        # writing an empty .txt would add a negative sample the user asked not
+        # to include.
+        cnts = [c for c in cnts if len(c) >= 3]
 
         if len(cnts) == 0 and not save_unlabeled_images:
             print(f"{img_path}: no contours, skipping.")
@@ -59,7 +76,7 @@ def save_segmentation_results(
             cv2.drawContours(contour_vis, [cnt], -1, (0, 255, 0), line_thickness)
 
         contour_img_path = os.path.join(contour_vis_dir, f"{img_name}_contours.png")
-        cv2.imwrite(contour_img_path, contour_vis)
+        _write_image(contour_img_path, contour_vis)
 
         # --------------------------------------------------
         # 2. Binary segmentation mask
@@ -68,11 +85,10 @@ def save_segmentation_results(
         seg_mask = np.zeros((h_img, w_img), dtype=np.uint8)
 
         for cnt in cnts:
-            if len(cnt) >= 3:
-                cv2.fillPoly(seg_mask, [cnt], 255)
+            cv2.fillPoly(seg_mask, [cnt], 255)
 
         mask_path = os.path.join(mask_dir, f"{img_name}_mask.png")
-        cv2.imwrite(mask_path, seg_mask)
+        _write_image(mask_path, seg_mask)
 
         # --------------------------------------------------
         # 3. YOLO polygon dataset (full image coordinates)
@@ -82,14 +98,11 @@ def save_segmentation_results(
             os.makedirs(yolo_dir, exist_ok=True)
 
             img_out_path = os.path.join(yolo_dir, f"{img_name}.png")
-            cv2.imwrite(img_out_path, base_img)
+            _write_image(img_out_path, base_img)
 
             txt_path = os.path.join(yolo_dir, f"{img_name}.txt")
             with open(txt_path, "w") as f:
                 for cnt in cnts:
-                    if len(cnt) < 3:
-                        continue
-
                     polygon = []
                     for pt in cnt:
                         px, py = pt[0]

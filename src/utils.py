@@ -2,15 +2,73 @@
 # Copyright (C) 2026 Michael Holm
 # Developed at Purdue University
 
-import cv2
-import ctypes
-from PyQt5 import QtWidgets, QtCore
+import os
 import sys
+
+import cv2
+import numpy as np
+from PyQt5 import QtWidgets, QtCore
+
+_fallback_app = None
+
+
+def read_image(path, flags=cv2.IMREAD_COLOR):
+    """Read an image, returning None if it cannot be read.
+
+    cv2.imread passes the path to the C++ layer, which on Windows cannot open
+    anything outside the system code page, so a single accented or non-Latin
+    character anywhere in the path makes it fail.  Reading the bytes in Python
+    and decoding them in memory works for any path.
+    """
+    try:
+        data = np.fromfile(path, dtype=np.uint8)
+    except OSError:
+        return None
+    if data.size == 0:
+        return None
+    return cv2.imdecode(data, flags)
+
+
+def write_image(path, image):
+    """Write an image, returning False if it could not be written.
+
+    Encodes in memory and writes the bytes from Python for the same reason
+    read_image reads them that way.
+    """
+    extension = os.path.splitext(path)[1]
+    if not extension:
+        extension = ".png"
+        path = path + extension
+    try:
+        ok, buffer = cv2.imencode(extension, image)
+    except cv2.error:
+        ok = False
+    if not ok:
+        return False
+    try:
+        buffer.tofile(path)
+    except OSError:
+        return False
+    return True
+
+
+def ensure_app():
+    """Return the running QApplication, creating one if there is none.
+
+    The created application is kept in a module-level reference so it is not
+    garbage collected while widgets are still using it.
+    """
+    global _fallback_app
+    app = QtWidgets.QApplication.instance()
+    if app is None:
+        _fallback_app = QtWidgets.QApplication(sys.argv)
+        app = _fallback_app
+    return app
 
 
 def show_instructions(message: str, title: str = "Instructions"):
     """Show a scrollable instructional dialog.  Exits the program if the user closes with X."""
-    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+    ensure_app()
 
     dialog = QtWidgets.QDialog()
     dialog.setWindowTitle(title)
@@ -77,7 +135,7 @@ def make_label_with_tooltip(text, tooltip):
 
 def show_error_window(message: str, title: str = "Error"):
     """Show a modal error message box."""
-    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication(sys.argv)
+    ensure_app()
 
     msg_box = QtWidgets.QMessageBox()
     msg_box.setWindowTitle(title)

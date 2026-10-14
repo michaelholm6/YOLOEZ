@@ -5,8 +5,7 @@
 import sys
 import numpy as np
 from PyQt5 import QtCore, QtGui, QtWidgets
-import cv2
-from utils import show_error_window
+from utils import ensure_app, show_error_window
 from PyQt5.QtCore import Qt
 
 
@@ -38,7 +37,6 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
         self.selected_points = set()  # set of (box_idx, corner_idx)
         self.creating_box = False
         self.first_corner = None  # store first click
-        self.currently_creating_box = False
         self.box_start_point = None
         self.rect_item = None
         self.v_guide = None
@@ -71,6 +69,9 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
 
         # initial render
         self.initial_fit_done = False
+        # Once the user zooms, their scale is theirs to keep: a resize then
+        # shows more or less of the scene instead of refitting under them.
+        self.user_zoomed = False
         self.update_display()
 
     def _reset_creation_visuals(self):
@@ -86,7 +87,6 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
         # reset creation state
         self.creating_box = False
         self.first_corner = None
-        self.currently_creating_box = False
         self.current_mode = "Selection"
 
     def _create_guides(self):
@@ -186,6 +186,11 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
         """Draw image and bounding boxes (with corner handles)."""
         img = self.image.copy()
 
+        # Single-channel images reach the BGR888 path below as a 2-D array; the
+        # AOI canvas already handles greyscale, so accept it here too.
+        if img.ndim == 2:
+            img = np.repeat(img[:, :, None], 3, axis=2)
+
         height, width, _ = img.shape
         qimage = QtGui.QImage(
             img.data, width, height, 3 * width, QtGui.QImage.Format_BGR888
@@ -245,7 +250,6 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
             if self.creating_box:
                 self.creating_box = False
                 self.first_corner = None
-                self.currently_creating_box = False
                 self.current_mode = "Selection"
 
                 if self.rect_item:
@@ -293,7 +297,6 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
             if self.creating_box:
                 # Cancel creation mode if entered but not used
                 self.creating_box = False
-                self.currently_creating_box = False
                 self.current_mode = "Selection"
                 self._remove_guides()
                 self.viewport().update()
@@ -415,6 +418,7 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
                     # Only add if box is big enough
                     if abs(x2 - x1) >= 1 and abs(y2 - y1) >= 1:
                         self.undo_stack.append([b.copy() for b in self.boxes])
+                        self.redo_stack.clear()
                         self.boxes.append(box)
                     # self.creating_box = False
                     self.first_corner = None
@@ -522,13 +526,16 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
         self.boxes = [b.copy() for b in boxes] if boxes else []
         self.selected_points.clear()
         self.undo_stack.clear()
+        # Redo history belongs to the image it was recorded on; leaving it in
+        # place lets a redo replace this image's boxes with the previous one's.
+        self.redo_stack.clear()
 
         # reset creation / movement state
         self.creating_box = False
         self.first_corner = None
-        self.currently_creating_box = False
         self.moving_active = False
         self.current_mode = "Selection"
+        self.user_zoomed = False
 
         self.update_display()
 
@@ -542,48 +549,11 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
             self.setFocus(QtCore.Qt.ActiveWindowFocusReason)
 
     def mouseReleaseEvent(self, event):
-        """Finalize box creation on left release, apply lasso selection, or end panning."""
-        scene_pos = self.mapToScene(event.pos())
-        if (
-            self.creating_box
-            and self.currently_creating_box
-            and event.button() == QtCore.Qt.LeftButton
-        ):
-            # Finish creating box from start -> release
-            self.currently_creating_box = False
-            self.creating_box = False
-            # remove temporary rect and convert to box if big enough
-            if self.rect_item:
-                rectf = self.rect_item.rect()
-                # convert to ints and check size
-                x1, y1 = int(rectf.left()), int(rectf.top())
-                x2, y2 = int(rectf.right()), int(rectf.bottom())
-                w = max(0, x2 - x1)
-                h = max(0, y2 - y1)
-                self.scene.removeItem(self.rect_item)
-                self.rect_item = None
-                # Small boxes ignored
-                if w >= 4 and h >= 4:
-                    self.redo_stack.clear()
-                    # Create box corners: tl, tr, br, bl
-                    tl = [x1, y1]
-                    tr = [x2, y1]
-                    br = [x2, y2]
-                    bl = [x1, y2]
-                    box = np.array(
-                        [
-                            [[tl[0], tl[1]]],
-                            [[tr[0], tr[1]]],
-                            [[br[0], br[1]]],
-                            [[bl[0], bl[1]]],
-                        ],
-                        dtype=np.int32,
-                    )
-                    self.boxes.append(box)
-                # done creation
-            self.current_mode = "Selection"
-            self.viewport().update()
-            self.update_display()
+        """Apply lasso selection on left release, or end panning on right release."""
+        # Box creation is driven entirely by mousePressEvent: the first click
+        # sets a corner and the second click commits the box.  A release in
+        # creation mode must not touch the selection or the lasso.
+        if self.creating_box and event.button() == QtCore.Qt.LeftButton:
             return
 
         if event.button() == QtCore.Qt.LeftButton and self.current_mode == "Selection":
@@ -617,7 +587,24 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
         delta = event.angleDelta().y()
         zoom_factor = 1.2 if delta > 0 else 1 / 1.2
         self.zoom *= zoom_factor
+        self.user_zoomed = True
         self.scale(zoom_factor, zoom_factor)
+
+    def resizeEvent(self, event):
+        """Keep the image fitted when the window changes size.
+
+        Without this the view keeps the scale it was given when the window was
+        first shown, so maximizing or moving to a larger monitor leaves the
+        image at its old on-screen size in the corner of a bigger viewport.
+        """
+        super().resizeEvent(event)
+        if not self.initial_fit_done or self.user_zoomed:
+            return
+        if self.pixmap_item.pixmap().isNull():
+            return
+        image_rect = self.pixmap_item.boundingRect()
+        self.fitInView(image_rect, QtCore.Qt.KeepAspectRatio)
+        self.centerOn(image_rect.center())
 
     def select_points_in_polygon(self, polygon):
         """Select corner points that fall inside the polygon."""
@@ -644,7 +631,7 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
             if not has_selected:
                 boxes_to_keep.append(box)
         # save for undo
-        self.undo_stack.append(self.boxes.copy())
+        self.undo_stack.append([b.copy() for b in self.boxes])
         self.redo_stack.clear()
         self.boxes = boxes_to_keep
         self.selected_points.clear()
@@ -670,10 +657,37 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
         # minimum box size in pixels (prevents flip by enforcing at least 1 px)
         min_size = 1
 
+        def translate_whole_box(b_idx, orig_pts):
+            """Move a whole box, trimming the delta so it slides along the image edge.
+
+            Clamping each corner on its own would squash the box flat against
+            the boundary and destroy the annotation, so the delta is limited
+            instead and the box keeps its size.
+            """
+            h, w = self.image.shape[:2]
+            x_lo, y_lo = orig_pts[:, 0].min(), orig_pts[:, 1].min()
+            x_hi, y_hi = orig_pts[:, 0].max(), orig_pts[:, 1].max()
+
+            # Allowed travel before an edge of the box leaves the image.  A box
+            # wider or taller than the image cannot move on that axis at all.
+            dx_lo, dx_hi = -x_lo, (w - 1) - x_hi
+            dy_lo, dy_hi = -y_lo, (h - 1) - y_hi
+            dx_box = min(max(dx, dx_lo), dx_hi) if dx_hi >= dx_lo else 0
+            dy_box = min(max(dy, dy_lo), dy_hi) if dy_hi >= dy_lo else 0
+
+            for i in range(4):
+                xi, yi = clamp_point(orig_pts[i, 0] + dx_box, orig_pts[i, 1] + dy_box)
+                self.boxes[b_idx][i][0] = [xi, yi]
+
         # Build mapping: box_idx -> list of selected corners
         sel_map = {}
         for b_idx, c_idx in self.selected_points:
             sel_map.setdefault(b_idx, []).append(c_idx)
+
+        # Corners to keep selected once every box has been moved.  Assigning to
+        # self.selected_points inside the loop would drop the other boxes'
+        # corners, and the next mouse-move would then snap them back.
+        retained = set()
 
         for b_idx, sel_corners in sel_map.items():
             box = self.boxes[b_idx]  # reference after we reset to original snapshot
@@ -728,7 +742,7 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
                     self.boxes[b_idx][i][0] = [xi, yi]
 
                 # keep the same logical corner selected (it cannot flip now)
-                self.selected_points = {(b_idx, corner)}
+                retained.add((b_idx, corner))
 
             elif len(sel_corners) == 2:
                 c0, c1 = sel_corners[0], sel_corners[1]
@@ -789,7 +803,7 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
                             self.boxes[b_idx][i][0] = [xi, yi]
 
                         # keep same two corners selected
-                        self.selected_points = {(b_idx, c0), (b_idx, c1)}
+                        retained.update({(b_idx, c0), (b_idx, c1)})
 
                     else:
                         # left/right edge: move horizontally only
@@ -840,21 +854,18 @@ class BoundingBoxEditorView(QtWidgets.QGraphicsView):
                             xi, yi = clamp_point(new_pts[i, 0], new_pts[i, 1])
                             self.boxes[b_idx][i][0] = [xi, yi]
 
-                        self.selected_points = {(b_idx, c0), (b_idx, c1)}
+                        retained.update({(b_idx, c0), (b_idx, c1)})
                 else:
                     # Non-adjacent pair -> treat as whole box move
-                    for i in range(4):
-                        nx = orig_pts[i, 0] + dx
-                        ny = orig_pts[i, 1] + dy
-                        xi, yi = clamp_point(nx, ny)
-                        self.boxes[b_idx][i][0] = [xi, yi]
+                    translate_whole_box(b_idx, orig_pts)
+                    retained.update((b_idx, c) for c in sel_corners)
             else:
                 # Any other selection (3 or 4 corners or corners across different boxes) -> translate entire box
-                for i in range(4):
-                    nx = orig_pts[i, 0] + dx
-                    ny = orig_pts[i, 1] + dy
-                    xi, yi = clamp_point(nx, ny)
-                    self.boxes[b_idx][i][0] = [xi, yi]
+                translate_whole_box(b_idx, orig_pts)
+                retained.update((b_idx, c) for c in sel_corners)
+
+        if retained:
+            self.selected_points = retained
         self.redo_stack.clear()
 
 
@@ -869,6 +880,8 @@ class MultiImageBoxEditor(QtWidgets.QWidget):
         initial_boxes: Optional dict of {image_path: list of box arrays} for bootstrapped annotations.
         """
         super().__init__()
+        if not image_dict:
+            raise ValueError("MultiImageBoxEditor requires at least one image")
         self.image_dict = image_dict
         self.close_flag = False
         self.loop = loop
@@ -980,9 +993,12 @@ class MultiImageBoxEditor(QtWidgets.QWidget):
             self.results[prev_key] = self.editor_view.get_edited_boxes()
             self.undo_stacks[prev_key] = list(self.editor_view.undo_stack)
 
-        # Decide what boxes to show
-        if key in self.results and len(self.results[key]) > 0:
-            boxes = self.results[key]  # user-edited
+        # Decide what boxes to show.  An empty list is a real user edit (they
+        # deleted every box), so only a key that was never visited falls back to
+        # the bootstrapped detections.
+        saved = self.results.get(key)
+        if saved is not None:
+            boxes = saved  # user-edited
         else:
             boxes = self.initial_boxes.get(key, [])  # YOLO fallback
 
@@ -1014,7 +1030,16 @@ class MultiImageBoxEditor(QtWidgets.QWidget):
         if self.editor_view is not None:
             key = self.image_keys[self.index]
             self.results[key] = self.editor_view.get_edited_boxes()
-        return self.results
+
+        # Images the user never opened keep their bootstrapped detections rather
+        # than being dropped from the results.
+        resolved = {}
+        for key in self.image_keys:
+            saved = self.results.get(key)
+            if saved is None:
+                saved = [b.copy() for b in self.initial_boxes.get(key, [])]
+            resolved[key] = saved
+        return resolved
 
 
 def run_box_editor(cropped_images, line_thickness=2, initial_boxes=None):
@@ -1028,11 +1053,7 @@ def run_box_editor(cropped_images, line_thickness=2, initial_boxes=None):
     Returns:
         Dict {image_path: list of (4,1,2) int32 numpy arrays}.
     """
-    app = QtWidgets.QApplication.instance()
-    created_app = False
-    if app is None:
-        app = QtWidgets.QApplication(sys.argv)
-        created_app = True
+    ensure_app()
 
     loop = QtCore.QEventLoop()
 
@@ -1042,7 +1063,6 @@ def run_box_editor(cropped_images, line_thickness=2, initial_boxes=None):
     editor_widget.setWindowTitle(
         "Multi-Image Bounding Box Editor (C=Create Box, D=Delete, ctrl+Z=Undo, ctrl+Y=redo, M=Move, esc=Return to Selection)"
     )
-    editor_widget.showMaximized()
 
     loop.exec_()
 

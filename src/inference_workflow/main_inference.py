@@ -4,7 +4,7 @@
 
 from ultralytics import YOLO
 import os
-from utils import show_instructions
+from utils import show_error_window, show_instructions
 from labelling_workflow.area_of_interest_marking import annotate_images
 from labelling_workflow.crop_and_mask import crop_and_mask_images
 from inference_workflow.get_user_inputs_inference import get_user_inference_inputs
@@ -36,14 +36,24 @@ def run_inference_workflow(
     else:
         inputs = test_inputs
 
+    if not inputs:
+        return
+
     image_paths = inputs["image_paths"]
+    if not image_paths:
+        show_error_window(
+            "No images were selected, so there is nothing to run inference on.",
+            title="No Images",
+        )
+        return
 
     if not suppress_instructions:
         show_instructions(
             f"You selected {len(image_paths)} image(s).\n\n"
             "Next, you can optionally crop each image to an area of interest.\n"
             "If you do not wish to crop an image, simply leave it unmarked and proceed.\n\n"
-            "When finished, close the window to proceed."
+            "When finished, click the 'Finish' button to continue.\n"
+            "Closing the window with the X exits the workflow."
         )
 
     areas_of_interest, _ = annotate_images(image_paths)

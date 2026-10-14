@@ -2,12 +2,12 @@
 # Copyright (C) 2026 Michael Holm
 # Developed at Purdue University
 
-import cv2
 import json
 import numpy as np
 import os
 import gc
 from PyQt5 import QtWidgets, QtCore
+from utils import write_image
 
 
 def run_yolo_inference(model, cropped_images, save_path, conf, parent=None):
@@ -25,6 +25,9 @@ def run_yolo_inference(model, cropped_images, save_path, conf, parent=None):
     """
     saved_images = []
     num_images = len(cropped_images)
+    if num_images == 0:
+        return saved_images
+
     progress = QtWidgets.QProgressDialog(
         "Running inference...", "Cancel", 0, num_images, parent
     )
@@ -50,7 +53,7 @@ def run_yolo_inference(model, cropped_images, save_path, conf, parent=None):
 
         annotated_img = np.ascontiguousarray(annotated_img, dtype=np.uint8)
 
-        if not cv2.imwrite(tmp_path, annotated_img):
+        if not write_image(tmp_path, annotated_img):
             raise RuntimeError(f"Failed to write temp file {tmp_path}")
 
         os.replace(tmp_path, img_path)
@@ -70,16 +73,13 @@ def run_yolo_inference(model, cropped_images, save_path, conf, parent=None):
             label = names[cls_id] if names and cls_id in names else str(cls_id)
 
             polygon = None
-            if masks:
-                mask_data = masks.data[j].cpu().numpy()
-                contours, _ = cv2.findContours(
-                    mask_data.astype("uint8"),
-                    cv2.RETR_EXTERNAL,
-                    cv2.CHAIN_APPROX_SIMPLE,
-                )
-                if contours:
-                    polygon = contours[0].reshape(-1, 2).tolist()
-                del mask_data
+            if masks is not None and j < len(masks):
+                # masks.xy is already scaled to the original image, so the
+                # polygon matches the bbox above.  masks.data is at the model's
+                # own (letterboxed) resolution and would not.
+                segment = masks.xy[j]
+                if len(segment):
+                    polygon = np.asarray(segment).reshape(-1, 2).tolist()
 
             det_list.append(
                 {

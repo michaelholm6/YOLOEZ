@@ -2,7 +2,7 @@
 # Copyright (C) 2026 Michael Holm
 # Developed at Purdue University
 
-from utils import show_error_window
+from utils import ensure_app, read_image, show_error_window
 
 import sys
 import os
@@ -18,6 +18,8 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtGui import QPixmap, QPainter, QPen, QColor, QImage, QKeyEvent
 from PyQt5.QtCore import Qt, QPoint, QEventLoop
+
+DEFAULT_LINE_THICKNESS = 2
 
 
 class PolygonCanvas(QWidget):
@@ -43,9 +45,7 @@ class PolygonCanvas(QWidget):
         self.dragging = False
         self.last_drag_point = None
 
-        self.polygon_pts_widget = []  # list of QPoint in widget coordinates
-        self.polygon_closed = False
-        self.line_thickness = 2
+        self.line_thickness = DEFAULT_LINE_THICKNESS
 
         self.hover_first = False
 
@@ -199,6 +199,7 @@ class PolygonCanvas(QWidget):
             return
 
         pos = event.pos()
+        was_dragging = self.dragging
         self.dragging = False
         self.last_drag_point = None
 
@@ -212,8 +213,11 @@ class PolygonCanvas(QWidget):
             if dist_sq <= 100:
                 self.close_polygon()
                 return
-            else:
-                pts.append(pos)
+
+        # Only the end of a drag adds a point here; a plain click already added
+        # its point in mousePressEvent, and appending again would duplicate it.
+        if was_dragging and pos != pts[-1]:
+            pts.append(pos)
 
         self.update()
 
@@ -247,17 +251,27 @@ class PolygonCanvas(QWidget):
 
     def resizeEvent(self, event):
         """Re-scale the image and recompute widget coordinates for existing polygon points."""
-        # Recompute scaled image and convert any existing polygon in image coords back
-        prev_image = self.orig_image
-        if prev_image is not None:
-            # Convert current stored polygon (widget coords) into image coords,
-            # then reload and reconvert to widget coords under new scale.
-            img_coords = [
-                self.widget_to_image_coords(pt) for pt in self.polygon_pts_widget
+        # Polygon points are stored in widget coordinates, so they have to be
+        # converted to image coordinates under the OLD scale and converted back
+        # under the new one, or they would drift away from the region the user
+        # outlined every time the window changes size.
+        if self.orig_image is not None and self.scaled_pixmap is not None:
+            completed_img = [
+                [self.widget_to_image_coords(pt) for pt in poly["points"]]
+                for poly in self.polygons
             ]
+            current_img = [
+                self.widget_to_image_coords(pt) for pt in self.current_polygon["points"]
+            ]
+
             self.update_scaled_image()
-            self.polygon_pts_widget = [
-                self.image_to_widget_coords(ix, iy) for (ix, iy) in img_coords
+
+            for poly, pts_img in zip(self.polygons, completed_img):
+                poly["points"] = [
+                    self.image_to_widget_coords(ix, iy) for (ix, iy) in pts_img
+                ]
+            self.current_polygon["points"] = [
+                self.image_to_widget_coords(ix, iy) for (ix, iy) in current_img
             ]
         else:
             self.update_scaled_image()
@@ -285,7 +299,11 @@ class PolygonCanvas(QWidget):
         return False
 
     def undo(self):
-        """Remove the last added point or cancel the last completed polygon."""
+        """Discard the polygon in progress, or remove the last completed polygon.
+
+        A polygon being drawn is dropped whole rather than point by point, since
+        its individual points are not recorded separately.
+        """
         if self.current_polygon["points"]:
             action = {"action": "cancel_current", "polygon": self.current_polygon}
             self.redo_stack.append(action)
@@ -331,6 +349,8 @@ class PolygonAnnotatorWindow(QWidget):
             loop: QEventLoop to quit when the user clicks Finish.
         """
         super().__init__()
+        if not image_paths:
+            raise ValueError("PolygonAnnotatorWindow requires at least one image path")
         self.close_flag = False
         self.loop = loop
         self.image_paths = image_paths
@@ -382,6 +402,7 @@ class PolygonAnnotatorWindow(QWidget):
         slider_layout = QHBoxLayout()
         slider_layout.addWidget(QLabel("Line Thickness:"))
         slider_layout.addWidget(self.thickness_slider)
+        slider_layout.addWidget(self.thickness_value_label)
 
         main_layout = QVBoxLayout(self)
         main_layout.addWidget(self.canvas, stretch=1)
@@ -407,6 +428,7 @@ class PolygonAnnotatorWindow(QWidget):
     def update_line_thickness(self, value):
         """Propagate the slider value to the canvas and trigger a repaint."""
         self.canvas.line_thickness = value
+        self.thickness_value_label.setText(str(value))
         self.canvas.update()
 
     def closeEvent(self, event):
@@ -421,9 +443,11 @@ class PolygonAnnotatorWindow(QWidget):
     def load_current_image(self):
         """Load the image at the current index into the canvas, restoring any saved polygons."""
         path = self.image_paths[self.index]
-        img = cv2.imread(path)
+        img = read_image(path)
         if img is None:
             show_error_window(f"Failed to load image: {path}")
+            self.update_status_label()
+            self.update_button_states()
             return
         saved = self.results.get(path, [])
         self.canvas.load_image(img, saved_polygon_image_coords=saved)
@@ -473,11 +497,14 @@ class PolygonAnnotatorWindow(QWidget):
 
 def annotate_images(image_paths):
     """Launches GUI and returns {path: [[x,y], ...]} and line thickness"""
-    app = QApplication.instance()
-    created_app = False
-    if app is None:
-        app = QApplication(sys.argv)
-        created_app = True
+    if not image_paths:
+        show_error_window(
+            "No images were supplied for area-of-interest marking.",
+            title="No Images",
+        )
+        return {}, DEFAULT_LINE_THICKNESS
+
+    ensure_app()
 
     loop = QEventLoop()  # local loop to block until Finish/close
 

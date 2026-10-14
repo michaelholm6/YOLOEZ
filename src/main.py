@@ -33,11 +33,31 @@ import cv2  # noqa: F401
 os.environ.pop("QT_QPA_PLATFORM_PLUGIN_PATH", None)
 os.environ.pop("QT_QPA_FONTDIR", None)
 
+
+def _make_output_encoding_safe():
+    """Stop diagnostics from crashing on paths the console cannot encode.
+
+    Several steps report skipped files by printing the path.  On Windows stdout
+    defaults to the ANSI code page, so printing a path containing characters
+    outside it raises UnicodeEncodeError and takes down the workflow over a
+    diagnostic message.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is None:
+            continue  # no console at all, e.g. a windowed build
+        try:
+            reconfigure(encoding="utf-8", errors="replace")
+        except (OSError, ValueError):
+            pass
+
+
+_make_output_encoding_safe()
+
 from PyQt5.QtCore import qInstallMessageHandler  # noqa: E402
-from PyQt5.QtWidgets import QApplication  # noqa: E402
 
 from YOLO_EZ import main as YOLO_EZ_main  # noqa: E402
-from utils import show_error_window  # noqa: E402
+from utils import ensure_app, show_error_window  # noqa: E402
 
 _SUPPRESSED_WARNINGS = (
     "Timers can only be used with threads started with QThread",
@@ -64,13 +84,16 @@ def main(test_mode: bool = False) -> int:
     if test_mode:
         return 0
 
-    app = QApplication.instance()
-    if app is None:
-        app = QApplication(sys.argv)
+    # One QApplication for the whole process.  YOLO_EZ.main() reuses this
+    # instance; each workflow runs its own blocking loop and returns when done,
+    # so there is no event loop left to run once it comes back.  ensure_app
+    # holds the reference: an unreferenced QApplication is garbage collected,
+    # and the next widget construction then aborts.
+    ensure_app()
 
     YOLO_EZ_main()
 
-    return app.exec_()
+    return 0
 
 
 if __name__ == "__main__":

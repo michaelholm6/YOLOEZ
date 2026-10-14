@@ -4,6 +4,7 @@
 import sys
 import os
 from PyQt5 import QtWidgets, QtGui, QtCore
+from utils import ensure_app, show_error_window
 
 
 class ImageCanvas(QtWidgets.QWidget):
@@ -47,6 +48,8 @@ class ImageViewer(QtWidgets.QWidget):
 
     def __init__(self, image_paths, loop=None):
         super().__init__()
+        if not image_paths:
+            raise ValueError("ImageViewer requires at least one image path")
 
         self.loop = loop
         self.close_flag = False
@@ -150,16 +153,23 @@ class ImageViewer(QtWidgets.QWidget):
         elif event.key() == QtCore.Qt.Key_Left:
             self.change_image(-1)
         elif event.key() == QtCore.Qt.Key_Escape:
-            self.close()
+            # Same as Finish: the results are already saved by this point, so
+            # there is nothing to lose and no reason to kill the process.
+            self.finish()
         else:
             super().keyPressEvent(event)
 
 
 def view_images(image_paths):
     """Launch an ImageViewer for image_paths and block until the user clicks Finish or closes."""
-    app = QtWidgets.QApplication.instance()
-    if app is None:
-        app = QtWidgets.QApplication(sys.argv)
+    if not image_paths:
+        show_error_window(
+            "No result images were produced, so there is nothing to show.",
+            title="No Results",
+        )
+        return
+
+    ensure_app()
 
     loop = QtCore.QEventLoop()
 

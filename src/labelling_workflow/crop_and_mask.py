@@ -4,6 +4,7 @@
 
 import cv2
 import numpy as np
+from utils import read_image
 
 
 def crop_and_mask_images(image_paths, aois_dict):
@@ -23,7 +24,7 @@ def crop_and_mask_images(image_paths, aois_dict):
     masked_results = {}
 
     for img_path in image_paths:
-        img = cv2.imread(img_path)
+        img = read_image(img_path)
         if img is None:
             print(f"Skipping {img_path}: failed to load.")
             continue

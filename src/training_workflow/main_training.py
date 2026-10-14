@@ -3,7 +3,7 @@
 # Developed at Purdue University
 
 import os
-from utils import show_instructions
+from utils import show_error_window, show_instructions
 from training_workflow.apply_augmentations import augment_yolo_dataset
 from training_workflow.create_yaml import create_yaml
 from training_workflow.train_model import run_training
@@ -34,6 +34,9 @@ def run_training_workflow(suppress_instructions=False, test_inputs=None):
     else:
         inputs = get_training_inputs()
 
+    if not inputs:
+        return None
+
     split = inputs["train_split"]
     task = inputs["task"]
     dataset_path = inputs["dataset_folder"]
@@ -42,16 +45,43 @@ def run_training_workflow(suppress_instructions=False, test_inputs=None):
     model_save_dir = inputs["save_folder"]
     model_size = inputs["model_size"]
     previous_model_path = inputs.get("prev_model_path", None)
+    image_paths = inputs.get("image_paths")
 
-    dataset_path = split_dataset(dataset_path, train_split=split)
+    dataset_path = split_dataset(
+        dataset_path, train_split=split, image_paths=image_paths
+    )
+    if dataset_path is None:
+        # split_dataset has already told the user what went wrong.
+        return None
+
+    augmented_path = os.path.join(tempfile.gettempdir(), "augmented_dataset")
+    # Clear it first so augmented images from an earlier run are not trained on.
+    shutil.rmtree(augmented_path, ignore_errors=True)
 
     augment_yolo_dataset(
         dataset_path,
         augs,
-        os.path.join(tempfile.gettempdir(), "augmented_dataset"),
+        augmented_path,
         number_of_augs,
         task=task,
     )
+
+    # Images whose labels do not match the task are skipped during augmentation.
+    # If that leaves either split empty, YOLO would fail later with an error
+    # that says nothing about the cause, so stop here with a clear message.
+    counts = _count_split_images(augmented_path)
+    if counts["train"] == 0 or counts["val"] == 0:
+        show_error_window(
+            "The prepared dataset is empty, so training cannot start."
+            + "\n\n"
+            + f"Usable training images: {counts['train']}\n"
+            + f"Usable validation images: {counts['val']}\n\n"
+            + "Every image needs a YOLO label file matching the detected "
+            + f"task ('{task}').",
+            title="No Usable Training Data",
+        )
+        _clean_temp_dataset(dataset_path)
+        return None
 
     yaml_file = create_yaml(tempfile.gettempdir())
 
@@ -64,25 +94,22 @@ def run_training_workflow(suppress_instructions=False, test_inputs=None):
             "You can hover over points in the plots to see exact values."
         )
 
-    results = run_training(
-        yaml_file,
-        model_save_dir,
-        model_size,
-        task=task,
-        prev_model_path=previous_model_path,
-    )
+    try:
+        results = run_training(
+            yaml_file,
+            model_save_dir,
+            model_size,
+            task=task,
+            prev_model_path=previous_model_path,
+        )
+    finally:
+        # Always clear the temporary dataset, even when training failed, so it
+        # cannot contaminate the next run.
+        _clean_temp_dataset(dataset_path)
 
-    dataset_yaml_path = os.path.join(os.path.split(dataset_path)[0], "dataset.yaml")
-    if os.path.exists(dataset_yaml_path):
-        os.remove(dataset_yaml_path)
-
-    augmented_dir = os.path.join(os.path.split(dataset_path)[0], "augmented_dataset")
-    if os.path.exists(augmented_dir):
-        shutil.rmtree(augmented_dir)
-
-    yolo_dataset_dir = os.path.join(os.path.split(dataset_path)[0], "yolo_dataset")
-    if os.path.exists(yolo_dataset_dir):
-        shutil.rmtree(yolo_dataset_dir)
+    if results is None:
+        # run_training has already reported the failure.
+        return None
 
     if not suppress_instructions:
         show_instructions(
@@ -92,3 +119,26 @@ def run_training_workflow(suppress_instructions=False, test_inputs=None):
         )
 
     return results
+
+
+def _clean_temp_dataset(dataset_path):
+    """Remove the temporary dataset, its augmented copies and the generated YAML."""
+    temp_root = os.path.split(dataset_path)[0]
+
+    dataset_yaml_path = os.path.join(temp_root, "dataset.yaml")
+    if os.path.exists(dataset_yaml_path):
+        os.remove(dataset_yaml_path)
+
+    for name in ("augmented_dataset", "yolo_dataset"):
+        path = os.path.join(temp_root, name)
+        if os.path.exists(path):
+            shutil.rmtree(path, ignore_errors=True)
+
+
+def _count_split_images(dataset_root):
+    """Count the images present in each split of a prepared dataset."""
+    counts = {}
+    for split in ("train", "val"):
+        split_dir = os.path.join(dataset_root, "images", split)
+        counts[split] = len(os.listdir(split_dir)) if os.path.isdir(split_dir) else 0
+    return counts
