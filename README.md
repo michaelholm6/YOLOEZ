@@ -198,8 +198,8 @@ Every step below is also explained by instructional popups inside the applicatio
 4. Tick **Save YOLO Training Sample** so the run writes a YOLO-format dataset.
 5. Click **Browse Output Folder...** and choose where results should go.
 6. Click **Run**.
-7. **Area of interest:** you will be asked to outline the regions worth labeling. For this example you can skip it — leaving an image unmarked uses the whole image.
-8. **Bounding box editor:** press `C`, then click and drag a box around the apple. Repeat for each image and close the window when finished.
+7. **Area of interest:** you will be asked to outline the regions worth labeling. For this example you can skip it by just clicking **Finish** — leaving an image unmarked uses the whole image.
+8. **Bounding box editor:** press `C`, then click once on each of two opposite corners of a box around the apple. Repeat for each image, then click **Finish** to save your labels. Closing the window with the X discards them.
 
 ![A bounding box drawn around the apple in the labeling editor. The title bar lists the available shortcuts, and the mode indicator shows the current editing mode.](images/example_labeling.png)
 
@@ -228,11 +228,18 @@ A reference copy of this output ships in [`assets/test_labels/`](assets/test_lab
 3. Choose a model size. **Nano** trains fastest and is the right choice here.
 4. Under **Apply Data Augmentations**, tick all five available options — **Flip**, **Color Jitter**, **Blur**, **Noise**, and **Scale** — and set **Augmentations per image** to `3`. **Rotate** is hidden automatically, because rotating an image would invalidate its axis-aligned bounding boxes.
 5. Leave **Train/Test Split (% for training)** at its default of 80.
-6. Click **Browse Save Directory...** to choose where the trained `.pt` file is written, then click **Run**.
+6. Click **Browse Save Directory...** to choose where the training run is written, then click **Run**.
 
 YOLOEZ does not ask you for a number of epochs. Training runs continuously and you decide when to stop it: watch the live metric and loss plots, and click **Stop Training** once the curves have flattened out. The best-performing weights are what get saved, so stopping later than necessary costs time but not accuracy.
 
-The panel header shows whether the run is using your **GPU** or falling back to **CPU**. On this five-image dataset, a Nano model on CPU trains fast enough that the plots update every few seconds — the run shown below was stopped after about a dozen epochs.
+The run is written to a `YOLO_EZ_training/` folder inside the save directory you chose, and the weights land in its `weights/` subfolder:
+
+- **`best.pt`** — the checkpoint that scored best on the validation set during the run. This is the file to use for inference.
+- **`last.pt`** — the checkpoint from the final epoch, whatever its score. It is kept so a run can be continued from where it stopped, using **Continue Training from Model**.
+
+The two differ whenever the final epoch was not the best one, which is the usual case once the curves have flattened and started to wander. If a `YOLO_EZ_training/` folder already exists, a number is appended (`YOLO_EZ_training2`, and so on), so the newest run is the highest-numbered folder.
+
+The panel header shows whether the run is using your **GPU** or falling back to **CPU**. On this five-image dataset, a Nano model on CPU trains fast enough that the plots update every few seconds — the run shown below was stopped after a dozen epochs.
 
 ![Live training metrics for the example run, stopped after roughly a dozen epochs.](images/example_training.png)
 
@@ -243,12 +250,12 @@ The panel header shows whether the run is using your **GPU** or falling back to 
 ### Step 3 — Run inference
 
 1. Return to the start dialog and click **Use Model**.
-2. Click **Select trained YOLO Model...** and choose the `.pt` file saved in Step 2.
+2. Click **Select trained YOLO Model...** and choose `best.pt` from Step 2, found under `YOLO_EZ_training/weights/` inside the save directory you picked.
 3. Click **Browse Folder of Images...** and select `assets/test_images/` again. These are the same images the model trained on, so the detections below show only that the pipeline runs end to end — they are not a measure of accuracy.
 4. Set the **Confidence Threshold** to `0.02`. This is far lower than you would use in practice; a model trained on five images produces weak, low-confidence predictions, so a normal threshold would filter everything out.
 5. Click **Browse Output Folder...**, then click **Run**.
 
-Results open in a built-in viewer before being saved. The output folder receives the annotated images alongside a JSON file per image describing each detection.
+The annotated images, alongside a JSON file per image describing each detection, are written to the output folder and then opened in a built-in viewer.
 
 ![Inference results on the example images, shown in the built-in viewer.](images/example_inference.png)
 
@@ -262,7 +269,7 @@ The same three steps apply to any image set: point Step 1 at your own folder ins
 
 ## Testing
 
-YOLOEZ includes an automated test suite built with `pytest` and `pytest-qt` that exercises all three workflows end to end against a small bundled dataset, without requiring a visible display.
+YOLOEZ includes an automated test suite built with `pytest` that exercises all three workflows end to end against a small bundled dataset, without requiring a visible display.
 
 After installing from source as described above, run the full suite from the repository root:
 
@@ -286,7 +293,7 @@ Other useful commands:
 
 ```bash
 # Run a single test
-pytest tests/test_cases.py::test_labeling_workflow_runs_without_gui -v
+pytest tests/test_cases.py::test_workflows_end_to_end -v
 
 # Run the suite with a coverage report
 python -m pytest --cov=src --cov-report=xml
