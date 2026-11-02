@@ -8,6 +8,8 @@ Built for researchers, students, and engineers with image data (microscopy, defe
 
 ![Drawing bounding boxes around apples in YOLOEZ's labeling editor](images/YOLOEZ.gif)
 
+*Shown above: labeling, one of YOLOEZ's three workflows. Training and inference are built into the same application; see [What It Does](#what-it-does) below.*
+
 **[Download for Windows or Linux](https://github.com/michaelholm6/YOLOEZ/releases)** · macOS: [run from source](#running-from-source)
 
 ---
