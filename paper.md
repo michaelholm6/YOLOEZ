@@ -36,7 +36,7 @@ The tools most relevant to YOLOEZ fall into four categories, summarized in Table
 
 **Annotation-only tools:** CVAT [@cvat2022] and LabelImg [@tzutalin2015labelimg] support YOLO-format export but offer no training or inference; LabelImg is limited to bounding boxes and has been archived since 2024. LabelMe [@wada2024labelme] also offers no training or inference and supports polygon annotation, but exports to VOC or COCO format rather than YOLO directly. Label Studio [@labelstudio2020] adds broader ML-backend integration but requires a running server.
 
-**Cloud platforms:** Roboflow [@dwyer2026roboflow] and Ultralytics Platform (formerly Ultralytics HUB) [@ultralyticshub] offer end-to-end pipelines but require an account and process data on external servers. As of October 2026, Roboflow's free tier keeps projects private by default and includes model weight download, but data is still processed on Roboflow's servers rather than the user's own hardware, regardless of tier.
+**Cloud platforms:** Roboflow [@dwyer2026roboflow] and Ultralytics Platform (formerly Ultralytics HUB) [@ultralyticshub] offer end-to-end pipelines but require an account and process data on external servers. As of October 2026, Roboflow's free tier keeps projects private by default and includes model weight download. Roboflow's open-source Inference framework can run trained models on the user's own hardware, but this requires installing and configuring an inference server (typically through Docker and a command-line tool, or a native desktop app on Windows and macOS) and writing code to query it, so it demands considerable technical knowledge. Only inference can be self-hosted this way: labeling and training are still performed on Roboflow's servers.
 
 **Browser-based tools:** Google Teachable Machine [@teachablemachine] trains client-side, so data stays on the user's device, but supports only whole-image, audio, or pose classification, not object localization or segmentation. Microsoft Custom Vision [@customvision] processes data on Azure servers; Microsoft has announced its retirement, recommending migration by September 2026 ahead of full shutdown in September 2028.
 
@@ -51,7 +51,7 @@ The tools most relevant to YOLOEZ fall into four categories, summarized in Table
 +--------------------------+----------------+----------+----------+----------+----------+----------+
 | Label Studio             | Self-hosted    | Yes      | Yes      | No       | No       | Yes      |
 +--------------------------+----------------+----------+----------+----------+----------+----------+
-| Roboflow                 | No             | Yes      | Yes      | Yes      | Yes      | Yes      |
+| Roboflow                 | Infer only     | Yes      | Yes      | Yes      | Yes      | Yes      |
 +--------------------------+----------------+----------+----------+----------+----------+----------+
 | Ultralytics Platform     | No             | Yes      | Yes      | Yes      | Yes      | Yes      |
 +--------------------------+----------------+----------+----------+----------+----------+----------+
